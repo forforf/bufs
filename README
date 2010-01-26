@@ -1,0 +1,6 @@
+Bufs
+Organize files from the bottom up, rather tan the top down.
+
+The current core classes give the ability to synchronize a file system to the backend repository (a couch database) in such a way that tagging (called categories) is allowed.  These categories aren't your run of the mill tags, they can also be used to categorize categories as well as content (i.e., you can tag the tags).  This allows you to organize data organically.
+
+Future developments will be to provide a web interface, and also a file system "view" where the directory structure mirrors the category organization.
