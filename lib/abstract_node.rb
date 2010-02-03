@@ -6,7 +6,26 @@ require File.dirname(__FILE__) + '/bufs_file_system'
 require File.dirname(__FILE__) + '/bufs_info_doc'
 #require ANSrcLocation + 'bufs_info_file_view_builder.rb'
 
+class ReadOnlyNode
+  #abstract class for all read only nodes
+  #TODO: Change this to an include rather than 
+  #force an arbitrary inheritance
+  def my_category
+    raise "#{self.class}.my_category is abstract and must be overridden in a sub-class"
+  end
 
+  def parent_categories
+    raise "#{self.class}.parent_categories is abstract and must be overridden in a sub-class"
+  end
+
+  def file_metadata
+    raise "#{self.class}.file_metadata is abstract and must be overridden in a sub-class"
+  end
+
+  def get_file_data(file_name)
+    raise "#{self.class}.get_file_data is abstract and must be overridden in a sub-class"
+  end
+end
 
 
 class AbstractNode
@@ -17,6 +36,7 @@ class AbstractNode
 
   NodeModels = [BufsInfoDoc, BufsFileSystem]
   #AbstractNodeClasses = {'BufsInfoDoc' => DBDocNode, 'BufsFileSystem' => FileSystemDocNode }
+ 
 
   attr_accessor :my_category, :parent_categories, :description, :file_metadata, :node_model
 
@@ -42,17 +62,44 @@ class AbstractNode
     return abstract_node_list
   end
 
-  def self.sync(nodes)
+  def self.sync(nodes) #, read_only_nodes=[])
+    #future: allow choosing of which nodes can by synced
+    #for now, all supported node types will by synced (node types not
+    #supplied will be created and synced to freshest node supplied)
+    
+    #all_nodes = nodes + read_only_nodes
+
+    #ignore null values
+    nodes.compact!
+
+    #These are the node types that will be created when the node is not provided
     abstract_node_classes = {'BufsInfoDoc' => DBDocNode, 'BufsFileSystem' => FileSystemDocNode } #figure out better way
-    #validate that cat is the same for all nodes or is nil
-    #non_nil_nodes = nodes.select {|n| n}
+
+    #validate that my_category is the same for all nodes or is nil
     node_my_cats = (nodes.map{|n| n.my_category if n}).compact.uniq
     raise "Can't find any node categories" if node_my_cats.size < 1
     raise "Only a single node category is allowed for sync, multiple found" if node_my_cats.size > 1
     my_cat = node_my_cats.first
+
+    #validate that there no node classes are duplicated
+    #no nils, so everything must be uniq
+    node_classes = nodes.map{|n| n.class}
+    node_classes.uniq!
+    raise "Node Classes are not unique" unless nodes.size == node_classes.size
+
+    #validate that only known node classes are used
+    nodes.each do |node|
+      if (node.class != DBDocNode) && (node.class != FileSystemDocNode)
+	unless node.class.ancestors.include? ReadOnlyNode
+	  raise "Unknown Node Type: #{node.class}"
+	end
+      end
+    end
+
+    #each node is of a unique class of one of the known node classes
     
-    #determine node classes for any nil nodes by deleting known classes from supported classes
-    unless nodes.size == nodes.compact.size
+=begin    
+    unless self.writable_nodes(nodes).size == writable_nodes.compact.size
       available_node_classes = NodeModels.dup  #is dup necessary?
       nodes.each do |node|
         available_node_classes.delete(node.node_model.class) if node
@@ -63,6 +110,8 @@ class AbstractNode
       raise "Empty Nodes does not match available models" unless nil_nodes.size == available_node_classes.size
       #think about ways to allow mis-matched sizes
       puts "--- creating new model in sync"
+      #TODO: Think about creating a node "sync_#{Time.now}"  with parent_category of 'synced'
+      #
       nodes.map! do |node|
         if node
           node
@@ -76,6 +125,8 @@ class AbstractNode
     end
     puts "--- nodes:"
     nodes.each {|n| p n}
+=end
+
     #merge parent categories
     puts "--- merging parent categories"
     all_parent_categories = []
@@ -83,29 +134,40 @@ class AbstractNode
       all_parent_categories += node.parent_categories if node
     end
     merged_parent_categories = all_parent_categories.uniq
-    nodes.each do |node|
-      node.add_parent_categories(merged_parent_categories)
-    end
 
-    #update to latest data for all nodes
-    puts "Nodes: #{nodes.size}"
+
+    #nodes.each do |node|
+    #  node.add_parent_categories(merged_parent_categories) unless node.class.ancestors.include? ReadOnlyNode
+    #end
+
+
+    #compare file data
+    #check to see if there is any new file data
+    #is this superfluous since files aren't updated if the data is older anyway???
+    puts "Nodes: #{nodes.size}" #" Read Only Nodes #{read_only_nodes.size}"
     p nodes
     file_comparison = []
     nodes.each do |node|
-      file_comparison << node.file_metadata
+      file_comparison << node.file_metadata  if node
     end
     file_comparison.uniq!
     puts "Compared Nodes: #{file_comparison.size}"
     
-    #spin this into a different method
-    #self.merge_files(nodes) if file_comparison.size > 1  #files out of sync
+    #if all nodes have the same file data, then no file updates are needed
+    #Note: ReadOnly complicates things slightly since it can have old file information
+    #which will trigger an update, even though none of the updatable nodes were outdated
+    #
+    #spin this into a different method?
+    #if file_comparison.size > 1  => files out of sync
+    freshest = {}
     puts "--- file comparison"
-    p file_comparison.size
-    if file_comparison.size > 1
-      freshest_data_node_index = nil
-      freshest_data_time = Time.at(0)
-      freshest_file_name = nil
-      freshest_metadata = nil
+    
+    puts "Nodes Size: #{nodes.size}, NodeModel Size: #{NodeModels.size}, File comparison: #{file_comparison.size}"
+    #if file_comparison.size > 1
+      freshest[:node_index] = nil
+      freshest[:time] = Time.at(0)
+      freshest[:file_name] = nil
+      freshest[:metadata] = nil
 
       puts "node classes: #{nodes.each{|n| p n.class}}"
  
@@ -115,29 +177,81 @@ class AbstractNode
           puts "node file metadata: #{node.file_metadata.inspect}"
           node.file_metadata.each do |dataname, md|
             mod_time = Time.parse(md['file_modified'])
-            if mod_time > freshest_data_time
-              freshest_data_node_index = i
-              freshest_data_time = mod_time
-              freshest_file_name = dataname
-              freshest_metadata = node.file_metadata
+            if mod_time > freshest[:time]
+              freshest[:node_index] = i
+              freshest[:time] = mod_time
+              freshest[:file_name] = dataname
+              freshest[:metadata] = node.file_metadata
+              freshest[:node] = node
             end
           end
         else
           puts "No Metadata found for node: #{node.inspect}"
         end
       end
- 
-      puts "--- updating nodes"    
-      freshest_node = nodes[freshest_data_node_index]
-      nodes_to_update = nodes.dup #may not need to dup
-      nodes_to_update.delete_at(freshest_data_node_index)
-      nodes_to_update.each do |stale_node|
-        puts "--- retrieving updated data from #{freshest_node.class} - #{freshest_node.my_category}"
-        puts "--- using: #{freshest_file_name}"
-        freshest_data = freshest_node.get_file_data(freshest_file_name)
-        puts "--- updating node: #{stale_node.class}  with retrieved data"
-        stale_node.update_file_content(freshest_file_name, freshest_data, freshest_metadata)
+    #end
+
+    #update nodes
+
+    #determine nodes to update
+    #don't need read only nodes, but we do need to add any missing node types
+    nodes_to_update = nodes.dup
+    node_models_available = NodeModels.dup
+
+    #delete read only nodes
+    nodes_to_update.delete_if {|n| n.class.ancestors.include? ReadOnlyNode}
+
+    #need to add in any missing node classes that should be synced
+    nodes_to_update_classes = nodes_to_update.map{|n| n.node_model.class}
+    puts "--updating nodes"
+    #TODO Fix Hack because using == threw an error about comparing classes to each other
+    unless nodes_to_update_classes.size ==  node_models_available.size  #no missing node types
+      puts "---adding missing node types"
+      nodes_to_update.each do |node|
+        node_models_available.delete(node.node_model.class) if node
       end
+      #node_models_available now contains model classes that didn't match any nodes
+      p node_models_available
+      puts "--- creating new model of missing type(s)"
+      #TODO: Think about creating a node "sync_#{Time.now}"  with parent_category of 'synced'
+      #
+      node_models_available.each do |missing_node_class|
+        model_node = missing_node_class.new({:my_category => my_cat, :parent_categories => ['synced']})
+        model_node.save
+        abstract_node_class = abstract_node_classes[model_node.class.to_s]
+        nodes_to_update << abstract_node_class.new(model_node)
+      end
+    end
+    puts "--- nodes to update:"
+    nodes_to_update.each {|n| p n}
+
+
+
+    puts "--- updating nodes"    
+    #freshest_node = freshest[:node]
+    #puts "----freshest node: #{freshest_node}"
+    nodes_to_update.each do |stale_node|
+      puts "---- updating parent categories"
+      p stale_node
+      stale_node.add_parent_categories(merged_parent_categories)
+      #stale_node.save
+      p stale_node
+      puts "---- updating file from freshest node:"
+      p freshest[:node]
+      unless freshest.empty?
+        freshest_node = freshest[:node]
+        puts "----- updating metadata"
+        stale_node.file_metadata = freshest_node.file_metadata
+        puts "----- retrieving updated data from #{freshest_node.class} - #{freshest_node.my_category}"
+        puts "----- using: #{freshest[:file_name]} metadata: #{freshest[:metadata]}"
+        freshest_data = freshest_node.get_file_data(freshest[:file_name])
+        puts "----- updating node: #{stale_node.class}  with retrieved data: #{freshest[:metadata]}"
+	#puts "------  data: #{freshest_data.inspect}"
+        stale_node.update_file_content(freshest[:file_name], freshest_data, freshest[:metadata])
+      end
+      puts "---- finished updating node"
+      p stale_node
+      stale_node.save
     end
   end
 
@@ -173,6 +287,11 @@ class AbstractNode
       return false
     end
   end
+
+  def inspect
+   "<#{self.class}:#{self.hash}> \n my_category: #{self.my_category.inspect}\n parent_categories: #{self.parent_categories.inspect}\n  file_metadata: #{self.file_metadata.inspect}" 
+  end
+
 
   #override equality so we can tell when two nodes are equivalent
   def eql?(other)

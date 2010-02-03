@@ -123,7 +123,6 @@ class BufsFileSystem
     FileUtils.mkdir_p(my_dir)
     cat_file = my_dir + BufsFileSystem.parent_categories_file_basename
 
-
     #p parent_categories.to_json.inspect
     File.open(cat_file, 'w') {|f| f.write(self.parent_categories.to_json)} if self.parent_categories
     desc_file = my_dir + BufsFileSystem.description_file_basename
@@ -147,8 +146,11 @@ class BufsFileSystem
   alias :add_categories :add_parent_categories
 
   def add_raw_data(file_name, my_cat, raw_data, file_modified_at = nil)
+    file_name = CGI.unescape(file_name)  #Hack to avoid escaping twice (and changing the name in the process)
     #content type is lost when data is saved into the file model.
+    puts "Add Raw Data --- (Unesc) File Name: #{File.basename(file_name)}"
     esc_filename = CGI.escape(file_name)
+    puts "Add Raw Data --- (Esc) File Name: #{File.basename(esc_filename)}"
     raw_data_dir = @my_dir # + my_cat
     FileUtils.mkdir_p(raw_data_dir) unless File.exist?(raw_data_dir)
     raw_data_filename = raw_data_dir + '/' + esc_filename
@@ -168,7 +170,9 @@ class BufsFileSystem
   #other node types for future compatibility.  Same issue for get file
   def add_data_file(filename)
     #my_dir = BufsInfoFileSystem.name_space + '/' + self.my_category + '/'
+    puts "Add Data File --- Basename (Unesc) #{File.basename(filename)}"
     my_dest_basename = CGI.escape(File.basename(filename))
+    puts "Add Data File --- Basename (Esc) #{my_dest_basename}"
     @filename = my_dest_basename
     @my_dir #+ my_dest_basename
     FileUtils.mkdir_p(@my_dir) unless File.exist?(@my_dir) #TODO Throw error if its a file
@@ -193,19 +197,5 @@ class BufsFileSystem
       raise "Cannot destroy node, cannot determine its category, has it been saved?"
     end
   end
-
-
-
-  #def == (other)
-  #  my_node = [self.parent_categories.sort, self.my_category, self.description, self.file_metadata]
-  #  other_node = [other.parent_categories.sort, other.my_category, other.description, other.file_metadata]
-  #  if my_node == other_node
-  #    return true
-  #  else
-  #    p my_node
-  #    p other_node
-  #    return false
-  #  end
-  #end
 
 end

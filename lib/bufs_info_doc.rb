@@ -139,7 +139,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     else
       file_metadata['file_modified'] = Time.now.to_s
     end
-    file_metadata['content_type'] = content_type
+    file_metadata['content_type'] = content_type #|| 'application/x-unknown'
     attachment_package = {}
     unesc_attach_name = CGI.unescape(attach_name)
     attachment_package[unesc_attach_name] = {'data' => raw_data, 'md' => file_metadata}
