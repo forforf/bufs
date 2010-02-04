@@ -61,7 +61,9 @@ class ReaderFileNode < ReaderNode
   end
 
   #a file can only have one data source
-  def get_file_data(data_file_name = @file_name)
+  def get_file_data(file_basename=@my_category)
+    file_basename = File.basename(file_basename) #only basenames are used in models
+    data_file_name = @parent_path + '/' + file_basename
     File.open(data_file_name, 'rb') {|f| f.read}
   end
 

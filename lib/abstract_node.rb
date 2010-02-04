@@ -62,6 +62,40 @@ class AbstractNode
     return abstract_node_list
   end
 
+  #sync methods
+  def self.validate_nodes(nodes)
+       #validate that my_category is the same for all nodes or is nil
+    node_my_cats = (nodes.map{|n| n.my_category if n}).compact.uniq
+    raise "Can't find any node categories" if node_my_cats.size < 1
+    raise "Only a single node category is allowed for sync, multiple found" if node_my_cats.size > 1
+    @my_cat = node_my_cats.first
+
+    #validate that there no node classes are duplicated
+    #no nils, so everything must be uniq
+    node_classes = nodes.map{|n| n.class}
+    node_classes.uniq!
+    raise "Node Classes are not unique" unless nodes.size == node_classes.size
+
+    #validate that only known node classes are used
+    nodes.each do |node|
+      if (node.class != DBDocNode) && (node.class != FileSystemDocNode)
+        unless node.class.ancestors.include? ReadOnlyNode
+          raise "Unknown Node Type: #{node.class}"
+        end
+      end
+    end
+
+    #each node is of a unique class of one of the known node classes
+    return @my_cat
+  end 
+
+  #Not implmented yet.  Current sync approach will overwrite any nodes not explicilty
+  #passed to the sync function, that have the same category.
+  #This may be desirable in some cases, and not in others
+  def self.sync_newest(nodes)
+    my_cat = self.validate_nodes(nodes)  #this isn't the DRYest approach
+  end
+
   def self.sync(nodes) #, read_only_nodes=[])
     #future: allow choosing of which nodes can by synced
     #for now, all supported node types will by synced (node types not
@@ -75,6 +109,8 @@ class AbstractNode
     #These are the node types that will be created when the node is not provided
     abstract_node_classes = {'BufsInfoDoc' => DBDocNode, 'BufsFileSystem' => FileSystemDocNode } #figure out better way
 
+    my_cat = self.validate_nodes(nodes)
+=begin
     #validate that my_category is the same for all nodes or is nil
     node_my_cats = (nodes.map{|n| n.my_category if n}).compact.uniq
     raise "Can't find any node categories" if node_my_cats.size < 1
@@ -97,35 +133,7 @@ class AbstractNode
     end
 
     #each node is of a unique class of one of the known node classes
-    
-=begin    
-    unless self.writable_nodes(nodes).size == writable_nodes.compact.size
-      available_node_classes = NodeModels.dup  #is dup necessary?
-      nodes.each do |node|
-        available_node_classes.delete(node.node_model.class) if node
-      end
-      #available_node_classes now contains models that didn't match any nodes
-      #match nil items to available node classes
-      nil_nodes = nodes.select{|n| n.nil?}
-      raise "Empty Nodes does not match available models" unless nil_nodes.size == available_node_classes.size
-      #think about ways to allow mis-matched sizes
-      puts "--- creating new model in sync"
-      #TODO: Think about creating a node "sync_#{Time.now}"  with parent_category of 'synced'
-      #
-      nodes.map! do |node|
-        if node
-          node
-        else
-          model_node = available_node_classes.pop.new({:my_category => my_cat, :parent_categories => ['synced']})
-          model_node.save
-          abstract_node_class = abstract_node_classes[model_node.class.to_s]
-          abstract_node_class.new(model_node)
-        end
-      end
-    end
-    puts "--- nodes:"
-    nodes.each {|n| p n}
-=end
+=end    
 
     #merge parent categories
     puts "--- merging parent categories"
@@ -214,7 +222,7 @@ class AbstractNode
       p node_models_available
       puts "--- creating new model of missing type(s)"
       #TODO: Think about creating a node "sync_#{Time.now}"  with parent_category of 'synced'
-      #
+      
       node_models_available.each do |missing_node_class|
         model_node = missing_node_class.new({:my_category => my_cat, :parent_categories => ['synced']})
         model_node.save
@@ -237,8 +245,8 @@ class AbstractNode
       #stale_node.save
       p stale_node
       puts "---- updating file from freshest node:"
-      p freshest[:node]
-      unless freshest.empty?
+      p freshest
+      if freshest[:node] && freshest[:node].file_metadata
         freshest_node = freshest[:node]
         puts "----- updating metadata"
         stale_node.file_metadata = freshest_node.file_metadata

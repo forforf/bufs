@@ -3,7 +3,7 @@ CouchDB = BufsFixtures::CouchDB
 
 module ViewDirReaderSpec
   LibDir = File.dirname(__FILE__) + '/../lib/'
-  FileReaderDir = File.dirname(__FILE__) + '/../sandbox_for_specs/view_dir_reader_spec/'
+  FileReaderDir = File.dirname(__FILE__) + '/../sandbox_for_specs/view_dir_reader_spec/view/'
 end
 
 
