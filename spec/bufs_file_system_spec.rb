@@ -138,10 +138,12 @@ describe BufsFileSystem do
   it "save data files as a regular file" do
     test_filename = @test_files['binary_data_pptx']
     test_basename = File.basename(test_filename)
+    @bufs_file_system.attached_files?.should == false
     @bufs_file_system.add_data_file(test_filename)
     esc_test_basename = ::CGI::escape(test_basename)
     data_file = @my_dir + test_basename
     File.exists?(data_file).should == true
+    @bufs_file_system.attached_files?.should == true
     @bufs_file_system.file_metadata['file_modified'].should == File.mtime(data_file).to_s
     @bufs_file_system.filename.should == test_basename
   end

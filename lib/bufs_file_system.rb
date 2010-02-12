@@ -1,16 +1,4 @@
-#ProjectLocation = '/media-ec2/ec2a/projects/bufs/'
-
-
-#FSSrcLocation = ProjectLocation + 'lib/'
-
-
 require 'cgi'
-#require FSSrcLocation + 'scout_info_node'
-
-
-#TODO This constant should be set by the calling context
-#ModelDir = 'C:\Documents and Settings\dmartin\My Documents\tmp\raw_data_model_spec'
-
 
 #JSON Hack
 require 'json'
@@ -22,6 +10,13 @@ class Dir  #monkey patch  (duck punching?)
     wkg_entries = all_entries.delete_if {|x| x[0] == '.'}
     wkg_entries = wkg_entries.delete_if {|x| ignore_list.include?(x.downcase)}
     return wkg_entries
+  end
+
+  def self.file_data_entries(dir=Dir.pwd)
+    ignore_list = ['parent_categories.txt', 'description.txt']
+    wkg_entries = Dir.working_entries(dir)
+    file_data_entries = wkg_entries.delete_if {|x| ignore_list.include?(x.downcase)}
+    return file_data_entries
   end
 end
 
@@ -37,7 +32,8 @@ class BufsFileSystem
   @parent_categories_file_basename = 'parent_categories.txt'
   @description_file_basename = 'description.txt'
 
-  attr_accessor :parent_categories, :my_category, :description, :file_metadata, :filename
+  attr_accessor :parent_categories, :my_category, :description, :file_metadata, :filename, 
+                :my_dir, :attached_files
 
   def self.set_name_space(model_dir)
      FileUtils.mkdir_p(File.expand_path(model_dir))
@@ -57,12 +53,19 @@ class BufsFileSystem
       cat_name = cat_entry
       parent_cats = JSON.parse(File.open(wkg_dir + BufsFileSystem.parent_categories_file_basename){|f| f.read})
       desc = File.open(wkg_dir + BufsFileSystem.description_file_basename){|f| f.read}
-      file_mod_time = File.mtime(wkg_dir + cat_entry) if File.exists?(wkg_dir + cat_entry)
-      f_metadata = {'file_modified' => file_mod_time.to_s} if file_mod_time
-      all_nodes << BufsFileSystem.new(:parent_categories => parent_cats,
+
+      #file_mod_time = File.mtime(wkg_dir + cat_entry) if File.exists?(wkg_dir + cat_entry)
+      #f_metadata = {'file_modified' => file_mod_time.to_s} if file_mod_time
+      bfs =  BufsFileSystem.new(:parent_categories => parent_cats,
                                            :my_category => cat_name,
-                                           :description => desc,
-                                           :file_metadata => f_metadata)
+                                           :description => desc)#,
+                                           #:file_metadata => f_metadata)
+      files = Dir.file_data_entries(wkg_dir)
+      files.each do |f|
+	full_filename = wkg_dir + '/' + f
+	bfs.add_data_file(full_filename)
+      end
+      all_nodes << bfs
 
     end
     all_nodes
@@ -70,31 +73,45 @@ class BufsFileSystem
 
   #TODO add to spec
   def self.by_my_category(my_cat)
+    puts "Searching for #{my_cat.inspect}"
     my_dir = BufsFileSystem.name_space + '/'
     my_cat_dir = my_cat
     wkg_dir = my_dir + my_cat_dir + '/'
     if File.exists?(wkg_dir)
       cat_files = Dir.working_entries(wkg_dir)
+      puts "Files in #{wkg_dir.inspect}"
+      p cat_files
       #TODO This is brittle, tie the meta categories names to the assignment at creation
       cat_files.delete('parent_categories.txt')
       cat_files.delete('description.txt')
       bfss = []
-      cat_files.each do |cat_file_name|
-        parent_cats = JSON.parse(File.open(wkg_dir + BufsFileSystem.parent_categories_file_basename){|f| f.read})
-        desc = File.open(wkg_dir + BufsFileSystem.description_file_basename){|f| f.read}
-        puts "BFS.by_my_category location for attachment file: #{wkg_dir + cat_file_name.inspect}"
-        file_mod_time = File.mtime(wkg_dir + cat_file_name) if File.exists?(wkg_dir + cat_file_name)
-        f_metadata = {'file_modified' => file_mod_time.to_s} if file_mod_time
-        puts "BFS.by_my_category file md: #{f_metadata.inspect}"
-        bfs = BufsFileSystem.new(:parent_categories => parent_cats,
+      if cat_files.size > 0
+        cat_files.each do |cat_file_name|
+          parent_cats = JSON.parse(File.open(wkg_dir + BufsFileSystem.parent_categories_file_basename){|f| f.read})
+          desc = File.open(wkg_dir + BufsFileSystem.description_file_basename){|f| f.read}
+          #puts "BFS.by_my_category location for attachment file: #{wkg_dir + cat_file_name.inspect}"
+          #file_mod_time = File.mtime(wkg_dir + cat_file_name) if File.exists?(wkg_dir + cat_file_name)
+          #f_metadata = {'file_modified' => file_mod_time.to_s} if file_mod_time
+          #puts "BFS.by_my_category file md: #{f_metadata.inspect}"
+          bfs = BufsFileSystem.new(:parent_categories => parent_cats,
                                          :my_category => my_cat,
-                                         :description => desc,
-                                         :file_metadata => f_metadata)
-        bfs.filename = cat_file_name
-        bfss << bfs
-        end
-      return bfss
+                                         :description => desc) #,
+                                         #:file_metadata => f_metadata)
+          #bfs.filename = cat_file_name
+	  #check for files
+          files = Dir.file_data_entries(wkg_dir)
+	  files.each do |f|
+	    full_filename = wkg_dir + '/' + f
+	    bfs.add_data_file(full_filename)
+	  end
+          bfss << bfs
+         end
+        return bfss
+      else
+        #
+      end
     else
+      puts "Warning: #{wkd_dir.inspect} was not found"
       return nil
     end
   end
@@ -104,6 +121,7 @@ class BufsFileSystem
       iv_set(attr_name, attr_value)
     end
     @my_dir = BufsFileSystem.name_space + '/' + self.my_category + '/' if self.my_category
+    @attached_files = []
   end
 
   def iv_set(attr_var, attr_value)
@@ -162,6 +180,7 @@ class BufsFileSystem
       file_modified_at = File.mtime(raw_data_filename).to_s     
     end
     @file_metadata = {'file_modified' => file_modified_at}
+    @attached_files << raw_data_filename
     @filename = esc_filename
   end
 
@@ -174,11 +193,20 @@ class BufsFileSystem
     my_dest_basename = CGI.escape(File.basename(filename))
     puts "Add Data File --- Basename (Esc) #{my_dest_basename}"
     @filename = my_dest_basename
-    @my_dir #+ my_dest_basename
     FileUtils.mkdir_p(@my_dir) unless File.exist?(@my_dir) #TODO Throw error if its a file
     my_dest = @my_dir + '/' + @filename
-    FileUtils.cp(filename, my_dest, :preserve => true, :verbose => true )
+    @attached_files << my_dest
+    same_file = filename == my_dest
+    FileUtils.cp(filename, my_dest, :preserve => true, :verbose => true ) unless same_file
     self.file_metadata = {'file_modified' => File.mtime(filename).to_s}
+  end
+
+  def attached_files?
+    if @attached_files.size > 0
+      return true
+    else
+      return false
+    end
   end
 
   def get_file_data
@@ -199,3 +227,4 @@ class BufsFileSystem
   end
 
 end
+

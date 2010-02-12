@@ -13,1016 +13,143 @@ simple_text_file3                 ->  /media-ec2/ec2a/projects/bufs/bufs_fixture
 simple_text_file4                 ->  /media-ec2/ec2a/projects/bufs/bufs_fixtures/test_files/simple text file 4.txt
 stale_file                        ->  /media-ec2/ec2a/projects/bufs/bufs_fixtures/test_files/test_modified_time_stale.txt
 ---------------------------------
-Started Read Loop
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b
-Started Read Loop
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa
-Started Read Loop
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba
-Started Read Loop
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac/c.txt
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac/c.txt
-Started Read Loop
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.lnk
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.lnk
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.txt
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.txt
-Started Read Loop
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa/a.lnk
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa/a.lnk
-Started Read Loop
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.lnk
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.lnk
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.txt
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.txt
-Started Read Loop
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc/c.txt
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc/c.txt
-Started Read Loop
--- Currently Reading: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba/a.lnk
---- Making Bufs Compatible Node with /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba/a.lnk
---- merging parent categories
-Nodes: 1
-[#<ReaderDirNode:0xa178458 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a", @my_category="a", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view", @parent_categories=["view"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa"], @file_metadata=nil, @sub_entries_basenames=["ac", "ab", "aa"]>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderDirNode
-node classes: [#<ReaderDirNode:0xa178458 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a", @my_category="a", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view", @parent_categories=["view"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa"], @file_metadata=nil, @sub_entries_basenames=["ac", "ab", "aa"]>]
-No Metadata found for node: #<ReaderDirNode:0xa178458 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a", @my_category="a", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view", @parent_categories=["view"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa"], @file_metadata=nil, @sub_entries_basenames=["ac", "ab", "aa"]>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
---- merging parent categories
-Nodes: 1
-[#<ReaderDirNode:0xa2625e4 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b", @my_category="b", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view", @parent_categories=["view"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba"], @file_metadata=nil, @sub_entries_basenames=["bb", "bc", "ba"]>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderDirNode
-node classes: [#<ReaderDirNode:0xa2625e4 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b", @my_category="b", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view", @parent_categories=["view"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba"], @file_metadata=nil, @sub_entries_basenames=["bb", "bc", "ba"]>]
-No Metadata found for node: #<ReaderDirNode:0xa2625e4 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b", @my_category="b", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view", @parent_categories=["view"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba"], @file_metadata=nil, @sub_entries_basenames=["bb", "bc", "ba"]>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
---- merging parent categories
-Nodes: 1
-[#<ReaderDirNode:0xa34f1fc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac", @my_category="ac", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a", @parent_categories=["a"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac/c.txt"], @file_metadata=nil, @sub_entries_basenames=["c.txt"]>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderDirNode
-node classes: [#<ReaderDirNode:0xa34f1fc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac", @my_category="ac", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a", @parent_categories=["a"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac/c.txt"], @file_metadata=nil, @sub_entries_basenames=["c.txt"]>]
-No Metadata found for node: #<ReaderDirNode:0xa34f1fc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac", @my_category="ac", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a", @parent_categories=["a"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac/c.txt"], @file_metadata=nil, @sub_entries_basenames=["c.txt"]>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:336101543> 
- my_category: "ac"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:336101543> 
- my_category: "ac"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:336101543> 
- my_category: "ac"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:336101543> 
- my_category: "ac"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:336101543> 
- my_category: "ac"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:336101543> 
- my_category: "ac"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:336101543> 
- my_category: "ac"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:336101543> 
- my_category: "ac"
- parent_categories: ["synced"]
-  file_metadata: nil
---- merging parent categories
-Nodes: 1
-[#<ReaderDirNode:0xa406b5c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", @my_category="ab", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a", @parent_categories=["a"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.lnk", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.txt"], @file_metadata=nil, @sub_entries_basenames=["b.lnk", "b.txt"]>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderDirNode
-node classes: [#<ReaderDirNode:0xa406b5c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", @my_category="ab", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a", @parent_categories=["a"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.lnk", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.txt"], @file_metadata=nil, @sub_entries_basenames=["b.lnk", "b.txt"]>]
-No Metadata found for node: #<ReaderDirNode:0xa406b5c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", @my_category="ab", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a", @parent_categories=["a"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.lnk", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.txt"], @file_metadata=nil, @sub_entries_basenames=["b.lnk", "b.txt"]>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:-614838645> 
- my_category: "ab"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:-614838645> 
- my_category: "ab"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:-614838645> 
- my_category: "ab"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:-614838645> 
- my_category: "ab"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:-614838645> 
- my_category: "ab"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:-614838645> 
- my_category: "ab"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:-614838645> 
- my_category: "ab"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:-614838645> 
- my_category: "ab"
- parent_categories: ["synced"]
-  file_metadata: nil
---- merging parent categories
-Nodes: 1
-[#<ReaderDirNode:0xa42b158 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa", @my_category="aa", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a", @parent_categories=["a"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa/a.lnk"], @file_metadata=nil, @sub_entries_basenames=["a.lnk"]>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderDirNode
-node classes: [#<ReaderDirNode:0xa42b158 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa", @my_category="aa", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a", @parent_categories=["a"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa/a.lnk"], @file_metadata=nil, @sub_entries_basenames=["a.lnk"]>]
-No Metadata found for node: #<ReaderDirNode:0xa42b158 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa", @my_category="aa", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a", @parent_categories=["a"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa/a.lnk"], @file_metadata=nil, @sub_entries_basenames=["a.lnk"]>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:304293800> 
- my_category: "aa"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:304293800> 
- my_category: "aa"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:304293800> 
- my_category: "aa"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:304293800> 
- my_category: "aa"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:304293800> 
- my_category: "aa"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:304293800> 
- my_category: "aa"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:304293800> 
- my_category: "aa"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:304293800> 
- my_category: "aa"
- parent_categories: ["synced"]
-  file_metadata: nil
---- merging parent categories
-Nodes: 1
-[#<ReaderDirNode:0xa42adbc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb", @my_category="bb", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b", @parent_categories=["b"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.lnk", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.txt"], @file_metadata=nil, @sub_entries_basenames=["b.lnk", "b.txt"]>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderDirNode
-node classes: [#<ReaderDirNode:0xa42adbc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb", @my_category="bb", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b", @parent_categories=["b"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.lnk", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.txt"], @file_metadata=nil, @sub_entries_basenames=["b.lnk", "b.txt"]>]
-No Metadata found for node: #<ReaderDirNode:0xa42adbc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb", @my_category="bb", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b", @parent_categories=["b"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.lnk", "/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.txt"], @file_metadata=nil, @sub_entries_basenames=["b.lnk", "b.txt"]>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:148670443> 
- my_category: "bb"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:148670443> 
- my_category: "bb"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:148670443> 
- my_category: "bb"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:148670443> 
- my_category: "bb"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:148670443> 
- my_category: "bb"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:148670443> 
- my_category: "bb"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:148670443> 
- my_category: "bb"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:148670443> 
- my_category: "bb"
- parent_categories: ["synced"]
-  file_metadata: nil
---- merging parent categories
-Nodes: 1
-[#<ReaderDirNode:0xa42a95c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc", @my_category="bc", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b", @parent_categories=["b"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc/c.txt"], @file_metadata=nil, @sub_entries_basenames=["c.txt"]>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderDirNode
-node classes: [#<ReaderDirNode:0xa42a95c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc", @my_category="bc", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b", @parent_categories=["b"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc/c.txt"], @file_metadata=nil, @sub_entries_basenames=["c.txt"]>]
-No Metadata found for node: #<ReaderDirNode:0xa42a95c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc", @my_category="bc", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b", @parent_categories=["b"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc/c.txt"], @file_metadata=nil, @sub_entries_basenames=["c.txt"]>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:-556851857> 
- my_category: "bc"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:-556851857> 
- my_category: "bc"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:-556851857> 
- my_category: "bc"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:-556851857> 
- my_category: "bc"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:-556851857> 
- my_category: "bc"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:-556851857> 
- my_category: "bc"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:-556851857> 
- my_category: "bc"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:-556851857> 
- my_category: "bc"
- parent_categories: ["synced"]
-  file_metadata: nil
---- merging parent categories
-Nodes: 1
-[#<ReaderDirNode:0xa42a5dc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba", @my_category="ba", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b", @parent_categories=["b"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba/a.lnk"], @file_metadata=nil, @sub_entries_basenames=["a.lnk"]>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderDirNode
-node classes: [#<ReaderDirNode:0xa42a5dc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba", @my_category="ba", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b", @parent_categories=["b"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba/a.lnk"], @file_metadata=nil, @sub_entries_basenames=["a.lnk"]>]
-No Metadata found for node: #<ReaderDirNode:0xa42a5dc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba", @my_category="ba", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b", @parent_categories=["b"], @sub_entries=["/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba/a.lnk"], @file_metadata=nil, @sub_entries_basenames=["a.lnk"]>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:435370875> 
- my_category: "ba"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:435370875> 
- my_category: "ba"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:435370875> 
- my_category: "ba"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:435370875> 
- my_category: "ba"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:435370875> 
- my_category: "ba"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:435370875> 
- my_category: "ba"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:435370875> 
- my_category: "ba"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:435370875> 
- my_category: "ba"
- parent_categories: ["synced"]
-  file_metadata: nil
---- merging parent categories
-Nodes: 1
-[#<ReaderFileNode:0xa42a144 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac/c.txt", @my_category="c.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac", @parent_categories=["ac"], @sub_entries=[], @file_metadata={"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderFileNode
-node classes: [#<ReaderFileNode:0xa42a144 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac/c.txt", @my_category="c.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac", @parent_categories=["ac"], @sub_entries=[], @file_metadata={"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}>]
-node file metadata: {"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:290144600> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:290144600> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:290144600> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:290144600> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>0, :time=>2010-02-03 21:05:57 +0000, :file_name=>"c.txt", :metadata=>{"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}, :node=>#<ReaderFileNode:0xa42a144 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac/c.txt", @my_category="c.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac", @parent_categories=["ac"], @sub_entries=[], @file_metadata={"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}>}
------ updating metadata
------ retrieving updated data from ReaderFileNode - c.txt
------ using: c.txt metadata: {"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}
------ updating node: DBDocNode  with retrieved data: {"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}
----- finished updating node
-<DBDocNode:98871241> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: {"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:290144600> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:290144600> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>0, :time=>2010-02-03 21:05:57 +0000, :file_name=>"c.txt", :metadata=>{"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}, :node=>#<ReaderFileNode:0xa42a144 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac/c.txt", @my_category="c.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ac", @parent_categories=["ac"], @sub_entries=[], @file_metadata={"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}>}
------ updating metadata
------ retrieving updated data from ReaderFileNode - c.txt
------ using: c.txt metadata: {"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}
------ updating node: FileSystemDocNode  with retrieved data: {"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}
-FSDoc medatata: {"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}
-updating file contents in BufsFSDoc
-Add Raw Data --- (Unesc) File Name: c.txt
-Add Raw Data --- (Esc) File Name: c.txt
-Model built at: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/model//c.txt//c.txt
----- finished updating node
-<FileSystemDocNode:98871241> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: {"c.txt"=>{"file_modified"=>"2010-02-03 21:05:57 +0000"}}
---- merging parent categories
-Nodes: 1
-[#<ReaderLinkNode:0xa429aec @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.lnk", @my_category="b", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", @parent_categories=["ab"], @sub_entries=[], @file_metadata=nil>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderLinkNode
-node classes: [#<ReaderLinkNode:0xa429aec @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.lnk", @my_category="b", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", @parent_categories=["ab"], @sub_entries=[], @file_metadata=nil>]
-No Metadata found for node: #<ReaderLinkNode:0xa429aec @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.lnk", @my_category="b", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", @parent_categories=["ab"], @sub_entries=[], @file_metadata=nil>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
---- merging parent categories
-Nodes: 1
-[#<ReaderFileNode:0xa429670 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.txt", @my_category="b.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", @parent_categories=["ab"], @sub_entries=[], @file_metadata={"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderFileNode
-node classes: [#<ReaderFileNode:0xa429670 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.txt", @my_category="b.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", @parent_categories=["ab"], @sub_entries=[], @file_metadata={"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}>]
-node file metadata: {"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>0, :time=>2010-02-03 15:34:21 +0000, :file_name=>"b.txt", :metadata=>{"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}, :node=>#<ReaderFileNode:0xa429670 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.txt", @my_category="b.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", @parent_categories=["ab"], @sub_entries=[], @file_metadata={"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}>}
------ updating metadata
------ retrieving updated data from ReaderFileNode - b.txt
------ using: b.txt metadata: {"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
------ updating node: DBDocNode  with retrieved data: {"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
----- finished updating node
-<DBDocNode:202603591> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: {"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>0, :time=>2010-02-03 15:34:21 +0000, :file_name=>"b.txt", :metadata=>{"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}, :node=>#<ReaderFileNode:0xa429670 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab/b.txt", @my_category="b.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/ab", @parent_categories=["ab"], @sub_entries=[], @file_metadata={"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}>}
------ updating metadata
------ retrieving updated data from ReaderFileNode - b.txt
------ using: b.txt metadata: {"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
------ updating node: FileSystemDocNode  with retrieved data: {"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
-FSDoc medatata: {"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
-updating file contents in BufsFSDoc
-Add Raw Data --- (Unesc) File Name: b.txt
-Add Raw Data --- (Esc) File Name: b.txt
-Model built at: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/model//b.txt//b.txt
----- finished updating node
-<FileSystemDocNode:202603591> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: {"b.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
---- merging parent categories
-Nodes: 1
-[#<ReaderLinkNode:0xa428f70 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa/a.lnk", @my_category="a", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa", @parent_categories=["aa"], @sub_entries=[], @file_metadata=nil>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderLinkNode
-node classes: [#<ReaderLinkNode:0xa428f70 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa/a.lnk", @my_category="a", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa", @parent_categories=["aa"], @sub_entries=[], @file_metadata=nil>]
-No Metadata found for node: #<ReaderLinkNode:0xa428f70 @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa/a.lnk", @my_category="a", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/a/aa", @parent_categories=["aa"], @sub_entries=[], @file_metadata=nil>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
---- merging parent categories
-Nodes: 1
-[#<ReaderLinkNode:0xa428c7c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.lnk", @my_category="b", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb", @parent_categories=["bb"], @sub_entries=[], @file_metadata=nil>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderLinkNode
-node classes: [#<ReaderLinkNode:0xa428c7c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.lnk", @my_category="b", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb", @parent_categories=["bb"], @sub_entries=[], @file_metadata=nil>]
-No Metadata found for node: #<ReaderLinkNode:0xa428c7c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.lnk", @my_category="b", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb", @parent_categories=["bb"], @sub_entries=[], @file_metadata=nil>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:174008852> 
- my_category: "b"
- parent_categories: ["synced"]
-  file_metadata: nil
---- merging parent categories
-Nodes: 1
-[#<ReaderLinkNode:0xa42818c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.txt", @my_category="b.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb", @parent_categories=["bb"], @sub_entries=[], @file_metadata=nil>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderLinkNode
-node classes: [#<ReaderLinkNode:0xa42818c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.txt", @my_category="b.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb", @parent_categories=["bb"], @sub_entries=[], @file_metadata=nil>]
-No Metadata found for node: #<ReaderLinkNode:0xa42818c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb/b.txt", @my_category="b.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bb", @parent_categories=["bb"], @sub_entries=[], @file_metadata=nil>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:327237228> 
- my_category: "b.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
---- merging parent categories
-Nodes: 1
-[#<ReaderFileNode:0xa427fcc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc/c.txt", @my_category="c.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc", @parent_categories=["bc"], @sub_entries=[], @file_metadata={"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderFileNode
-node classes: [#<ReaderFileNode:0xa427fcc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc/c.txt", @my_category="c.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc", @parent_categories=["bc"], @sub_entries=[], @file_metadata={"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}>]
-node file metadata: {"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:290144600> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:290144600> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:290144600> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:290144600> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>0, :time=>2010-02-03 15:34:21 +0000, :file_name=>"c.txt", :metadata=>{"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}, :node=>#<ReaderFileNode:0xa427fcc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc/c.txt", @my_category="c.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc", @parent_categories=["bc"], @sub_entries=[], @file_metadata={"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}>}
------ updating metadata
------ retrieving updated data from ReaderFileNode - c.txt
------ using: c.txt metadata: {"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
------ updating node: DBDocNode  with retrieved data: {"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
----- finished updating node
-<DBDocNode:263994601> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: {"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:290144600> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:290144600> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>0, :time=>2010-02-03 15:34:21 +0000, :file_name=>"c.txt", :metadata=>{"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}, :node=>#<ReaderFileNode:0xa427fcc @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc/c.txt", @my_category="c.txt", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/bc", @parent_categories=["bc"], @sub_entries=[], @file_metadata={"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}>}
------ updating metadata
------ retrieving updated data from ReaderFileNode - c.txt
------ using: c.txt metadata: {"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
------ updating node: FileSystemDocNode  with retrieved data: {"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
-FSDoc medatata: {"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
-updating file contents in BufsFSDoc
-Add Raw Data --- (Unesc) File Name: c.txt
-Add Raw Data --- (Esc) File Name: c.txt
-Model built at: /media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/model//c.txt//c.txt
----- finished updating node
-<FileSystemDocNode:263994601> 
- my_category: "c.txt"
- parent_categories: ["synced"]
-  file_metadata: {"c.txt"=>{"file_modified"=>"2010-02-03 15:34:21 +0000"}}
---- merging parent categories
-Nodes: 1
-[#<ReaderLinkNode:0xa427d9c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba/a.lnk", @my_category="a", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba", @parent_categories=["ba"], @sub_entries=[], @file_metadata=nil>]
-Compared Nodes: 1
---- file comparison
-Nodes Size: 1, NodeModel Size: 2, File comparison: 1
-ReaderLinkNode
-node classes: [#<ReaderLinkNode:0xa427d9c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba/a.lnk", @my_category="a", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba", @parent_categories=["ba"], @sub_entries=[], @file_metadata=nil>]
-No Metadata found for node: #<ReaderLinkNode:0xa427d9c @file_name="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba/a.lnk", @my_category="a", @parent_path="/media-ec2/ec2a/projects/bufs/spec/../sandbox_for_specs/view_dir_reader_spec/view/b/ba", @parent_categories=["ba"], @sub_entries=[], @file_metadata=nil>
---updating nodes
----adding missing node types
-[BufsInfoDoc, BufsFileSystem]
---- creating new model of missing type(s)
-Found existing doc ... using it instead
---- nodes to update:
-<DBDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
---- updating nodes
----- updating parent categories
-<DBDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
-<DBDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<DBDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-Found existing doc ... using it instead
----- updating parent categories
-<FileSystemDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-<FileSystemDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
----- updating file from freshest node:
-{:node_index=>nil, :time=>1970-01-01 00:00:00 +0000, :file_name=>nil, :metadata=>nil}
----- finished updating node
-<FileSystemDocNode:-327753089> 
- my_category: "a"
- parent_categories: ["synced"]
-  file_metadata: nil
-.
+Add Data File --- Basename (Unesc) b.txt
+Add Data File --- Basename (Esc) b.txt
+Add Data File --- Basename (Unesc) c.txt
+Add Data File --- Basename (Esc) c.txt
+Building View with:
+Top Level Nodes: [#<BufsFileSystem:0x9e075bc @parent_categories=["synced", "ba", "view", "aa"], @my_category="a", @description="This description was automatically generated on \#{Time.now}", @my_dir="/media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/model//a/", @attached_files=[]>, #<BufsFileSystem:0x9dff3e8 @parent_categories=["synced", "bb", "view", "ab"], @my_category="b", @description="This description was automatically generated on \#{Time.now}", @my_dir="/media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/model//b/", @attached_files=[]>]
+All Nodes size = 10
+....b.txt..c.txt....Building Layer with:
+-- a
+-- b
+iterating over nodes to build view
+- new node view for a
+ --- file?: false
+-- work package: "/media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/a"
+--- node:ac
+--- node:ab
+--- node:aa
+iterating over nodes to build view
+- new node view for b
+ --- file?: false
+-- work package: "/media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/b"
+--- node:bb
+--- node:bc
+--- node:ba
+Building Layer with:
+-- ac
+-- ab
+-- aa
+iterating over nodes to build view
+- new node view for ac
+ --- file?: false
+-- work package: "/media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/a/ac"
+--- node:c.txt
+iterating over nodes to build view
+- new node view for ab
+ --- file?: false
+-- work package: "/media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/a/ab"
+--- node:b.txt
+--- node:b
+iterating over nodes to build view
+- new node view for aa
+ --- file?: false
+-- work package: "/media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/a/aa"
+--- node:a
+Building Layer with:
+-- bb
+-- bc
+-- ba
+iterating over nodes to build view
+- new node view for bb
+ --- file?: false
+-- work package: "/media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/b/bb"
+--- node:b.txt
+--- node:b
+iterating over nodes to build view
+- new node view for bc
+ --- file?: false
+-- work package: "/media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/b/bc"
+--- node:c.txt
+iterating over nodes to build view
+- new node view for ba
+ --- file?: false
+-- work package: "/media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/b/ba"
+--- node:a
+Building Layer with:
+-- c.txt
+iterating over nodes to build view
+- new node view for c.txt
+ --- file?: true
+Attachment Names
+-- From Node: "/media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/model//c.txt//c.txt"
+-- Created Here: /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/model/c.txt/c.txt
+Building Layer with:
+-- b.txt
+-- b
+iterating over nodes to build view
+- new node view for b.txt
+ --- file?: true
+Attachment Names
+-- From Node: "/media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/model//b.txt//b.txt"
+-- Created Here: /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/model/b.txt/b.txt
+iterating over nodes to build view
+- node view already created
+--- Creating Link /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/a/ab/b -> /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/b
+Building Layer with:
+-- a
+iterating over nodes to build view
+- node view already created
+--- Creating Link /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/a/aa/a -> /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/a
+Building Layer with:
+-- b.txt
+-- b
+iterating over nodes to build view
+- node view already created
+--- Creating Link /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/b/bb/b.txt -> /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/a/ab/b.txt
+iterating over nodes to build view
+- node view already created
+--- Creating Link /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/b/bb/b -> /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/b
+Building Layer with:
+-- c.txt
+iterating over nodes to build view
+- node view already created
+--- Creating Link /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/b/bc/c.txt -> /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/a/ac/c.txt
+Building Layer with:
+-- a
+iterating over nodes to build view
+- node view already created
+--- Creating Link /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/b/ba/a -> /media-ec2/ec2a/projects/bufs/bufs_fixtures/../sandbox_for_specs/bufs_view_builder_spec/view_created/a
+F
 
-Finished in 1.752819664 seconds
+1)
+'BufsViewBuilder should build a data view from the data model' FAILED
+expected: ["a", "a/aa", "a/aa/a.lnk", "a/ab", "a/ab/b.lnk", "a/ab/b.txt", "a/ac", "a/ac/c.txt", "b", "b/ba", "b/ba/a.lnk", "b/bb", "b/bb/b.lnk", "b/bb/b.txt", "b/bc", "b/bc/c.txt"],
+     got: ["a", "a/a", "a/aa", "a/aa/a", "a/aa/a.lnk", "a/ab", "a/ab/b", "a/ab/b.lnk", "a/ab/b.txt", "a/ab/b.txt/b.txt", "a/ac", "a/ac/c.txt", "a/ac/c.txt/c.txt", "b", "b/b", "b/ba", "b/ba/a", "b/ba/a.lnk", "b/bb", "b/bb/b", "b/bb/b.lnk", "b/bb/b.txt", "b/bb/b.txt.lnk", "b/bc", "b/bc/c.txt", "b/bc/c.txt.lnk"] (using ==)
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/expectations/fail_with.rb:41:in `fail_with'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/matchers/operator_matcher.rb:39:in `fail_with_message'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/matchers/operator_matcher.rb:61:in `__delegate_operator'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/matchers/operator_matcher.rb:51:in `eval_match'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/matchers/operator_matcher.rb:29:in `block in use_custom_matcher_or_delegate'
+/media-ec2/ec2a/projects/bufs/spec/bufs_view_builder_spec.rb:42:in `block (2 levels) in <top (required)>'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/example/example_methods.rb:40:in `instance_eval'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/example/example_methods.rb:40:in `block in execute'
+/usr/local/lib/ruby/1.9.1/timeout.rb:44:in `timeout'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/example/example_methods.rb:37:in `execute'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/example/example_group_methods.rb:214:in `block in run_examples'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/example/example_group_methods.rb:212:in `each'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/example/example_group_methods.rb:212:in `run_examples'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/example/example_group_methods.rb:103:in `run'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/runner/example_group_runner.rb:23:in `block in run'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/runner/example_group_runner.rb:22:in `each'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/runner/example_group_runner.rb:22:in `run'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/runner/options.rb:152:in `run_examples'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/lib/spec/runner/command_line.rb:9:in `run'
+/usr/local/lib/ruby/gems/1.9.1/gems/rspec-1.3.0/bin/spec:5:in `<top (required)>'
+/usr/local/bin/spec:19:in `load'
+/usr/local/bin/spec:19:in `<main>'
 
-1 example, 0 failures
+Finished in 0.025197273 seconds
+
+1 example, 1 failure

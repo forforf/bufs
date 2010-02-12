@@ -72,11 +72,17 @@ end
 module ViewNodeFactory
   def self.make_reader_node(file_name)
     case File.ftype(file_name)
-      when "link"
-        return ReaderLinkNode.new(file_name)
+      when "link" #may link to a directory or a file
+	#a file link means it's linking to an existing model file
+	#a directory link means it has multiple parents
+	if File.stat(file_name).directory?
+          return ReaderLinkNode.new(file_name)
+	else #its a file presumably
+	  return ReaderFileNode.new(file_name)
+	end
       when "directory"
         return ReaderDirNode.new(file_name)
-      when "file"
+      when "file" #this is a file added by the user that needs to be updated to the model
         return ReaderFileNode.new(file_name)
       else
         raise "unknown type #{File.ftype(file_name)}"
