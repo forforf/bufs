@@ -18,6 +18,10 @@ WorkPackage = Struct.new(:working_dir, :nodes)
       print '.'
       print n.my_category if n.attached_files?
     end
+    #TODO: Figure out more elegant way than deleting and rebuilding (also see doc on rm_rf)
+    FileUtils.rm_rf(parent_dir)
+    FileUtils.mkdir(parent_dir)
+
     build_view_layer(parent_dir, top_level_nodes)
   end
 
@@ -51,7 +55,7 @@ WorkPackage = Struct.new(:working_dir, :nodes)
   end
 
   def add_fresh_view_entry(this_dir, node)
-    FileUtils.mkdir_p(this_dir)
+    FileUtils.mkdir_p(this_dir) unless File.exist? this_dir
     puts " --- file?: #{node.attached_files?.inspect}"
     if node.attached_files?
       node.attached_files.each do |att_full_filename|
@@ -61,7 +65,7 @@ WorkPackage = Struct.new(:working_dir, :nodes)
         puts "-- From Node: #{att_full_filename.inspect}"
         model_file_location = @model_dir + node.my_category + '/' + att_basename
         puts "-- Created Here: #{model_file_location}"
-        this_link_name = this_dir + '/' + att_basename
+        this_link_name = this_dir + '/' +  att_basename
         FileUtils.ln_s(model_file_location, this_link_name) unless File.exist?(this_link_name)
       end
     end
