@@ -11,6 +11,7 @@ end
   
 
 require BufsFSSpec::LibDir + 'bufs_file_system'
+require BufsFSSpec::LibDir + 'bufs_escape'
 
 FSModelDir = BufsFixtures::ProjectLocation  + 'sandbox_for_specs/file_system_specs/raw_data_model_spec'
 BufsFileSystem.name_space = FSModelDir
@@ -78,7 +79,8 @@ describe BufsFileSystem do
     cat_file = @my_dir + 'parent_categories.txt'
     cat_data = nil
     File.open(cat_file, 'r'){|f| cat_data = f.read}
-    JSON.parse(cat_data).should == @bufs_file_system.parent_categories
+    cats_in_file = JSON.parse(cat_data)
+    cats_in_file.should == @bufs_file_system.parent_categories
   end
 
   it "should work using add_category alias for add_parent_categories" do
@@ -89,7 +91,8 @@ describe BufsFileSystem do
     cat_file = @my_dir + 'parent_categories.txt'
     cat_data = nil
     File.open(cat_file, 'r'){|f| cat_data = f.read}
-    JSON.parse(cat_data).should == @bufs_file_system.parent_categories
+    cats_in_file = JSON.parse(cat_data)
+    cats_in_file.should == @bufs_file_system.parent_categories
   end
 
   it "should work using add_categories alias for add_parent_categories" do
@@ -100,7 +103,8 @@ describe BufsFileSystem do
     cat_file = @my_dir + 'parent_categories.txt'
     cat_data = nil
     File.open(cat_file, 'r'){|f| cat_data = f.read}
-    JSON.parse(cat_data).should == @bufs_file_system.parent_categories
+    cats_in_file = JSON.parse(cat_data)
+    cats_in_file.should == @bufs_file_system.parent_categories
   end
 
   it "should work for adding an array of categories" do
@@ -113,7 +117,25 @@ describe BufsFileSystem do
     cat_file = @my_dir + 'parent_categories.txt'
     cat_data = nil
     File.open(cat_file, 'r'){|f| cat_data = f.read}
-    JSON.parse(cat_data).should == @bufs_file_system.parent_categories
+    cats_in_file = JSON.parse(cat_data)
+    cats_in_file.should == @bufs_file_system.parent_categories
+  end
+
+  it "should be able to remove parent categories" do
+    remove_multi_cats = ['cat5', 'cat6']
+    remove_multi_cats.each do |cat|
+      @bufs_file_system.parent_categories.should include cat
+    end
+    @bufs_file_system.remove_parent_categories(remove_multi_cats)
+    remove_multi_cats.each do |cat|
+      @bufs_file_system.parent_categories.should_not include cat
+    end
+    File.exists?(@my_dir).should == true
+    cat_file = @my_dir + 'parent_categories.txt'
+    cat_data = nil
+    File.open(cat_file, 'r'){|f| cat_data = f.read}
+    cats_in_file = JSON.parse(cat_data)
+    cats_in_file.should == @bufs_file_system.parent_categories
   end
 
   it "should only have unique categories" do
@@ -140,7 +162,7 @@ describe BufsFileSystem do
     test_basename = File.basename(test_filename)
     @bufs_file_system.attached_files?.should == false
     @bufs_file_system.add_data_file(test_filename)
-    esc_test_basename = ::CGI::escape(test_basename)
+    esc_test_basename = BufsEscape.escape(test_basename)
     data_file = @my_dir + test_basename
     File.exists?(data_file).should == true
     @bufs_file_system.attached_files?.should == true
@@ -161,7 +183,7 @@ describe BufsFileSystem do
   it "should be able to delete (destroy) the model" do
     this_model_dir = BufsFileSystem.name_space + '/' + @bufs_file_system.my_category
     File.exists?(this_model_dir).should == true
-    @bufs_file_system.destroy
+    @bufs_file_system.destroy_node
     File.exists?(this_model_dir).should == false
   end
 

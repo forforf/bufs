@@ -41,7 +41,7 @@ module AbstractNodeSyncHelpers
         bfs.save
       end
       return_bfss = BufsFileSystem.by_my_category(bfs.my_category)
-      raise "Multiple File Model Directories with same category name #{bfs.my_category}" if return_bfss.size > 1
+      raise "Multiple File Model Directories with same category name #{bfs.my_category} \n #{return_bfss.inspect}" if return_bfss.size > 1
       raise "No File Model found for #{bfs.my_category}" if return_bfss.size == 0
       return_bfs = return_bfss.first
     end
@@ -165,7 +165,7 @@ describe AbstractNode do
       an.description.should == bf.description
     end
   end
-
+#=begin
   it "should be able to determine equivalent node references" do
     an1 = AbstractNode.create(@bufs_info_doc)
     an2 = AbstractNode.create(@bufs_file_system)
@@ -262,13 +262,14 @@ describe AbstractNode, "synchronization" do
     #empty_file_node = AbstractNode.create(empty_fs) if empty_fs
     #abs_doc_node.should_not == empty_file_node if abs_doc_node && empty_file_node
     #synchronize nodes
-    AbstractNode.sync([abs_doc_node]) #, _dummy])
-    
+    ##synced_nodes = AbstractNode.sync([abs_doc_node]) #, _dummy])
+    AbstractNode.sync([abs_doc_node])
     new_fs = BufsFileSystem.by_my_category(bufs_info_doc1.my_category).first
     puts "SPEC new_fs: #{new_fs.inspect}"
     abs_file_node = AbstractNode.create(new_fs)
     puts "SPEC abs_file_node: #{abs_file_node.inspect}"
     abs_doc_node.should == abs_file_node
+    ##synced_nodes.sort.should == [abs_file_node, abs_doc_node].sort
   end
 
   it "should be able to synchronize a file system node to an empty doc node" do
@@ -474,5 +475,5 @@ describe AbstractNode, "synchronization" do
 
   it "needs to test read only node types"
   it "should handle multiple file content"
-
+#=end
 end

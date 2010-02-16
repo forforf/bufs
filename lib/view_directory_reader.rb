@@ -69,6 +69,7 @@ class ReaderFileNode < ReaderNode
 
 end
 
+
 module ViewNodeFactory
   def self.make_reader_node(file_name)
     case File.ftype(file_name)
@@ -136,13 +137,5 @@ class ViewDirectoryReader
     end
     return @bufs_nodes
   end
-end
-#
-# start at root
 
-# collect root entries
-# scrape root entries
-#   add sub_entries to queueu
-#   build nodes (my_cat, parent_cat, content typefile_meta, file)
-#   add nodes to array
-#   scrape again
+end

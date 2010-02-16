@@ -167,6 +167,8 @@ class AbstractNode
     #
     #spin this into a different method?
     #if file_comparison.size > 1  => files out of sync
+    
+
     freshest = {}
     puts "--- file comparison"
     
@@ -204,6 +206,7 @@ class AbstractNode
     #determine nodes to update
     #don't need read only nodes, but we do need to add any missing node types
     nodes_to_update = nodes.dup
+    updated_nodes = []
     node_models_available = NodeModels.dup
 
     #delete read only nodes
@@ -224,7 +227,7 @@ class AbstractNode
       #TODO: Think about creating a node "sync_#{Time.now}"  with parent_category of 'synced'
       
       node_models_available.each do |missing_node_class|
-        model_node = missing_node_class.new({:my_category => my_cat, :parent_categories => ['synced']})
+        model_node = missing_node_class.new({:my_category => my_cat, :parent_categories => ['systag-synced']})
         model_node.save
         abstract_node_class = abstract_node_classes[model_node.class.to_s]
         nodes_to_update << abstract_node_class.new(model_node)
@@ -235,7 +238,8 @@ class AbstractNode
 
 
 
-    puts "--- updating nodes"    
+    puts "--- updating nodes"
+    updated_nodes << freshest[:node] if freshest[:node]
     #freshest_node = freshest[:node]
     #puts "----freshest node: #{freshest_node}"
     nodes_to_update.each do |stale_node|
@@ -260,7 +264,9 @@ class AbstractNode
       puts "---- finished updating node"
       p stale_node
       stale_node.save
+      updated_nodes << stale_node
     end
+    return updated_nodes
   end
 
   def initialize(node)
@@ -277,6 +283,16 @@ class AbstractNode
 
   def add_parent_categories(parent_categories)
     @node.add_parent_categories(parent_categories)
+  end
+
+  def remove_parent_categories(categories_to_remove)
+    #NodeModels.each do |node|
+    # node.remove_parent_categories(categories_to_remove)
+    #end
+  end
+
+  def destroy_node
+    @node.destroy_node
   end
 
   def get_file_data(*args)
@@ -307,7 +323,9 @@ class AbstractNode
   end
 
   def hash
-    equiv_attrib = [self.my_category, self.parent_categories.sort, self.file_metadata]
+    parent_cats_wo_systag = self.parent_categories.dup
+    parent_cats_wo_systag.delete_if {|cat| cat.match(/^systag-.*/)}
+    equiv_attrib = [self.my_category, parent_cats_wo_systag.sort, self.file_metadata]
     #puts "Hash created from #{equiv_attrib.inspect}"
     return equiv_attrib.hash
   end

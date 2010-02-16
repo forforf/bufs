@@ -3,6 +3,8 @@ require 'cgi'
 #JSON Hack
 require 'json'
 
+#require 'bufs_escape'   #need to insert this 
+
 class Dir  #monkey patch  (duck punching?)
   def self.working_entries(dir=Dir.pwd)
     ignore_list = ['thumbs.db','all_child_files']
@@ -38,12 +40,35 @@ class BufsFileSystem
   def self.set_name_space(model_dir)
      FileUtils.mkdir_p(File.expand_path(model_dir))
      BufsFileSystem.name_space = model_dir
+     self.normalize
   end
 
+  #This method will go through the entire model directory and make sure
+  #all file names have been normalized (remove strange characters)
+  #DANGER: this will fail if there are files in the directory that reduce to the same normalized name
+  def self.normalize
+    unless File.exists?(BufsFileSystem.name_space)
+      raise "Cannot normalize. The File System Directory to work from does not exist: #{BufsFileSystem.name_space}"
+    end
+    my_dir = BufsFileSystem.name_space + '/'
+    all_entries = Dir.working_entries(my_dir)
+    all_entries.each do |cat_entry|
+      wkg_dir = my_dir + cat_entry + '/'
+      files = Dir.file_data_entries(wkg_dir)
+      files.each do |f|
+        esc_f = BufsEscape.escape(f)
+        unless f == esc_f
+          full_f = wkg_dir + f
+          full_esc_f = wkg_dir + esc_f
+          FileUtils.mv(full_f, full_esc_f)
+        end
+      end
+    end
+  end
 
   def self.all
     unless File.exists?(BufsFileSystem.name_space)
-      raise "The File System Directory to work from does not exist: #{BufsFileSystem.name_space}"
+      raise "Can't get all. The File System Directory to work from does not exist: #{BufsFileSystem.name_space}"
     end
     all_nodes = []
     my_dir = BufsFileSystem.name_space + '/'
@@ -111,7 +136,7 @@ class BufsFileSystem
         #
       end
     else
-      puts "Warning: #{wkd_dir.inspect} was not found"
+      puts "Warning: #{wkg_dir.inspect} was not found"
       return nil
     end
   end
@@ -163,11 +188,20 @@ class BufsFileSystem
   alias :add_category :add_parent_categories
   alias :add_categories :add_parent_categories
 
+  def remove_parent_categories(cats_to_remove)
+    cats_to_remove = [cats_to_remove].flatten
+    cats_to_remove.each do |remove_cat|
+      self.parent_categories.delete(remove_cat)
+    end
+    self.save
+    raise "temp error due to no parent categories existing" if self.parent_categories.empty?
+  end
+
   def add_raw_data(file_name, my_cat, raw_data, file_modified_at = nil)
-    file_name = CGI.unescape(file_name)  #Hack to avoid escaping twice (and changing the name in the process)
+    #file_name = unescape(file_name)  #Hack to avoid escaping twice (and changing the name in the process)
     #content type is lost when data is saved into the file model.
     puts "Add Raw Data --- (Unesc) File Name: #{File.basename(file_name)}"
-    esc_filename = CGI.escape(file_name)
+    esc_filename = BufsEscape.escape(file_name)
     puts "Add Raw Data --- (Esc) File Name: #{File.basename(esc_filename)}"
     raw_data_dir = @my_dir # + my_cat
     FileUtils.mkdir_p(raw_data_dir) unless File.exist?(raw_data_dir)
@@ -190,7 +224,7 @@ class BufsFileSystem
   def add_data_file(filename)
     #my_dir = BufsInfoFileSystem.name_space + '/' + self.my_category + '/'
     puts "Add Data File --- Basename (Unesc) #{File.basename(filename)}"
-    my_dest_basename = CGI.escape(File.basename(filename))
+    my_dest_basename = BufsEscape.escape(File.basename(filename))
     puts "Add Data File --- Basename (Esc) #{my_dest_basename}"
     @filename = my_dest_basename
     FileUtils.mkdir_p(@my_dir) unless File.exist?(@my_dir) #TODO Throw error if its a file
@@ -215,7 +249,7 @@ class BufsFileSystem
   end
 
   #TODO Add to spec
-  def destroy
+  def destroy_node
     if self.my_category
       my_dir = BufsFileSystem.name_space + '/' + self.my_category + '/'
       #rm_f(Dir.glob(my_dir + '*'))
@@ -225,6 +259,7 @@ class BufsFileSystem
       raise "Cannot destroy node, cannot determine its category, has it been saved?"
     end
   end
+  alias destroy :destroy_node
 
 end
 

@@ -1,6 +1,7 @@
 require 'couchrest'
 
 require 'cgi' #Can replace with url_escape if performance is an issue
+#Note BufsEscape is used to align with CouchDB escaping 
 
 #require 'scout_info_node'
 require File.dirname(__FILE__) + '/bufs_info_attachment'
@@ -117,8 +118,17 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
       #end
     end
   end
-  alias :add_category :add_parent_categories
-  alias :add_categories :add_parent_categories
+  #alias :add_category :add_parent_categories
+  #alias :add_categories :add_parent_categories
+
+  def remove_parent_categories(cats_to_remove)
+    cats_to_remove = [cats_to_remove].flatten
+    cats_to_remove.each do |remove_cat|
+      self['parent_categories'].delete(remove_cat)
+    end
+    self.save(:deletions)
+    raise "temp error due to no parent categories existing" if self.parent_categories.empty?
+  end  
 
   def my_attachment_doc_id
     if self['_id']
@@ -174,6 +184,8 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     attachment_filenames.each do |at_f|
       #puts "Filename to attach: #{at_f.inspect}"
       at_basename = File.basename(at_f)
+      #basename can't contain '+', replace with space
+      at_basename.gsub!('+', ' ')
       #sc_at_basename = CGI::escape(at_basename)
       #p at_basename
       file_metadata = {}
@@ -209,16 +221,29 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   end
   #alias :update_attachments :add_data_file
 
-  def save
+  def save(save_type = :additions)
+    #save_type :additions or :deletions
+    #refers to whether parent category information is merged or deleted
+    #I'll probably have to change this when dealing with files too
     raise ArgumentError, "Requires my_category to be set before saving" unless self.my_category
     self['_id'] = BufsInfoDoc.name_space.to_s + '_' + self.my_category
     existing_doc = BufsInfoDoc.get(self['_id'])
     begin
-      super
+      #before_self = self.parent_categories
+      #super
+      BufsInfoDoc.name_space.save_doc(self) #saving using database method, not ExtendedDoc method (didn't work for some reason) 
+      #raise "Self: #{before_self}, Before: #{existing_doc.parent_categories.inspect}, after: #{BufsInfoDoc.get(self['_id']).parent_categories.inspect}" #if save_type == :deletions
     rescue RestClient::RequestFailed => e
       if e.http_code == 409
-        puts "Found existing doc ... using it instead"
-        existing_doc.parent_categories = (existing_doc.parent_categories + self.parent_categories).uniq
+        puts "Found existing doc while trying to save ... using it instead"
+	case save_type
+	when :additions
+          existing_doc.parent_categories = (existing_doc.parent_categories + self.parent_categories).uniq
+	when :deletions
+	  existing_doc.parent_categories = self.parent_categories
+	else
+	  raise "save type parameter of #{save_type} not understood"
+	end
         existing_doc.description = self.description if self.description
         existing_doc['_attachments'] = existing_doc['attachments'].merge(self['_attachments']) if self['_attachments']
         existing_doc['file_metadata'] = existing_doc['file_metadata'].merge(self['file_metadata']) if self['file_metadata']
@@ -231,11 +256,16 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     return self
   end
 
-  #would prefer to do this in a superclass, but we're already subclassed
-  #def == (other)
-  #  my_node = [self.parent_categories.sort, self.my_category, self.description, self.file_metadata]
-  #  other_node = [other.parent_categories.sort, other.my_category, other.description, other.file_metadata]
-  #  my_node == other_node
-  #end
+  def destroy_node
+    att_doc = BufsInfoAttachment.get(self.attachment_doc_id)
+    att_doc.destroy if att_doc
+    begin
+      self.destroy
+    rescue ArgumentError => e
+      puts "Rescued Error: #{e} while trying to destroy #{self.my_category} node"
+      me = BufsInfoDoc.get(self['_id'])
+      me.destroy
+    end
+  end
 
 end
