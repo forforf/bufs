@@ -103,6 +103,13 @@ class BufsFileSystem
     my_cat_dir = my_cat
     wkg_dir = my_dir + my_cat_dir + '/'
     if File.exists?(wkg_dir)
+      #added 2/24 at 10:23 am due to spec failure in sync_node seems like BufsFileSystem bug fix
+      parent_cats = JSON.parse(File.open(wkg_dir + BufsFileSystem.parent_categories_file_basename){|f| f.read})
+      desc = File.open(wkg_dir + BufsFileSystem.description_file_basename){|f| f.read}
+       bfs = BufsFileSystem.new(:parent_categories => parent_cats,
+                                :my_category => my_cat,
+                                 :description => desc)
+      #
       cat_files = Dir.working_entries(wkg_dir)
       puts "Files in #{wkg_dir.inspect}"
       p cat_files
@@ -112,18 +119,18 @@ class BufsFileSystem
       bfss = []
       if cat_files.size > 0
         cat_files.each do |cat_file_name|
-          parent_cats = JSON.parse(File.open(wkg_dir + BufsFileSystem.parent_categories_file_basename){|f| f.read})
-          desc = File.open(wkg_dir + BufsFileSystem.description_file_basename){|f| f.read}
-          #puts "BFS.by_my_category location for attachment file: #{wkg_dir + cat_file_name.inspect}"
-          #file_mod_time = File.mtime(wkg_dir + cat_file_name) if File.exists?(wkg_dir + cat_file_name)
-          #f_metadata = {'file_modified' => file_mod_time.to_s} if file_mod_time
-          #puts "BFS.by_my_category file md: #{f_metadata.inspect}"
-          bfs = BufsFileSystem.new(:parent_categories => parent_cats,
-                                         :my_category => my_cat,
-                                         :description => desc) #,
-                                         #:file_metadata => f_metadata)
-          #bfs.filename = cat_file_name
-	  #check for files
+          #parent_cats = JSON.parse(File.open(wkg_dir + BufsFileSystem.parent_categories_file_basename){|f| f.read})
+          #desc = File.open(wkg_dir + BufsFileSystem.description_file_basename){|f| f.read}
+          ##puts "BFS.by_my_category location for attachment file: #{wkg_dir + cat_file_name.inspect}"
+          ##file_mod_time = File.mtime(wkg_dir + cat_file_name) if File.exists?(wkg_dir + cat_file_name)
+          ##f_metadata = {'file_modified' => file_mod_time.to_s} if file_mod_time
+          ##puts "BFS.by_my_category file md: #{f_metadata.inspect}"
+          #bfs = BufsFileSystem.new(:parent_categories => parent_cats,
+          #                               :my_category => my_cat,
+          #                               :description => desc) #,
+          #                               #:file_metadata => f_metadata)
+          ##bfs.filename = cat_file_name
+	  ##check for files
           files = Dir.file_data_entries(wkg_dir)
 	  files.each do |f|
 	    full_filename = wkg_dir + '/' + f
@@ -131,10 +138,11 @@ class BufsFileSystem
 	  end
           bfss << bfs
          end
-        return bfss
+        #return bfss  removed 2/24 at 10:14am wrong place
       else
-        #
+        bfss << bfs 
       end
+      return bfss
     else
       puts "Warning: #{wkg_dir.inspect} was not found"
       return nil

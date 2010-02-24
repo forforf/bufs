@@ -210,27 +210,40 @@ describe AbstractNode do
 
   end
 
-  it "should be able to return all nodes from all attached models" do
-    all_node_list = AbstractNode.all
-    all_node_list.size.should > 0
+  it "should only be able to return all nodes from the underlying models from the concrete nodes" do
+    #all_node_list = AbstractNode.all
+
+    #AbstractNode itself has no bindings to data sources (see SyncNode)
+    lambda {AbstractNode.all}.should raise_error(NoMethodError)
+
+    concrete_db_node = AbstractNode.create(BufsInfoDoc.all.first) #doesn't matter which record
+    all_db_node_list = concrete_db_node.all
+    all_db_node_list.size.should > 0
     #all_node_list.each {|n| p n}
-    all_my_categories = all_node_list.map {|n| n[0]} 
-    all_nodes = all_node_list.map {|n| n[1]}
+    all_my_db_categories = all_db_node_list.map {|n| n[0]} 
+    all_db_nodes = all_db_node_list.map {|n| n[1]}
     bids = BufsInfoDoc.all
     bids.each do |bid|
       bid_node = AbstractNode.create(bid)
-      all_nodes.should include bid_node if bids.size > 0
-      all_my_categories.should include bid.my_category if bids.size > 0
+      all_db_nodes.should include bid_node if bids.size > 0
+      all_my_db_categories.should include bid.my_category if bids.size > 0
     end
+
+    concrete_file_node = AbstractNode.create(BufsFileSystem.all.first) #doesn't matter which record
+    all_file_node_list = concrete_file_node.all
+    all_file_node_list.size.should > 0
+    all_my_file_categories = all_file_node_list.map {|n| n[0]}
+    all_file_nodes = all_file_node_list.map {|n| n[1]}
     bfs = BufsFileSystem.all
     bfs.each do |bf|
       bf_node = AbstractNode.create(bf)
-      all_nodes.should include bf_node if bfs.size > 0
-      all_my_categories.should include bf.my_category if bfs.size > 0
+      all_file_nodes.should include bf_node if bfs.size > 0
+      all_my_file_categories.should include bf.my_category if bfs.size > 0
     end
   end
 end
 
+=begin
 describe AbstractNode, "synchronization" do
   include AbstractNodeSyncHelpers
   before(:all) do
@@ -477,3 +490,4 @@ describe AbstractNode, "synchronization" do
   it "should handle multiple file content"
 #=end
 end
+=end

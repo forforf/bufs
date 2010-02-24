@@ -25,6 +25,10 @@ class ReadOnlyNode
   def get_file_data(file_name)
     raise "#{self.class}.get_file_data is abstract and must be overridden in a sub-class"
   end
+
+  def destroy(*args)
+    nil  #silenty ignore any destroy method
+  end
 end
 
 
@@ -34,14 +38,22 @@ class AbstractNode
   #  attr_accessor :node_models
   #end
 
-  NodeModels = [BufsInfoDoc, BufsFileSystem]
+  #NodeModels = [BufsInfoDoc, BufsFileSystem]  #define at runtime vi SyncNode
   #AbstractNodeClasses = {'BufsInfoDoc' => DBDocNode, 'BufsFileSystem' => FileSystemDocNode }
  
 
-  attr_accessor :my_category, :parent_categories, :description, :file_metadata, :node_model
+  attr_accessor :full_name_space, :my_category, :parent_categories, :description, :file_metadata, :node_model
+
+  def self.base_model_class
+    raise TypeError, "base_model_class should be overwritten in a concrete class"
+  end
 
   #TODO: Change Abstract Node name to align with Model name, to allow dynamic additions
   def self.create(node)
+    ##TODO: move name_space stuff to initialize method
+    #name_space = nil
+    #name_space = node.class.name_space if node.class.name_space
+    #@full_name_space = "#{node.class}-#{name_space}"
     case node.class.to_s
       when 'BufsInfoDoc'
         return DBDocNode.new(node)
@@ -52,17 +64,18 @@ class AbstractNode
     end
   end
 
-  def self.all
-    abstract_node_list = []
-    NodeModels.each do |node_class|
-      node_class.all.each do |node|
-        abstract_node_list << [node.my_category, AbstractNode.create(node)]
-      end
-    end
-    return abstract_node_list
-  end
+#  def self.all
+#    abstract_node_list = []
+#    NodeModels.each do |node_class|
+#      self.base_model_class.all.each do |node|
+#        abstract_node_list << [node.my_category, AbstractNode.create(node)]
+#      end
+#    end
+#    return abstract_node_list
+#  end
 
   #sync methods
+=begin
   def self.validate_nodes(nodes)
        #validate that my_category is the same for all nodes or is nil
     node_my_cats = (nodes.map{|n| n.my_category if n}).compact.uniq
@@ -88,14 +101,17 @@ class AbstractNode
     #each node is of a unique class of one of the known node classes
     return @my_cat
   end 
+=end
 
   #Not implmented yet.  Current sync approach will overwrite any nodes not explicilty
   #passed to the sync function, that have the same category.
   #This may be desirable in some cases, and not in others
-  def self.sync_newest(nodes)
-    my_cat = self.validate_nodes(nodes)  #this isn't the DRYest approach
-  end
+  #TODO: Implement this method
+  #def self.sync_newest(nodes)
+  #  my_cat = self.validate_nodes(nodes)  #this isn't the DRYest approach
+  #end
 
+=begin  
   def self.sync(nodes) #, read_only_nodes=[])
     #future: allow choosing of which nodes can by synced
     #for now, all supported node types will by synced (node types not
@@ -110,7 +126,7 @@ class AbstractNode
     abstract_node_classes = {'BufsInfoDoc' => DBDocNode, 'BufsFileSystem' => FileSystemDocNode } #figure out better way
 
     my_cat = self.validate_nodes(nodes)
-=begin
+#=begin
     #validate that my_category is the same for all nodes or is nil
     node_my_cats = (nodes.map{|n| n.my_category if n}).compact.uniq
     raise "Can't find any node categories" if node_my_cats.size < 1
@@ -133,7 +149,7 @@ class AbstractNode
     end
 
     #each node is of a unique class of one of the known node classes
-=end    
+#=end    
 
     #merge parent categories
     puts "--- merging parent categories"
@@ -268,6 +284,7 @@ class AbstractNode
     end
     return updated_nodes
   end
+=end
 
   def initialize(node)
     @node_model = @node = node
@@ -275,7 +292,22 @@ class AbstractNode
     @parent_categories = node.parent_categories
     @description = node.description
     @file_metadata = nil  # {fname -> {metadata fields -> metadata values}}
+    name_space = nil
+    name_space = node.class.name_space if node.class.name_space
+    @full_name_space = "#{node.class}-#{name_space}"
+
   end
+
+  def all
+    abstract_node_list = []
+    #NodeModels.each do |node_class|
+      self.base_model_class.all.each do |node|
+        abstract_node_list << [node.my_category, AbstractNode.create(node)]
+      end
+    #end
+    return abstract_node_list
+  end
+
 
   def save
     @node.save
@@ -337,6 +369,14 @@ class AbstractNode
 end
 
 class DBDocNode < AbstractNode
+  #class << self
+  #  attr_accessor :base_model_class
+  #  @base_model_class = BufsInfoDoc
+  #end
+  
+  def self.base_model_class
+    BufsInfoDoc
+  end
 
   def self.by_my_category(cat_name)
     bids = BufsInfoDoc.by_my_category(cat_name)
@@ -366,9 +406,25 @@ class DBDocNode < AbstractNode
     @node.add_raw_data(file_name, content_type, raw_data, modified_time)
   end
 
+  def base_model_class
+    DBDocNode.base_model_class
+  end
+
+  def destroy
+    self.node_model.destroy_node
+  end
+
 end
 
 class FileSystemDocNode < AbstractNode
+  #class << self
+  #  attr_accessor :base_model_class
+  #  @base_model_class = BufsFileSystem
+  #end
+
+  def self.base_model_class
+    BufsFileSystem
+  end
 
   def self.by_my_category(cat_name)
     bfs = BufsFileSystem.by_my_category(cat_name)
@@ -385,6 +441,11 @@ class FileSystemDocNode < AbstractNode
     end
   end
 
+  def base_model_class
+    FileSystemDocNode.base_model_class
+  end
+
+
   def get_file_data(file_name)
     @node.get_file_data  #currently this node can only hold a single file
   end
@@ -400,6 +461,10 @@ class FileSystemDocNode < AbstractNode
     puts "updating file contents in BufsFSDoc"
     #TODO: This method is slightly different thatn the DBDocNode one, rationalize them
     @node.add_raw_data(file_name, my_cat, raw_data, modified_time)
+  end
+
+  def destroy
+    self.node_model.destroy_node
   end
 end 
 
