@@ -1,17 +1,9 @@
 
 require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
 
-#ProjectLocation = '/media-ec2/ec2a/projects/bufs/'
-#TestFileLocation = ProjectLocation + 'sandbox_for_specs/file_system_specs/'
+require File.dirname(__FILE__) + '/../lib/bufs_file_system'
+require File.dirname(__FILE__) + '/../lib/bufs_escape'
 
-module BufsFSSpec
-  LibDir = File.dirname(__FILE__) + '/../lib/'
-end
-
-  
-
-require BufsFSSpec::LibDir + 'bufs_file_system'
-require BufsFSSpec::LibDir + 'bufs_escape'
 
 FSModelDir = BufsFixtures::ProjectLocation  + 'sandbox_for_specs/file_system_specs/raw_data_model_spec'
 BufsFileSystem.name_space = FSModelDir

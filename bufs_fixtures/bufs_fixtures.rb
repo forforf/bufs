@@ -16,6 +16,9 @@ module BufsFixtures
   doc_db_name = "http://127.0.0.1:5984/bufs_test_spec/"
   CouchDB = CouchRest.database!(doc_db_name)
   CouchDB.compact!
+  doc_db_name_2 = "http://127.0.0.1:5984/bufs_test_spec_2/"
+  CouchDB2 = CouchRest.database!(doc_db_name_2)
+  CouchDB2.compact!
 end
 
 FileUtils.mkdir_p(BufsFixtures::TestFileLocation)

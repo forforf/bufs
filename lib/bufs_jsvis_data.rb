@@ -1,5 +1,5 @@
 require 'json'
-require File.dirname(__FILE__) + '/bufs_info_doc'
+#require File.dirname(__FILE__) + '/bufs_info_doc'
 
 class DefaultNode < Hash
   attr_accessor :parent_categories, :my_category, :description
@@ -32,7 +32,7 @@ class BufsJsvisData
     json_vis_nodes = nil
     top_node = @nodes_by_cat[top_node_parent_cat]||DefaultNode.new(top_node_parent_cat)
     jsm = make_json_vis_from_node(top_node, depth) 
-    jsm.to_json
+    #jsm.to_json
   end
 
   def make_json_vis_from_node(node, depth, current_model = nil)

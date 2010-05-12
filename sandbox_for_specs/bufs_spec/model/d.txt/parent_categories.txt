@@ -1,1 +1,1 @@
-["synced","bd"]
+["synced","bd","d.txt"]

@@ -10,6 +10,7 @@ class ReadOnlyNode
   #abstract class for all read only nodes
   #TODO: Change this to an include rather than 
   #force an arbitrary inheritance
+  #TODO: This class is incomplet see view_directory_reader!!!
   def my_category
     raise "#{self.class}.my_category is abstract and must be overridden in a sub-class"
   end

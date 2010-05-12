@@ -25,37 +25,8 @@ BufsInfoAttachment.set_name_space(CouchDB)
 describe BufsInfoAttachment do
   before(:all) do
     @test_files = BufsFixtures.test_files
-=begin
-    @test_id1 = 'binary_data_pptx'
-    @test_id2 = 'binary_data2_docx'
-    @test_id3 = 'simple_text_file'
-    @stale_id = 'stale_file'
-    @fresh_id = 'fresh_file'
-    @test_file1 = @test_files[@test_id1]
-    @test_file2 = @test_files[@test_id2]
-    @test_file3 = @test_files[@test_id3]
-    @stale_file = @test_files[@stale_id]
-    @fresh_file = @test_files[@fresh_id]
-    @file_basename1 = File.basename(@test_file1)
-    @file_basename2 = File.basename(@test_file2)
-    @file_basename3 = File.basename(@test_file3)
-    @stale_basename = File.basename(@stale_file)
-    @fresh_basename = File.basename(@fresh_file)
-    @file_modified_time1 = File.mtime(@test_files['binary_data_pptx'])
-    @file_modified_time2 = File.mtime(@test_files['binary_data2_docx'])
-    @file_modified_time3 = File.mtime(@test_files['binary_data3_pptx'])
-    @stale_modified_time = File.mtime(@test_files['stale_file'])
-    @fresh_modified_time = File.mtime(@test_files['fresh_file'])
-    @test_bid_id = 'fake_bid_id'
-    @bia_id = @test_bid_id + BufsInfoDoc.attachment_base_id
-=end
   end
 
-  #after(:all) do
-  #  if CouchDB.documents.size > 10
-  #    CouchDB.delete!
-  #  end
-  #end
   before(:each) do
     BufsInfoAttachment.all.each do |doc|
       doc.destroy
@@ -64,10 +35,6 @@ describe BufsInfoAttachment do
 
   it "should create object and update the database with a single attachment if there is no other doc in database" do
     #set initial conditions
-    #clear out any lingering attachment documents in the database
-    #BufsInfoAttachment.all.each do |doc|
-    #  doc.destroy
-    #end
     test_file = @test_files['binary_data_pptx']
     test_file_basename = File.basename(test_file)
     test_file_modified_time = File.mtime(test_file)
@@ -90,9 +57,6 @@ describe BufsInfoAttachment do
   end
 
  it "should handle file names with strange (but somewhat common) characters and convert to more standard form" do
-    #BufsInfoAttachment.all.each do |doc|
-    #  doc.destroy
-    #end
     test_file = @test_files['strange_characters_in_file_name']
     test_file_basename = File.basename(test_file)
     test_file_modified_time = File.mtime(test_file)
@@ -113,9 +77,6 @@ describe BufsInfoAttachment do
 
   it "should create multiple attachments in one update" do
     #set initial conditions
-    #BufsInfoAttachment.all.each do |doc|
-    #  doc.destroy
-    #end
     test_file1 = @test_files['binary_data2_docx']
     test_file2 = @test_files['simple_text_file']
     test_file1_basename = File.basename(test_file1)
@@ -145,9 +106,6 @@ describe BufsInfoAttachment do
 
   it "should add new files to an existing attachment doc" do
     #set initial conditions existing attachment
-    #BufsInfoAttachment.all.each do |doc|
-    #  doc.destroy
-    #end
     test_file1 = @test_files['binary_data2_docx']
     test_file2 = @test_files['simple_text_file']
     test_file1_basename = File.basename(test_file1)
@@ -190,10 +148,6 @@ describe BufsInfoAttachment do
 
   it "should replace older attachment data with new ones, but not vice versa" do
     #set initial conditions
-    #BufsInfoAttachment.all.each do |doc|
-    #  doc.destroy
-    #end
-    
     test_file = @test_files['simple_text_file']
     test_file_basename = File.basename(test_file)
     test_file_modified_time = File.mtime(test_file)
@@ -287,9 +241,6 @@ describe BufsInfoAttachment do
 
   it "should combine all attachment metadata when it is retrieved" do
     #set initial conditions
-    #BufsInfoAttachment.all.each do |doc|
-    #  doc.destroy
-    #end
     test_file1 = @test_files['binary_data2_docx']
     test_file2 = @test_files['simple_text_file']
     test_file1_basename = File.basename(test_file1)

@@ -13,10 +13,14 @@ class Dir
 end
 
 class ReaderNode < ReadOnlyNode
+  class << self
+    attr_accessor :name_space
+    @name_space = "Read Only Node"
+  end
   #ReadOnlyNode has some methods that must be overidden
   #my_category, parent_categories, file_metadata, get_file_data
 
-  attr_accessor :my_category, :parent_categories, :file_metadata, :sub_entries 
+  attr_accessor :my_category, :parent_categories, :description, :file_metadata, :sub_entries 
               
   def get_file_data(file_name=nil)
     nil
@@ -27,9 +31,19 @@ class ReaderNode < ReadOnlyNode
     @my_category = File.basename(file_name)
     @parent_path = File.dirname(file_name)
     @parent_categories = [File.basename(@parent_path)]
+    @description = ""
     @sub_entries = []
     @file_metadata = nil
   end
+
+  def add_parent_categories(parent_categories)
+    self.parent_categories + parent_categories
+  end
+
+  def save
+    #/dev/null
+  end
+
 end
 
 class ReaderDirNode < ReaderNode
@@ -38,6 +52,7 @@ class ReaderDirNode < ReaderNode
     @sub_entries_basenames = Dir.working_entries(file_name)
     @sub_entries = @sub_entries_basenames.map{|entry| file_name +'/' + entry}
   end
+
 end
 
 class ReaderLinkNode < ReaderNode

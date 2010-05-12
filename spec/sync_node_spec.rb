@@ -250,6 +250,7 @@ describe SyncNode, "initializaton" do
     #  sync_node.my_category.should == node.my_category
     #end
   end
+
 end
 
 describe NodeComparisonOperations do
@@ -310,6 +311,59 @@ describe "with more realistic test data" do
 end
 
 describe SyncNode, "operations" do
+  include SyncSpecHelpers
+
+  before(:each) do
+    db_node_data1 = {:my_category => 'common_cat',
+                    :parent_categories => ['db_parent1', 'db_parent2'],
+                    :description => 'desc db node data'}
+    db_base_model1 = create_db_doc(db_node_data1)
+    @abs_node_from_db1 = AbstractNode.new(db_base_model1)
+    db_node_data2 = {:my_category => 'uniq_cat_db2',
+                    :parent_categories => ['db_parent1', 'db_parent2'],
+                    :description => 'desc db node data'}
+    db_base_model2 = create_db_doc(db_node_data2)
+    @abs_node_from_db2 = AbstractNode.new(db_base_model2)
+
+    file_node_data1 = {:my_category => 'uniq_cat_file1',
+                      :parent_categories => ['file_parent1', 'file_parent2'],
+                      :description => 'desc file node data'}
+    file_base_model1 = create_file_model(file_node_data1)
+    @abs_node_from_file1 = AbstractNode.new(file_base_model1)
+
+    file_node_data2 = {:my_category => 'common_cat',
+                      :parent_categories => ['file_parent1', 'file_parent2'],
+                      :description => 'desc file node data'}
+    file_base_model2 = create_file_model(file_node_data2)
+    @abs_node_from_file2 = AbstractNode.new(file_base_model2)
+
+    @db_list = [@abs_node_from_db1, @abs_node_from_db2]
+    @file_list = [@abs_node_from_file1, @abs_node_from_file2]
+
+    @master_list_manual = {'common_cat' => [@abs_node_from_db1, @abs_node_from_file2],
+                   'uniq_cat_db2' => [@abs_node_from_db2],
+                   'uniq_cat_file1' => [@abs_node_from_file1] }
+
+  end
+
+  it "should be able to take multiple node lists and create a combined list for syncing" do
+    #set initial conditions
+    #test/check
+    SyncNode.master_list([@db_list, @file_list]).should == @master_list_manual
+  end
+
+  it "should take a combined list for syncing and create a list (hash) of sync nodes" do
+    #set initial conditions
+    master_list = SyncNode.master_list([@db_list, @file_list])
+    #test
+    sync_master_list = SyncNode.sync_master_list(master_list)
+    #check
+    @master_list_manual.each do |my_cat, nodes|
+      sync_master_list[my_cat].my_category.should == nodes.first.my_category
+      sync_master_list[my_cat].class.should == SyncNode
+    end
+  end
+
   it "should sync across the entire set creating new nodes if parts of the set are missing"
   it "should be able to create a full set of syncable nodes from a partial set"
 end

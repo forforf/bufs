@@ -1,21 +1,19 @@
 require 'couchrest'
-
+#=begin
 require 'cgi' #Can replace with url_escape if performance is an issue
 
 require File.dirname(__FILE__) + '/bufs_info_attachment'
+#TODO keep the classes in separate files? 
 
 #This class is the primary interface into CouchDB BUFS documents
 class BufsInfoDoc < CouchRest::ExtendedDocument
   #include BufsCommon
 
-  class << self; attr_accessor :name_space, :attachment_base_id end
+  #class << self; attr_accessor  :attachment_base_id, end
   #name_space is the CouchDB database to use
-  #TODO: This needs to move to a normal instance variable, rather than a class instance
-  #in order for multi-user support
-  @name_space = nil #CouchDB
 
   #All attachment documents have a specific name postfixed to the main BufsInfoDoc id
-  @attachment_base_id = '_attach_doc_id'
+  #@attachment_base_id = '_attachments'
   #use_database @name_space
 
   #If a document has an attachment it gets this accessor set (needs testing!! not sure it works in all cases)
@@ -72,6 +70,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
 
 #class methods
   #Setter for setting the name space, which is the CouchDB database in this case
+=begin
   def self.set_name_space(name_space)
     @name_space = name_space
     use_database @name_space
@@ -82,7 +81,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     #What's needed is a class factory that creates a class on the fly maybe?
     BufsInfoAttachment.set_name_space(@name_space) unless BufsInfoAttachment.name_space
   end
-
+=end
   #Create the document in the BUFS node format from an existing node.  A BUFS node is an object that has the following properties:
   #  my_category
   #  parent_categories
@@ -98,7 +97,11 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     new_sid.add_parent_categories(node_obj.parent_categories)
     new_sid.save
     new_sid.add_data_file(node_obj.files) if node_obj.files
-    return BufsInfoDoc.get(new_sid['_id'])
+    return new_sid.class.get(new_sid['_id'])
+  end
+
+  def self.attachment_base_id
+    "_attachments"
   end
 
   #Initialize the document with no attachments and then initialize as a CouchRest::ExtendedDocument
@@ -159,22 +162,23 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     #puts "My Attach ID: #{ self.my_attachment_doc_id}"
     #puts "My Attach Package: #{attachment_package.inspect}"
 
-    bia = BufsInfoAttachment.get(self.my_attachment_doc_id)
+    bia = self.class.user_attachClass.get(self.my_attachment_doc_id)
     #p my_attachment_doc_id
     #puts "SIA found: #{bia.inspect}"
     if bia
       #puts "Updating Attachment"
-      bia.update_attachment_package(attachment_package)
+      bia.update_attachment_package(self, attachment_package)
     else
       #puts "Creating new Attachment"
-      bia = BufsInfoAttachment.create_attachment_package(self['_id'], attachment_package)
+      bia = self.class.user_attachClass.create_attachment_package(self, attachment_package)
+      #bia = BufsInfoAttachment.create_attachment_package(self['_id'], attachment_package)
       #puts "BIA created: #{bia.inspect}"
     end
 
     #puts "Current ID #{self['_id']}"
-    current_node_doc = BufsInfoDoc.get(self['_id'])
+    current_node_doc = self.class.get(self['_id'])
     current_node_doc.attachment_doc_id = bia['_id']
-    current_node_attach = BufsInfoAttachment.get(current_node_doc.attachment_doc_id)
+    current_node_attach = self.class.user_attachClass.get(current_node_doc.attachment_doc_id)
     current_node_attach.save
     #puts "New Attach: #{current_node_attach.inspect}"
   end
@@ -202,23 +206,23 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     end
     #puts "getting attachment doc id"
     #p my_attachment_doc_id
-    sia = BufsInfoAttachment.get(my_attachment_doc_id)
+    attachment_record = self.class.user_attachClass.get(my_attachment_doc_id)
     #p my_attachment_doc_id
     # puts "SIA found: #{sia.inspect}"
-    if sia
+    if attachment_record
       puts "Updating Attachment"
-      sia.update_attachment_package(attachment_package)
+      attachment_record.update_attachment_package(self, attachment_package)
     else
       puts "Creating new Attachment"
-      sia = BufsInfoAttachment.create_attachment_package(self['_id'], attachment_package)
+      attachment_record = self.class.user_attachClass.create_attachment_package(self, attachment_package)
       #puts "SIA created: #{sia.inspect}"
     end
 
     #puts "Current ID #{self['_id']}"
-    current_node_doc = BufsInfoDoc.get(self['_id'])
-    current_node_doc.attachment_doc_id = sia['_id']
+    current_node_doc = self.class.get(self['_id'])
+    current_node_doc.attachment_doc_id = attachment_record['_id']
     current_node_doc.save
-    current_node_attach = BufsInfoAttachment.get(current_node_doc.attachment_doc_id)
+    current_node_attach = self.class.user_attachClass.get(current_node_doc.attachment_doc_id)
     current_node_attach.save
   end
 
@@ -227,24 +231,21 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   #  :additions will merge parent categories with any categories in the database
   #  :deletions will replace any existing parent categories with those of the object
   def save(save_type = :additions)
-    puts "Entered BufsInfoDoc save (what about UserDoc???)"
-    puts "Self: #{self.inspect}"
-    puts "Self Class: #{self.class.inspect}"
-    puts "Name Space: #{BufsInfoDoc.name_space.inspect}"
-    puts "User Doc Name SPace: #{self.class.namespace.inspect}"
+    puts "Entered save method"
     #save_type :additions or :deletions
     #refers to whether parent category information is merged or deleted
     #I'll probably have to change this when dealing with files too
     raise ArgumentError, "Requires my_category to be set before saving" unless self.my_category
-    #self['_id'] = BufsInfoDoc.name_space.to_s + '_' + self.class.to_s + '_' + self.my_category
     self['_id'] = self.class.namespace.to_s + '_' + self.class.to_s + '_' + self.my_category
-    puts "Self ID: #{self['_id']}"
+    #self['_id'] = BufsInfoDoc.name_space.to_s + '_' + self.class.to_s + '_' + self.my_category
     existing_doc = BufsInfoDoc.get(self['_id'])
     begin
       #before_self = self.parent_categories
       #super
-      #BufsInfoDoc.name_space.save_doc(self) 
-      self.class.namespace.save_doc(self) #saving using database method, not ExtendedDoc method (didn't work for some reason) 
+      puts self.class.inspect
+      puts self.class.name_space.inspect
+      self.class.namespace.save_doc(self) #saving using database method, not ExtendedDoc method (didn't work for some reason)
+      #BufsInfoDoc.name_space.save_doc(self) #saving using database method, not ExtendedDoc method (didn't work for some reason) 
       #raise "Self: #{before_self}, Before: #{existing_doc.parent_categories.inspect}, after: #{BufsInfoDoc.get(self['_id']).parent_categories.inspect}" #if save_type == :deletions
     rescue RestClient::RequestFailed => e
       if e.http_code == 409
@@ -271,22 +272,23 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
 
   #Deletes the object and its CouchDB entry
   def destroy_node
-    att_doc = BufsInfoAttachment.get(self.attachment_doc_id)
+    att_doc = self.class.get(self.attachment_doc_id)
     att_doc.destroy if att_doc
     begin
       self.destroy
     rescue ArgumentError => e
       puts "Rescued Error: #{e} while trying to destroy #{self.my_category} node"
-      me = BufsInfoDoc.get(self['_id'])
+      me = self.class.get(self['_id'])
       me.destroy
     end
   end
 
 end
 
-=begin
+#=end
 
 class UserDoc
+
   def initialize(init_params = {})
     init_params.each do |attr_name, attr_value|
       iv_set(attr_name, attr_value)
@@ -302,24 +304,66 @@ class UserDoc
 end
 
 class UserDB
-  attr_accessor :namespace
-  attr_reader :docClass
+  #attr_accessor :namespace
+  class << self; attr_accessor :user_to_docClass, :docClass_users, :docClasses; end
+  UserDB.docClasses = []
+  UserDB.user_to_docClass = {}
+  UserDB.docClass_users = {}
+
+  attr_reader :docClass, :namespace
   def initialize(couchdb, user_id)
     @namespace = couchdb
-    #@user_doc_class_name = "UserDoc#{@namespace.hash.to_s.reverse[0..7].reverse}" #takes last 7 digits of hash
     @user_doc_class_name = "UserDoc#{user_id}"
+    @user_attach_class_name = "UserAttach#{user_id}"
 
-    #use_database CouchRest.database!(\"http://127.0.0.1:5984/bufs_test_spec_2/\")
-    #initialize Class and add constant for the User Item namespace
-    dyn_class_def = "class #{@user_doc_class_name} < CouchRest::ExtendedDocument
+    #Security TODO: remove spaces and other 
+
+    #initialize Class and add constant for the User namespace
+    #---- Dynamic Class Definitions ----
+    dyn_user_class_def = "class #{@user_doc_class_name} < BufsInfoDoc
       use_database CouchRest.database!(\"http://#{@namespace.to_s}/\")
-    end"
-    puts "Dynamic Class Def:\n #{dyn_class_def}"
+      class << self; attr_accessor :user_attachClass; end
 
-    UserDB.class_eval(dyn_class_def)
+      #Find documents by their category
+      view_by :my_category
+
+      def self.namespace
+        CouchRest.database!(\"http://#{@namespace.to_s}/\")
+      end
+    end"
+
+    dyn_attach_class_def = "class #{@user_attach_class_name} < BufsInfoAttachment
+      use_database CouchRest.database!(\"http://#{@namespace.to_s}/\")
+
+      def self.namespace
+        CouchRest.database!(\"http://#{@namespace.to_s}/\")
+      end
+    end"
+
+    #----------------------------------
+    #puts "Dynamic Class Def:\n #{dyn_class_def}"
+
+    UserDB.class_eval(dyn_user_class_def)
+    UserDB.class_eval(dyn_attach_class_def)
     #puts "Database: #{UserDB.const_get(@user_doc_class_name).use_database.inspect}"
 
     @docClass = UserDB.const_get(@user_doc_class_name)
+    @attachClass = UserDB.const_get(@user_attach_class_name)
+    @docClass.user_attachClass = @attachClass
+
+    #Perform user <=> CouchDB Document bindings
+    #Add to List of docClasses
+    UserDB.docClasses << @docClass
+    UserDB.docClasses.uniq!
+    #Assign user CouchDB Document (for looking up user's docClass)
+    UserDB.user_to_docClass[user_id] = @docClass
+    #Assign users to a CouchDB Extended Document Class (allows shared db for multiple users)
+    if UserDB.docClass_users[@docClass.name]
+      UserDB.docClass_users[@docClass.name]  << user_id
+    else
+      UserDB.docClass_users[@docClass.name] = [user_id]
+    end
+    UserDB.docClass_users[@docClass.name].uniq!  
 
   end
 end 
@@ -343,4 +387,3 @@ end
    # @name_space = name_space
    # use_database CouchDB2
   #end
-=end

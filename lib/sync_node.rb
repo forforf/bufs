@@ -1,10 +1,30 @@
 
 require File.dirname(__FILE__) + '/abstract_node'
+require File.dirname(__FILE__) + '/view_directory_reader'
 
 
 module AddNameSpace
   def full_name_space
     self.class.to_s
+  end
+end
+
+#This will probably need to change as it's pretty hackish right now, very hackish
+module SyncIntegration
+  def self.sync_file_view(file_view_dir, file_model_dir)
+    reader = ViewDirectoryReader.new(file_view_dir)
+    read_only_nodes = reader.read_directory
+    #update file model
+    SyncIntegration.sync_file_model(file_model_dir, read_only_nodes)
+  end
+
+  def self.sync_file_model(file_model_dir, other_nodes=nil)
+    SyncNode.set_sync_set_types([DBDocNode, FileSystemDocNode])
+    BufsFileSystem.set_name_space(file_model_dir)
+    abs_node_list = BufsFileSystem.all.map {|n| AbstractNode.new(n)}
+    other_node_list = other_nodes.map {|n| AbstractNode.new(n)} #if other_nodes
+    master_list = SyncNode.master_list([abs_node_list, other_node_list])
+    synced_list = SyncNode.sync_master_list(master_list)
   end
 end
 
@@ -93,11 +113,45 @@ class SyncNode
     end
   end
 
+  def self.master_list(abs_node_lists)
+    master_list = {}
+    abs_node_lists.each do |abs_node_list|
+      abs_node_list.each do |abs_node|
+        if master_list[abs_node.my_category]
+          master_list[abs_node.my_category] << abs_node
+        else
+	  master_list[abs_node.my_category] = [abs_node]
+        end
+      end
+    end
+    return master_list
+  end
+
+  def self.sync_master_list(master_list)
+    sync_master_list = {}
+    master_list.each do |my_cat, nodes|
+      sync_master_list[my_cat]= SyncNode.new(nodes)
+    end
+    return sync_master_list
+  end
+
   def initialize(nodes_to_keep_in_sync)
     @synced_nodes = []
     raise ArgumentError, "Cannot sync nil" if nodes_to_keep_in_sync == nil
     raise NameError, "The set of node types (classes) has not been set" unless SyncNode.sync_set_types
-    @synced_nodes = [nodes_to_keep_in_sync].flatten!  #allows a single node to be passed without array wrapper
+    self.sync_update(nodes_to_keep_in_sync)
+    #@synced_nodes = [nodes_to_keep_in_sync].flatten!  #allows a single node to be passed without array wrapper
+    #@synced_nodes.compact! #ignore null values
+    #self.validate_synchronizable(@synced_nodes)
+    #@my_category = self.validate_node_categories(@synced_nodes)
+    #@parent_categories = self.merge_parent_categories(@synced_nodes)
+    #nodes_to_sync = self.normalize_syncable_node_list(@synced_nodes, @my_category)
+    #freshest_file_data = self.node_with_freshest_file_data(nodes_to_sync)
+    #@synced_nodes = self.sync_nodes(@synced_nodes, freshest_file_data)
+  end
+
+  def sync_update(nodes_to_keep_in_sync)
+    @synced_nodes = [nodes_to_keep_in_sync].flatten!  #allows a single node to be passed without array w
     @synced_nodes.compact! #ignore null values
     self.validate_synchronizable(@synced_nodes)
     @my_category = self.validate_node_categories(@synced_nodes)

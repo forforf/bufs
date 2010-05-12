@@ -1,1 +1,1 @@
-["synced","bb"]
+["synced","bb","view"]

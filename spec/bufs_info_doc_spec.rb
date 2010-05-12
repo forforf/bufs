@@ -6,20 +6,11 @@ require 'couchrest'
 #doc_db_name = "http://bufs.younghawk.org:5984/bufs_test_spec/"
 CouchDB = BufsFixtures::CouchDB #CouchRest.database!(doc_db_name)
 CouchDB.compact!
-
-module BufsDocSpec
-  LibDir = File.dirname(__FILE__) + '/../lib/'
-end
+CouchDB2 = BufsFixtures::CouchDB2
+CouchDB2.compact!
 
 
-#TestFileLocation = 'C:/Documents and Settings/dmartin/My Documents/tmp/'
-#ProjectLocation = '/media-ec2/ec2a/projects/bufs/'
-#TestFileLocation = ProjectLocation + 'sandbox_for_specs/db_doc_specs/'
-
-#SrcLocation = ProjectLocation + 'src/'
-
-
-require BufsDocSpec::LibDir + 'bufs_info_doc'
+require File.dirname(__FILE__) + '/../lib/bufs_info_doc'
 
 BufsInfoDoc.set_name_space(CouchDB)
 
@@ -156,36 +147,6 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     #check all cats are there and are unique
     parent_cats.sort.should == (orig_parent_cats + new_cats).uniq.sort
   end
-
-  #aliases for add_parent_categories are deprecated
-  #it "should work using add_category alias for add_parent_categories" do
-  #  pre_existing_categories = BufsInfoDoc.get(@bufs_info_doc['_id']).parent_categories
-  #  new_cat3 = 'new category test3'
-  #  @bufs_info_doc.add_category(new_cat3)
-  #  all_uniq_categories = (@bufs_info_doc.parent_categories + pre_existing_categories).uniq.sort
-  #  CouchDB.get(@bufs_info_doc['_id'])['parent_categories'].sort.should == all_uniq_categories
-  #end
-
-  #it "should work using add_categories alias for add_parent_categories" do
-  #  pre_existing_categories = BufsInfoDoc.get(@bufs_info_doc['_id']).parent_categories
-  #  new_cat4 = 'new category test4'
-  #  @bufs_info_doc.add_categories(new_cat4)
-  #  @bufs_info_doc.parent_categories.should include new_cat4
-  #  all_uniq_categories = (@bufs_info_doc.parent_categories + pre_existing_categories).uniq.sort
-  #  CouchDB.get(@bufs_info_doc['_id'])['parent_categories'].sort.should == all_uniq_categories
-  #end
-
-  #this is combined with the test above
-  #it "should work for adding an array of categories" do
-  #  pre_existing_categories = BufsInfoDoc.get(@bufs_info_doc['_id']).parent_categories
-  #  multi_cats = ['cat5', 'cat6']
-  #  @bufs_info_doc.add_parent_categories(multi_cats)
-  #  multi_cats.each do |cat|
-  #    @bufs_info_doc.parent_categories.should include cat
-  #  end
-  #  all_uniq_categories = (@bufs_info_doc.parent_categories + pre_existing_categories).uniq.sort
-  #  CouchDB.get(@bufs_info_doc['_id'])['parent_categories'].sort.should == all_uniq_categories
-  #end
 
   it "should be able to remove parent categories" do
     #set initial conditions
@@ -420,3 +381,61 @@ describe BufsInfoDoc, "Document Operations with Attachments" do
   #end
 end
 
+=begin
+describe UserDB do
+  include BufsInfoDocSpecHelpers
+
+  before(:each) do
+   @user1_db = UserDB.new(CouchDB, "User001")
+   @user2_db = UserDB.new(CouchDB2, "User002")
+    #all_docs = UserDB.all
+    #all_docs.each do |doc|
+    #  doc.destroy
+    #end
+    #UserDB.on(CouchDB2)
+  end
+
+  it "should initialize user docs properly" do
+    #user_db = UserDB.new(CouchDB2)
+    #puts "docClass: #{@user_db.docClass.inspect}"
+    user1_doc = @user1_db.docClass.new({:user1_field => "user1_data"})
+    user2_doc = @user2_db.docClass.new({:user2_field => "user2_data"})
+    #puts "user_doc: #{user_doc.inspect}"
+    #puts "user_doc class: #{user_doc.class.inspect}"
+    user1_doc.save
+    user2_doc.save
+    #p user_doc
+ 
+  end
+=begin
+  it "should inherit from super class" do
+    user_DB = UserDB.new(get_default_params)
+    user_DB.my_category.should == get_default_params[:my_category]
+  end
+
+  it "should save to database" do
+    #set initial conditions
+    orig_db_size = UserDB.all.size
+    raise "Can't find UserDB" unless orig_db_size
+    doc_params = get_default_params.merge({:my_category => 'save_test_user_db'})
+    doc_to_save = UserDB.new(doc_params.dup)
+
+    #test
+    UserDB.on(CouchDB2)
+    save_result = doc_to_save.save
+    puts "Save Result: #{save_result.inspect}"
+
+    #check results
+    puts "Name Space: #{UserDB.name_space}"
+    puts "Id to retrieve: #{doc_to_save['_id']}"
+    doc_params.keys.each do |param|
+      db_param = CouchDB.get(doc_to_save['_id'])[param]
+      doc_to_save[param].should == db_param
+      #test accessor method
+      doc_to_save.__send__(param).should == db_param
+    end
+    UserDB.all.size.should == orig_db_size + 1
+  end
+#=end
+end
+=end
