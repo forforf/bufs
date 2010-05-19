@@ -116,7 +116,8 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   #Returns the attachment id associated with this document.  Note that this does not depend upon there being an attachment.
   def my_attachment_doc_id
     if self['_id']
-      return self['_id'] + BufsInfoDoc.attachment_base_id
+      #FIXME:  The "_att_temp_id" is a magic string that's used in other methods, recreate common reference
+      return self['_id'] + "_att_temp_id"#BufsInfoDoc.attachment_base_id
     else
       raise "Can't attach to a document that has not been saved to the db"
     end

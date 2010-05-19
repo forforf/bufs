@@ -39,11 +39,6 @@ describe UserDB, "Initialization" do
     @user1_db = UserDB.new(CouchDB, @user1_id)
     @user2_db = UserDB.new(CouchDB2, @user2_id)
    
-    #all_docs = UserDB.all
-    #all_docs.each do |doc|
-    #  doc.destroy
-    #end
-    #UserDB.on(CouchDB2)
   end
 
   it "should initialize user docs properly" do
@@ -363,6 +358,11 @@ describe UserDB, "Document Operations with Attachments" do
     # => need to enforce database naming convention.
     #query for couchrest-type that matches /UserDB::UserDoc*/
     UserDB.docClasses.each do |docClass|
+      attachClass = docClass.user_attachClass
+      all_attach_docs = attachClass.all
+      all_attach_docs.each do |attach_doc|
+        attach_doc.destroy
+      end
       all_user_docs = docClass.all
       all_user_docs.each do |user_doc|
         user_doc.destroy
@@ -519,17 +519,16 @@ describe UserDB, "Document Operations with Attachments" do
       doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_raw_data_att', :parent_categories => parent_cats[user_id]})
       basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params)
       basic_docs[user_id].save
-      metadata[user_id] = basic_docs[user_id].add_raw_data(attach_name, binary_data_content_type, binary_data)
-      #puts "Doc ID: #{doc_basic['_id']}"
-      #db_doc = BufsInfoDoc.get(doc_basic['_id'])
+      #test
+      #metadata[user_id] = basic_docs[user_id].add_raw_data(attach_name, binary_data_content_type, binary_data)
+      #metadata[user_id].should == ["should be the metadata for that user"]
+      basic_docs[user_id].add_raw_data(attach_name, binary_data_content_type, binary_data)
+      #verify results
       att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_attachment_doc_id
-      #puts "Attachment Doc ID: #{att_doc_id}"
       att_docs[user_id] = docClass.get(att_doc_ids[user_id])
-      #puts "Attachment Doc: #{att_doc.inspect}"
-      #p att_doc['_attachments'].keys
       esc_att_name = BufsEscape.escape(attach_name)
+      att_docs[user_id].should_not == nil
       att_docs[user_id]['_attachments'].keys.should include esc_att_name
-      #puts "Raw Data Metadata:" +  metadata.inspect
       file_mod_time = att_docs[user_id]['md_attachments'][esc_att_name]['file_modified']
       Time.parse(file_mod_time).should > (Time.now - 4) #4 seconds should be enough time
       att_docs[user_id]['_attachments'][esc_att_name]['content_type'].should == binary_data_content_type
