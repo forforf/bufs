@@ -158,6 +158,7 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
   
   #CouchDB attachment metadata parameters supported by BufsInfoAttachment
   CouchDBAttachParams = ['content_type', 'stub']
+  AttachmentID = "_attachments"
 
   #Setter for setting the CoucDB database
   #Referred to name space because it defines the name space in which the 
@@ -171,11 +172,12 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
   #FIXME: Updated from BufsInfoAttachment to support UserDB stuff, but BufsInfoAttachment not updated
   def self.create_attachment_package(bufs_info_doc, attachments)
     raise "No document provided for attachments" unless bufs_info_doc
+    raise "No id found for the document" unless bufs_info_doc['_id']
     raise "No attachments provided for attaching" unless attachments
     #seperate attachment data from custom attachment metadata
     #this is necessary since couchdb can't put custom metadata with its attachments
     sorted_attachments = BufsInfoAttachmentHelpers.sort_attachment_data(attachments)
-    uniq_id = bufs_info_doc['_id'] + bufs_info_doc.class.attachment_base_id
+    uniq_id = bufs_info_doc['_id'] + "_att_temp_id" #AttachmentID #bufs_info_doc.class.attachment_base_id
     custom_metadata_doc_params = {'_id' => uniq_id, 'md_attachments' => sorted_attachments['obj_md_by_name']}
     doc = bufs_info_doc.class.user_attachClass.get(uniq_id)
     #doc = BufsInfoAttachment.get(uniq_id)

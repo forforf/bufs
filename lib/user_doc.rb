@@ -243,7 +243,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
       #before_self = self.parent_categories
       #super
       puts self.class.inspect
-      puts self.class.name_space.inspect
+      puts self.class.namespace.inspect
       self.class.namespace.save_doc(self) #saving using database method, not ExtendedDoc method (didn't work for some reason)
       #BufsInfoDoc.name_space.save_doc(self) #saving using database method, not ExtendedDoc method (didn't work for some reason) 
       #raise "Self: #{before_self}, Before: #{existing_doc.parent_categories.inspect}, after: #{BufsInfoDoc.get(self['_id']).parent_categories.inspect}" #if save_type == :deletions
@@ -310,7 +310,7 @@ class UserDB
   UserDB.user_to_docClass = {}
   UserDB.docClass_users = {}
 
-  attr_reader :docClass, :namespace
+  attr_reader :docClass, :namespace #, :user_attach_class_name
   def initialize(couchdb, user_id)
     @namespace = couchdb
     @user_doc_class_name = "UserDoc#{user_id}"

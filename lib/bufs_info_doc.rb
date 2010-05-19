@@ -144,6 +144,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   end
 
   #Get attachment data.  Note that the data is read in as a complete block, this may be something that needs optimized.
+  #FIXME: Broken until BufsInfoAttachment is replaced with self.class.user_attachClass
   def add_raw_data(attach_name, content_type, raw_data, file_modified_at = nil)
     file_metadata = {}
     if file_modified_at
@@ -202,7 +203,9 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     end
     #puts "getting attachment doc id"
     #p my_attachment_doc_id
-    sia = BufsInfoAttachment.get(my_attachment_doc_id)
+    #Updated 5/18/2010
+    #sia = BufsInfoAttachment.get(my_attachment_doc_id)
+    sia = self.class.user_attachClass.get(my_attachment_doc_id)
     #p my_attachment_doc_id
     # puts "SIA found: #{sia.inspect}"
     if sia
@@ -210,15 +213,21 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
       sia.update_attachment_package(attachment_package)
     else
       puts "Creating new Attachment"
-      sia = BufsInfoAttachment.create_attachment_package(self['_id'], attachment_package)
+      #sia = BufsInfoAttachment.create_attachment_package(self['_id'], attachment_package)
+      #FIXME: Added 5/18/2010 not part of spec tests yet
+      sia = self.class.user_attachClass.create_attachment_package(self, attachment_package)
       #puts "SIA created: #{sia.inspect}"
     end
 
     #puts "Current ID #{self['_id']}"
-    current_node_doc = BufsInfoDoc.get(self['_id'])
+    #current_node_doc = BufsInfoDoc.get(self['_id'])
+    current_node_doc = self.class.get(self['_id'])
+    raise "unable to find doc with id: #{self['_id']}" unless current_node_doc
     current_node_doc.attachment_doc_id = sia['_id']
     current_node_doc.save
-    current_node_attach = BufsInfoAttachment.get(current_node_doc.attachment_doc_id)
+    #FIXME: Added 5/18/2010
+    #current_node_attach = BufsInfoAttachment.get(current_node_doc.attachment_doc_id)
+    current_node_attach = self.class.user_attachClass.get(current_node_doc.attachment_doc_id)
     current_node_attach.save
   end
 
