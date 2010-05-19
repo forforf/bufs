@@ -3,7 +3,7 @@
 #TestDirBaseLocation = 'C:/Documents and Settings/dmartin/My Documents/tmp/'
 
 require File.dirname(__FILE__) + '/bufs_file_system'
-require File.dirname(__FILE__) + '/bufs_info_doc'
+require File.dirname(__FILE__) + '/temp_bufs_info_doc'
 #require ANSrcLocation + 'bufs_info_file_view_builder.rb'
 
 class ReadOnlyNode

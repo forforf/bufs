@@ -381,7 +381,7 @@ describe UserDB, "Document Operations with Attachments" do
      end
    end
 
-  it "save data files as an attachment with metadata" do
+  it "should save data files as an attachment with metadatax" do
     #initial conditions (attachment file)
     #TODO: vary filename by user
     test_filename = @test_files['binary_data_spaces_in_fname_pptx']
@@ -397,6 +397,10 @@ describe UserDB, "Document Operations with Attachments" do
       basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
       basic_docs[user_id].save #doc must be saved before we can attach
     end
+    #check initial conditions
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      docClass.get(basic_docs[user_id]['_id']['attachment_doc_id']).should == nil
+    end
     #test
     UserDB.user_to_docClass.each do |user_id, docClass|
       basic_docs[user_id].add_data_file(test_filename)
@@ -406,14 +410,61 @@ describe UserDB, "Document Operations with Attachments" do
     att_docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
       att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
-      #puts "Attachment Doc ID: #{att_doc_id}"
       att_docs[user_id] = docClass.get(att_doc_ids[user_id])
-      puts "Attachment Doc: #{att_docs[user_id].inspect}"
-      p att_docs[user_id]['_attachments'].keys
+      #puts "Attachment Doc: #{att_docs[user_id].inspect}"
+      #p att_docs[user_id]['_attachments'].keys
+      docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_basename)
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
+     
     end
   end
+
+  it "should cleanly remove attachments" do
+    #initial conditions 
+    #TODO: vary filename by user
+    test_filename = @test_files['binary_data_spaces_in_fname_pptx']
+    test_basename = File.basename(test_filename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #intial conditions (doc)
+    parent_cats = {}
+    doc_params = {}
+    basic_docs = {}
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      parent_cats[user_id] = ['docs with attachments']
+      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_id]})
+      basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
+      basic_docs[user_id].save #doc must be saved before we can attach
+    end
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      basic_docs[user_id].add_data_file(test_filename)
+    end
+    #verify initial conditions
+    att_doc_ids = {}
+    att_docs = {}
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
+      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
+      #puts "Attachment Doc: #{att_docs[user_id].inspect}"
+      #p att_docs[user_id]['_attachments'].keys
+      docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
+      att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_base
+      att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
+    end
+    #test
+    attachment_name = test_basename
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      doc = docClass.get(basic_docs[user_id]['_id'])
+      doc.remove_attachment(attachment_name)
+    end
+    #check results
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      docClass.get(basic_docs[user_id]['_id']).attachment_doc_id.should == nil   #reference to attachment doc from user doc
+      att_docs[user_id] = docClass.get(att_doc_ids[user_id])  #attachment doc
+      att_docs[user_id].should == nil
+    end
+  end
+
 
   it "should avoid creating hellish names when escaping and unescaping" do
     #initial conditions (attachment file)
@@ -502,6 +553,7 @@ describe UserDB, "Document Operations with Attachments" do
   end
 
   it "should create a full doc from a node object with files" do
+    #initial conditions
     test_filename = @test_files['strange_characters_in_file_name']
     test_basename = File.basename(test_filename)
     NodeMock = Struct.new(:my_category, :parent_categories, :description, :files)
@@ -513,15 +565,14 @@ describe UserDB, "Document Operations with Attachments" do
     att_doc_ids = {}
     att_docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
+      #test
       docs[user_id] = docClass.create_from_node(node_obj_mock_with_files)
+      #check results
       docs[user_id].my_category.should == node_obj_mock_with_files.my_category
       docs[user_id].parent_categories.should == node_obj_mock_with_files.parent_categories
       docs[user_id].description.should == node_obj_mock_with_files.description
       att_doc_ids[user_id] = docClass.get(docs[user_id]['_id']).attachment_doc_id
-      #puts "Attachment Doc ID: #{att_doc_id}"
       att_docs[user_id] = docClass.get(att_doc_ids[user_id])
-      #puts "Attachment Doc: #{att_doc.inspect}"
-      #p att_doc['_attachments'].keys
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename)
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
     end
