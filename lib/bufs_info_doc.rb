@@ -124,11 +124,20 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   end
 
   #Get attachment metadata.  This does not return the actual data.
+  #FIXME: Broken in change to multi-user
   def get_file_data(attach_file_name)
     return CouchDB.fetch_attachment(BufsInfoAttachment.get(my_attachment_doc_id), attach_file_name)
   end
 
+  def get_attachment_names
+    att_doc_id = self.class.get(self['_id']).attachment_doc_id
+    att_doc = self.class.get(att_doc_id)||{}
+    attachments = att_doc['_attachments']||{}
+    att_names = attachments.keys
+  end
+
   #Get attachment data.  Note that the data is read in as a complete block, this may be something that needs optimized.
+
   def add_raw_data(attach_name, content_type, raw_data, file_modified_at = nil)
     file_metadata = {}
     if file_modified_at

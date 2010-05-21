@@ -28,6 +28,16 @@ module UserDocSpecHelpers
     init_params = get_default_params.merge(override_defaults)
     return UserDB.user_to_docClass[user_id].new(init_params)
   end
+
+  def make_doc_w_attach_from_file(user_id, att_fname, override_defaults={})
+    test_filename = att_fname 
+    test_basename = File.basename(test_filename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    new_doc = make_doc_no_attachment(user_id, override_defaults)
+    new_doc.save #doc must be saved before we can attach
+    new_doc.add_data_file(test_filename)
+    return new_doc 
+  end
 end
 
 describe UserDB, "Initialization" do
@@ -424,29 +434,21 @@ describe UserDB, "Document Operations with Attachments" do
     #initial conditions 
     #TODO: vary filename by user
     test_filename = @test_files['binary_data_spaces_in_fname_pptx']
-    test_basename = File.basename(test_filename)
-    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
-    #intial conditions (doc)
     parent_cats = {}
     doc_params = {}
     basic_docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
       parent_cats[user_id] = ['docs with attachments']
       doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_id]})
-      basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
-      basic_docs[user_id].save #doc must be saved before we can attach
-    end
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      basic_docs[user_id].add_data_file(test_filename)
+      basic_docs[user_id] = make_doc_w_attach_from_file(user_id, test_filename, doc_params[user_id])
     end
     #verify initial conditions
     att_doc_ids = {}
     att_docs = {}
+    test_basename = File.basename(test_filename)
     UserDB.user_to_docClass.each do |user_id, docClass|
       att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
       att_docs[user_id] = docClass.get(att_doc_ids[user_id])
-      #puts "Attachment Doc: #{att_docs[user_id].inspect}"
-      #p att_docs[user_id]['_attachments'].keys
       docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_base
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
@@ -465,6 +467,43 @@ describe UserDB, "Document Operations with Attachments" do
     end
   end
 
+  it "should list attachment list" do
+    #initial conditions
+    #TODO: vary filename by user, support multiple attachments
+    test_filename = @test_files['binary_data_spaces_in_fname_pptx']
+    parent_cats = {}
+    doc_params = {}
+    basic_docs = {}
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      parent_cats[user_id] = ['docs with attachments']
+      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_id]})
+
+      basic_docs[user_id] = make_doc_w_attach_from_file(user_id, test_filename, doc_params[user_id])
+    end
+    #verify initial conditions
+    att_doc_ids = {}
+    att_docs = {}
+    test_basename = File.basename(test_filename)
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
+      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
+      docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
+      att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #
+      att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
+    end
+    #test
+    attachment_names = {}
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      doc = docClass.get(basic_docs[user_id]['_id'])
+      attachment_names[user_id] = doc.get_attachment_names
+    end
+    #check results
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      attachment_names[user_id].size.should == 1
+      attachment_names[user_id].first.should == BufsEscape.escape(test_basename)
+    end
+
+  end
 
   it "should avoid creating hellish names when escaping and unescaping" do
     #initial conditions (attachment file)
