@@ -244,6 +244,12 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     current_node_attachment_doc.attachment_url(attachment_name)
   end
 
+  def attachment_data(attachment_name)
+    current_node_doc = self.class.get(self['_id'])
+    att_doc_id = current_node_doc['attachment_doc_id']
+    current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
+    current_node_attachment_doc.read_attachment(attachment_name)
+  end
   #Save the object to the CouchDB database
   #  save_type can be either :additions or :deletions
   #  :additions will merge parent categories with any categories in the database
