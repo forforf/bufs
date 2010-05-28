@@ -430,7 +430,7 @@ describe UserDB, "Document Operations with Attachments" do
     end
   end
 
-  it "should cleanly remove attachments" do
+  it "should cleanly remove all attachments" do
     #initial conditions 
     #TODO: vary filename by user
     test_filename = @test_files['binary_data_spaces_in_fname_pptx']
@@ -457,7 +457,7 @@ describe UserDB, "Document Operations with Attachments" do
     attachment_name = test_basename
     UserDB.user_to_docClass.each do |user_id, docClass|
       doc = docClass.get(basic_docs[user_id]['_id'])
-      doc.remove_attachment(attachment_name)
+      doc.remove_attachments(attachment_name)
     end
     #check results
     UserDB.user_to_docClass.each do |user_id, docClass|

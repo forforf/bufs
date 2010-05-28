@@ -177,7 +177,7 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
     #seperate attachment data from custom attachment metadata
     #this is necessary since couchdb can't put custom metadata with its attachments
     sorted_attachments = BufsInfoAttachmentHelpers.sort_attachment_data(attachments)
-    uniq_id = bufs_info_doc['_id'] + "_att_temp_id" #AttachmentID #bufs_info_doc.class.attachment_base_id
+    uniq_id = bufs_info_doc['_id'] + BufsInfoDoc.attachment_base_id #"_att_temp_id" #AttachmentID #bufs_info_doc.class.attachment_base_id
     custom_metadata_doc_params = {'_id' => uniq_id, 'md_attachments' => sorted_attachments['obj_md_by_name']}
     doc = bufs_info_doc.class.user_attachClass.get(uniq_id)
     #doc = BufsInfoAttachment.get(uniq_id)
@@ -251,7 +251,7 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
         #
       end
     end
-    return att_doc.class.get(att_doc)
+    return att_doc.class.get(att_doc['_id'])
   end
 
   #retrieves document attachments for a particular document (given its id)

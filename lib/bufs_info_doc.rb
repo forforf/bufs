@@ -11,6 +11,14 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   #@attachment_base_id = '_attachments'
   #use_database @name_space
 
+  def self.namespace 
+    "BufsInfoDocDefault"  #this should be overwritten
+  end
+
+  def self.user_attachClass
+    BufsInfoAttachment #this should be overwritten
+  end
+
   #If a document has an attachment it gets this accessor set (needs testing!! not sure it works in all cases)
   attr_accessor :attachment_doc
 
@@ -117,7 +125,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   def my_attachment_doc_id
     if self['_id']
       #FIXME:  The "_att_temp_id" is a magic string that's used in other methods, recreate common reference
-      return self['_id'] + "_att_temp_id"#BufsInfoDoc.attachment_base_id
+      return self['_id'] + BufsInfoDoc.attachment_base_id #"_att_temp_id"#BufsInfoDoc.attachment_base_id
     else
       raise "Can't attach to a document that has not been saved to the db"
     end
@@ -267,8 +275,9 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
       #before_self = self.parent_categories
       #super
       puts self.class.inspect
-      puts self.class.namespace.inspect
-      self.class.namespace.save_doc(self) #saving using database method, not ExtendedDoc method (didn't work for some reason)
+      #puts self.class.namespace.inspect
+      self.database.save_doc(self)
+      #self.class.namespace.save_doc(self) #saving using database method, not ExtendedDoc method (didn't work for some reason)
       #BufsInfoDoc.name_space.save_doc(self) #saving using database method, not ExtendedDoc method (didn't work for some reason) 
       #raise "Self: #{before_self}, Before: #{existing_doc.parent_categories.inspect}, after: #{BufsInfoDoc.get(self['_id']).parent_categories.inspect}" #if save_type == :deletions
     rescue RestClient::RequestFailed => e

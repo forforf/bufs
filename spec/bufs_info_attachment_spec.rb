@@ -3,9 +3,7 @@ require 'couchrest'
 
 require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
 
-#TODO change to bufs.younghawk.org
-#doc_db_name = "http://bufs.younghawk.org:5984/bufs_test_spec/"
-CouchDB = CouchDB = BufsFixtures::CouchDB #CouchRest.database!(doc_db_name)
+CouchDB = BufsFixtures::CouchDB #CouchRest.database!(doc_db_name)
 CouchDB.compact!
 
 module BufsAttachSpec
@@ -21,10 +19,23 @@ require BufsAttachSpec::LibDir + 'bufs_info_doc'  #used for getting the attachme
 require BufsAttachSpec::LibDir+ 'bufs_info_attachment'
 
 BufsInfoAttachment.set_name_space(CouchDB)
+#BufsInfoAttachment.use_database(CouchDB)  #TODO  Catch errors when database isn't set
 
-describe BufsInfoAttachment do
+describe BufsInfoAttachment do 
   before(:all) do
     @test_files = BufsFixtures.test_files
+    BufsInfoDoc.use_database CouchDB
+
+ 
+
+    @test_doc = BufsInfoDoc.new(:my_category => "attach_test_doc",
+                                :parent_categories => ["atd_dad", "atd_mom"])
+    @test_doc.save
+    @test_doc_id = @test_doc['_id']
+  end
+
+  after(:all) do
+    @test_doc.destroy
   end
 
   before(:each) do
@@ -38,14 +49,15 @@ describe BufsInfoAttachment do
     test_file = @test_files['binary_data_pptx']
     test_file_basename = File.basename(test_file)
     test_file_modified_time = File.mtime(test_file)
-    test_doc_id = 'dummy_doc'
+    test_doc = @test_doc
+    test_doc_id = @test_doc_id
     md_params = {}
     md_params['content_type'] = MimeNew.for_ofc_x(test_file)
     md_params['file_modified'] = test_file_modified_time.to_s
     data = File.open(test_file, 'rb') {|f| f.read}
     attachs = {test_file_basename => {'data' => data, 'md' => md_params }}
     #test
-    bia = BufsInfoAttachment.create_attachment_package(test_doc_id, attachs )
+    bia = BufsInfoAttachment.create_attachment_package(test_doc, attachs )
     #check results
     test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
     bia['_id'].should == test_attachment_id
@@ -56,18 +68,21 @@ describe BufsInfoAttachment do
     bia['_attachments'][test_file_basename]['content_type'].should == md_params['content_type']
   end
 
+
  it "should handle file names with strange (but somewhat common) characters and convert to more standard form" do
     test_file = @test_files['strange_characters_in_file_name']
     test_file_basename = File.basename(test_file)
     test_file_modified_time = File.mtime(test_file)
-    test_doc_id = 'dummy_doc_strange_character_file_name'
+    test_doc = @test_doc
+    test_doc_id = @test_doc_id
+    #test_doc_id = 'dummy_doc_strange_character_file_name'
     md_params = {}
     md_params['content_type'] = MimeNew.for_ofc_x(test_file)
     md_params['file_modified'] = test_file_modified_time.to_s
     data = File.open(test_file, 'rb') {|f| f.read}
     attachs = {test_file_basename => {'data' => data, 'md' => md_params }}
     #test
-    bia = BufsInfoAttachment.create_attachment_package(test_doc_id, attachs )
+    bia = BufsInfoAttachment.create_attachment_package(test_doc, attachs )
     #check results
     test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
     bia['_id'].should == test_attachment_id
@@ -92,9 +107,11 @@ describe BufsInfoAttachment do
     attachs = { test_file1_basename => {'data' => data1, 'md' => md_params1},
       test_file2_basename => {'data' => data2, 'md' => md_params2}
     }
-    test_doc_id = 'dummy_create_multiple_attachments'
+    test_doc = @test_doc
+    test_doc_id = @test_doc_id
+    #test_doc_id = 'dummy_create_multiple_attachments'
     #test
-    bia = BufsInfoAttachment.create_attachment_package(test_doc_id, attachs)
+    bia = BufsInfoAttachment.create_attachment_package(test_doc, attachs)
     #verify results
     test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
     bia['_id'].should == test_attachment_id
@@ -121,8 +138,10 @@ describe BufsInfoAttachment do
     attachs = { test_file1_basename => {'data' => data1, 'md' => md_params1},
       test_file2_basename => {'data' => data2, 'md' => md_params2}
     }
-    test_doc_id = 'dummy_add_new_attachments'
-    bia_existing = BufsInfoAttachment.create_attachment_package(test_doc_id, attachs)
+    #test_doc_id = 'dummy_add_new_attachments'
+    test_doc = @test_doc
+    test_doc_id = @test_doc_id
+    bia_existing = BufsInfoAttachment.create_attachment_package(test_doc, attachs)
     test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
     #verify attachment exists
     bia_existing['_id'].should == test_attachment_id
@@ -137,10 +156,10 @@ describe BufsInfoAttachment do
     attachs = {test_file_basename => {'data' => data, 'md' => md_params }}
     bia_existing = BufsInfoAttachment.get(bia_existing['_id'])
     #test
-    bia_updated = bia_existing.update_attachment_package(attachs)
+    bia_updated = bia_existing.update_attachment_package(test_doc, attachs)
     #verify results
-    p test_file_basename
-    p BufsEscape.escape(test_file_basename)
+    #p test_file_basename
+    #p BufsEscape.escape(test_file_basename)
     bia_updated['_id'].should == bia_existing['_id']
     bia_updated['md_attachments'][BufsEscape.escape(test_file_basename)]['file_modified'].should == test_file_modified_time.to_s
     bia_updated['_attachments'][BufsEscape.escape(test_file_basename)]['content_type'].should == md_params['content_type']
@@ -151,7 +170,9 @@ describe BufsInfoAttachment do
     test_file = @test_files['simple_text_file']
     test_file_basename = File.basename(test_file)
     test_file_modified_time = File.mtime(test_file)
-    test_doc_id = 'dummy_fresh_attachment_replaces_stale'
+    test_doc = @test_doc
+    test_doc_id = @test_doc_id
+    #test_doc_id = 'dummy_fresh_attachment_replaces_stale'
     test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
     #create a single record
     md_params = {}
@@ -159,7 +180,7 @@ describe BufsInfoAttachment do
     md_params['file_modified'] = test_file_modified_time.to_s
     data = File.open(test_file, 'rb') {|f| f.read}
     attachs = {test_file_basename => {'data' => data, 'md' => md_params }}
-    bia = BufsInfoAttachment.create_attachment_package(test_doc_id, attachs )
+    bia = BufsInfoAttachment.create_attachment_package(test_doc, attachs )
     #verify initial condition
     bia['_id'].should == test_attachment_id
     bia['md_attachments'][BufsEscape.escape(test_file_basename)]['file_modified'].should == test_file_modified_time.to_s
@@ -184,8 +205,8 @@ describe BufsInfoAttachment do
                fresh_basename => {'data' => fresh_data, 'md' => md_params_fresh}
     }
   
-    #for creating, use the sid id and the method create_.... for updateing, use the sia id and the method update...
-    bia_updated = BufsInfoAttachment.update_attachment_package(test_attachment_id, attachs )
+    #for creating, use the sid  and the method create_.... for updateing, use the sia  and the method update...
+    bia_updated = BufsInfoAttachment.update_attachment_package(bia, attachs )
     #verify initial conditions
     bia_updated['_id'].should == test_attachment_id
     bia_updated['md_attachments'][BufsEscape.escape(stale_basename)]['file_modified'].should == stale_modified_time.to_s
@@ -203,7 +224,7 @@ describe BufsInfoAttachment do
     unstale_params = {'file_modified' => unstale_modified_time, 'content_type' => unstale_content_type}
     unstale_attach = { BufsEscape.escape(stale_basename) => {'data' => unstale_data, 'md'=> unstale_params } }
 
-    BufsInfoAttachment.update_attachment_package(test_attachment_id, unstale_attach)
+    BufsInfoAttachment.update_attachment_package(bia, unstale_attach)
     #database should now have more recent information for @stale_basename
 
     sleep 1 #to put some time difference
@@ -228,7 +249,8 @@ describe BufsInfoAttachment do
       BufsEscape.escape(fresh_basename) => {'data' => fresh_data2, 'md' => md_params_fresh2}
     }
     #test
-    fresh_bia = BufsInfoAttachment.update_attachment_package(test_attachment_id, attachs )
+    new_bia = BufsInfoAttachment.get(bia['_id'])
+    fresh_bia = BufsInfoAttachment.update_attachment_package(new_bia, attachs )
 
     #verify results
     #db should have fresh file, but not stale one (and maintain older db attachment)
@@ -258,11 +280,12 @@ describe BufsInfoAttachment do
     attachs = {test_file1_basename => {'data' => data1, 'md' => md_params1},
                test_file2_basename => {'data' => data2, 'md' => md_params2}
               }
-    test_doc_id = 'dummy_test_metadata_is_combined'
+    test_doc = @test_doc
+    test_doc_id = test_doc['_id']
     test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
-
-    bia = BufsInfoAttachment.create_attachment_package(test_doc_id, attachs )
-    data = BufsInfoAttachment.get_attachments(test_attachment_id)
+    test_attachment = BufsInfoAttachment.get(test_attachment_id)
+    bia = BufsInfoAttachment.create_attachment_package(test_doc, attachs)
+    data = BufsInfoAttachment.get_attachments(bia)
     #puts "SIA data: #{data.inspect}"
     data[BufsEscape.escape(test_file1_basename)]['file_modified'].should == test_file1_modified_time.to_s
     data[BufsEscape.escape(test_file1_basename)]['content_type'].should == MimeNew.for_ofc_x(test_file1)

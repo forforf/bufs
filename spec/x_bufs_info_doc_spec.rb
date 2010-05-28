@@ -6,13 +6,13 @@ require 'couchrest'
 #doc_db_name = "http://bufs.younghawk.org:5984/bufs_test_spec/"
 CouchDB = BufsFixtures::CouchDB #CouchRest.database!(doc_db_name)
 CouchDB.compact!
-#CouchDB2 = BufsFixtures::CouchDB2
-#CouchDB2.compact!
+CouchDB2 = BufsFixtures::CouchDB2
+CouchDB2.compact!
 
 
 require File.dirname(__FILE__) + '/../lib/bufs_info_doc'
 
-#BufsInfoDoc.set_name_space(CouchDB)
+BufsInfoDoc.set_name_space(CouchDB)
 
 module BufsInfoDocSpecHelpers
   DefaultDocParams = {:my_category => 'default',
@@ -33,7 +33,6 @@ module BufsInfoDocSpecHelpers
 end
 
 describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
-  BufsInfoDoc.use_database CouchDB
   include BufsInfoDocSpecHelpers
 
   before(:each) do
@@ -77,7 +76,6 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     #check results    
     BufsInfoDoc.all.size.should == orig_db_size
   end
-
 
   it "should save (not testing ScoutInfoDoc really)" do
     #set initial conditions
@@ -203,7 +201,6 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
   end
 end
 
-=begin
 describe BufsInfoDoc, "Document Operations with Attachments" do
   include BufsInfoDocSpecHelpers
 
@@ -384,7 +381,7 @@ describe BufsInfoDoc, "Document Operations with Attachments" do
   #end
 end
 
-#=begin
+=begin
 describe UserDB do
   include BufsInfoDocSpecHelpers
 
