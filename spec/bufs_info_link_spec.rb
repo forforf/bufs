@@ -6,26 +6,20 @@ require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
 CouchDB = BufsFixtures::CouchDB #CouchRest.database!(doc_db_name)
 CouchDB.compact!
 
-module BufsAttachSpec
+module BufsLinkSpec
   LibDir = File.dirname(__FILE__) + '/../lib/'
 end
 
-#ProjectLocation = '/media-ec2/ec2a/projects/bufs/'
-#TestFileLocation = ProjectLocation + 'sandbox_for_specs/attachment_specs/'
 
-#SrcLocation = ProjectLocation + 'src/'
+require BufsLinkSpec::LibDir + 'bufs_info_doc'  #used for getting the link id
+require BufsLinkSpec::LibDir+ 'bufs_info_link'
 
-require BufsAttachSpec::LibDir + 'bufs_info_doc'  #used for getting the attachment id
-require BufsAttachSpec::LibDir+ 'bufs_info_attachment'
-
-#BufsInfoAttachment.set_name_space(CouchDB)
-#BufsInfoAttachment.use_database(CouchDB)  #TODO  Catch errors when database isn't set
-
-describe BufsInfoAttachment do 
+describe BufsInfoLink do 
   before(:all) do
-    @test_files = BufsFixtures.test_files
+    
+  #@test_files = BufsFixtures.test_files
     BufsInfoDoc.use_database CouchDB
-    BufsInfoAttachment.use_database CouchDB
+    BufsInfoLink.use_database CouchDB
 
     @test_doc = BufsInfoDoc.new(:my_category => "attach_test_doc",
                                 :parent_categories => ["atd_dad", "atd_mom"])
@@ -38,11 +32,76 @@ describe BufsInfoAttachment do
   end
 
   before(:each) do
-    BufsInfoAttachment.all.each do |doc|
+    @test_link = "http://www.google.com"
+    @test_links = ["http://www.yahoo.com", "http:://www.bing.com"]
+    BufsInfoLink.all.each do |doc|
       doc.destroy
     end
   end
 
+  it "should initialize correctly" do
+    #check initial conditions
+    BufsInfoLink.all.size.should == 0
+    #test
+    new_link = BufsInfoLink.new(:uris => [@test_link])
+    #check results
+    new_link.uris.should == [@test_link]
+    #not saved to database yet
+    BufsInfoLink.all.size.should == 0
+  end
+
+  it "should be able to be created referencing the main doc" do
+    #check initial conditions
+    BufsInfoLink.all.size.should == 0
+    #test
+    BufsInfoLink.create_unsaved(@test_doc)['_id'].should == @test_doc['_id'] + @test_doc.class.link_base_id
+    #not saved to database yet
+    BufsInfoLink.all.size.should == 0
+  end
+
+  it "should be able to be created with links and saved to the db" do
+    #check initial conditions
+    BufsInfoLink.all.size.should == 0
+    #test
+    BufsInfoLink.create(@test_doc, @test_link)
+    #validate results
+    link_id = @test_doc['_id'] + @test_doc.class.link_base_id
+    link_doc = BufsInfoLink.get(link_id)  
+    link_doc.uris.should == [@test_link]
+    #not saved to database yet
+    BufsInfoLink.all.size.should == 1
+  end
+
+  it "should be able to add links to new or existing link docs" do
+    #check initial conditions
+    BufsInfoLink.all.size.should == 0
+    #test empty doc
+    BufsInfoLink.add_links(@test_doc, @test_link)
+    BufsInfoLink.all.size.should == 1
+    #test existing doc
+    BufsInfoLink.add_links(@test_doc, @test_links)
+    #check results
+    expected_uris = @test_links + [@test_link]
+    link_id = @test_doc['_id'] + @test_doc.class.link_base_id
+    link_doc = BufsInfoLink.get(link_id)
+    link_doc.should_not == nil
+    link_doc.uris.should_not == nil
+    link_doc.uris.sort!.should == expected_uris.sort!
+  end
+
+
+  it "should not add link if the uri is invalid" do
+    #set intitial conditions
+    link_db_size = BufsInfoLink.all.size
+    bad_uri_1 = nil
+    #test
+    lambda {BufsInfoLink.add_links(@test_doc, bad_uri_1)}.should raise_error(URI::InvalidURIError)
+    #check db
+    BufsInfoLink.all.size.should == link_db_size
+  end 
+   
+end
+=begin
   it "should create object and update the database with a single attachment if there is no other doc in database" do
     #set initial conditions
     test_file = @test_files['binary_data_pptx']
@@ -290,3 +349,4 @@ describe BufsInfoAttachment do
     data[BufsEscape.escape(test_file1_basename)]['content_type'].should == MimeNew.for_ofc_x(test_file1)
   end
 end
+=end

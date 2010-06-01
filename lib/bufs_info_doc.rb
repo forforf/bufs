@@ -2,6 +2,7 @@ require 'couchrest'
 require 'cgi' #Can replace with url_escape if performance is an issue
 
 require File.dirname(__FILE__) + '/bufs_info_attachment'
+require File.dirname(__FILE__) + '/bufs_info_link'
 
 #TODO keep the classes in separate files? 
 
@@ -17,6 +18,10 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
 
   def self.user_attachClass
     BufsInfoAttachment #this should be overwritten
+  end
+
+  def self.user_linkClass
+    BufsInfoLink  #this should be overwritten
   end
 
   #If a document has an attachment it gets this accessor set (needs testing!! not sure it works in all cases)
@@ -59,6 +64,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   property :description
   property :file_metadata
   property :attachment_doc_id
+  property :links_doc_id
 
   timestamps!
 
@@ -91,6 +97,10 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
 
   def self.attachment_base_id
     "_attachments"
+  end
+
+  def self.link_base_id
+    "_links"
   end
 
   #Initialize the document with no attachments and then initialize as a CouchRest::ExtendedDocument
@@ -282,7 +292,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
       #raise "Self: #{before_self}, Before: #{existing_doc.parent_categories.inspect}, after: #{BufsInfoDoc.get(self['_id']).parent_categories.inspect}" #if save_type == :deletions
     rescue RestClient::RequestFailed => e
       if e.http_code == 409
-        puts "Found existing doc while trying to save ... using it instead"
+        puts "Found existing doc (id: #{self['_id']} while trying to save ... using it instead"
 	case save_type
 	when :additions
           existing_doc.parent_categories = (existing_doc.parent_categories + self.parent_categories).uniq
@@ -303,10 +313,39 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     return self
   end
 
+  def my_link_doc_id
+    return self['_id'] + self.class.link_base_id
+  end
+
+
+  def add_links(links)
+    self.links_doc_id = self.my_link_doc_id  
+    self.save
+    self.class.user_linkClass.add_links(self, links)
+    #self.save
+  end
+
+  def remove_links(links_to_remove)
+    self.links_doc_id = self.my_link_doc_id
+    self.save
+    self.class.user_linkClass.remove_links(self, links_to_remove)
+  end
+
+
+  def get_link_names
+    link_doc_id = self.class.get(self['_id']).links_doc_id
+    link_doc = self.class.get(link_doc_id)||{}
+    links = link_doc['uris']||{}
+    link_names = links
+  end
+
+
   #Deletes the object and its CouchDB entry
   def destroy_node
     att_doc = self.class.get(self.attachment_doc_id)
     att_doc.destroy if att_doc
+    link_doc = self.class.get(self.links_doc_id)
+    link_doc.destroy if link_doc
     begin
       self.destroy
     rescue ArgumentError => e

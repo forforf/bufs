@@ -391,7 +391,7 @@ describe UserDB, "Document Operations with Attachments" do
      end
    end
 
-  it "should save data files as an attachment with metadatax" do
+  it "should save data files as an attachment with metadata" do
     #initial conditions (attachment file)
     #TODO: vary filename by user
     test_filename = @test_files['binary_data_spaces_in_fname_pptx']
@@ -696,10 +696,129 @@ describe UserDB, "Document Operations with Attachments" do
     end
   end
 
-
+  #FIXME: Test for links being destroyed
   #it "should return all model data when queried by the model's category name (my_category)" do
   #  ScoutInfoDoc.node_by_title('test_spec1.pptx').should == ScoutInfoDoc.by_title('test_spec1.pptx')
   #end
 
 
+end
+
+describe UserDB, "Document Operations with Links" do
+  include UserDocSpecHelpers
+
+  before(:each) do
+    #delete any existing db records
+    #TODO This only works if the db entry also exists in UserDB
+    #Need to query each user database (how do we know the names?)
+    # => need to enforce database naming convention.
+    #query for couchrest-type that matches /UserDB::UserDoc*/
+    UserDB.docClasses.each do |docClass|
+      linkClass = docClass.user_linkClass
+      all_link_docs = linkClass.all
+      all_link_docs.each do |link_doc|
+        link_doc.destroy
+      end
+      all_user_docs = docClass.all
+      all_user_docs.each do |user_doc|
+        user_doc.destroy
+      end
+    end
+
+    @user1_id = "User001"
+    @user2_id = "User002"
+    @user1_db = UserDB.new(CouchDB, @user1_id)
+    @user2_db = UserDB.new(CouchDB2, @user2_id)
+  end
+
+  it "has an attachment class associated with it" do
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      docClass.user_linkClass.name.should == "UserDB::UserLink#{user_id}"
+    end
+  end
+
+  it "should save links" do
+    #initial conditions (attachment file)
+    #TODO: vary filename by user
+    test_links= ["http://www.google.com", "http://www.bing.com"]
+    #intial conditions (doc)
+    parent_cats = {}
+    doc_params = {}
+    basic_docs = {}
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      parent_cats[user_id] = ['docs with links']
+      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_link1', :parent_categories => parent_cats[user_id]})
+      basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
+      basic_docs[user_id].save #doc must be saved before we can add links
+    end
+    #check initial conditions
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      docClass.get(basic_docs[user_id]['_id']['links_doc_id']).should == nil
+    end
+    #test
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      basic_docs[user_id].add_links(test_links)
+    end
+    #check results
+    link_doc_ids = {}
+    link_docs = {}
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      link_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_link_doc_id
+      link_docs[user_id] = docClass.get(link_doc_ids[user_id])
+      user_doc_from_db = docClass.get(basic_docs[user_id]['_id'])
+      #docClass.get(basic_docs[user_id]['_id'])['links_doc_id'].should == link_docs[user_id]['_id']
+      user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
+      links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
+      links_in_user_doc.uris.sort.should == test_links.sort
+    end
+  end
+
+  it "should remove links do" do
+    #initial conditions 
+    test_links= ["http://www.google.com", "http://www.bing.com"]
+    remove_link = "http://www.bing.com"
+    parent_cats = {}
+    doc_params = {}
+    basic_docs = {}
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      parent_cats[user_id] = ['docs with links']
+      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_link2', :parent_categories => parent_cats[user_id]})
+      basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
+      basic_docs[user_id].save #doc must be saved before we can add links
+    end
+    #check initial conditions
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      docClass.get(basic_docs[user_id]['_id']['links_doc_id']).should == nil
+    end
+    #add links
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      basic_docs[user_id].add_links(test_links)
+    end
+   #check initial conditions
+    link_doc_ids = {}
+    link_docs = {}
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      link_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_link_doc_id
+      link_docs[user_id] = docClass.get(link_doc_ids[user_id])
+      user_doc_from_db = docClass.get(basic_docs[user_id]['_id'])
+      #docClass.get(basic_docs[user_id]['_id'])['links_doc_id'].should == link_docs[user_id]['_id']
+      user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
+      links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
+      links_in_user_doc.uris.sort.should == test_links.sort
+    end
+    #test
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      basic_docs[user_id].remove_links(remove_link)
+    end
+    #verify
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      link_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_link_doc_id
+      link_docs[user_id] = docClass.get(link_doc_ids[user_id])
+      user_doc_from_db = docClass.get(basic_docs[user_id]['_id'])
+      #docClass.get(basic_docs[user_id]['_id'])['links_doc_id'].should == link_d
+      user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
+      links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
+      links_in_user_doc.uris.sort.should == (test_links-[remove_link]).sort
+    end
+  end
 end

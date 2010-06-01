@@ -5,12 +5,73 @@
 #David Martin mailto:dmarti21@gmail.com
   
 
-require 'mime/types'
-require 'cgi'
+#require 'mime/types'
+#require 'cgi'
+require 'uri'
 
 require File.dirname(__FILE__) + '/bufs_escape'
 require 'couchrest'
 
+class BufsInfoLink < CouchRest::ExtendedDocument
+
+  property :uris
+
+
+  def self.create_unsaved(bufs_info_doc)
+    raise "No document provided for links" unless bufs_info_doc
+    raise "No ID found for the document" unless bufs_info_doc['_id']
+    uniq_id = bufs_info_doc['_id'] + bufs_info_doc.class.link_base_id
+    link_doc = bufs_info_doc.class.user_linkClass.get(uniq_id)
+    raise IndexError, "Can't create new link document for #{self}. Document already exists in Database" if link_doc
+    link_doc = bufs_info_doc.class.user_linkClass.new('_id' => uniq_id)
+  end
+
+  def self.create(bufs_info_doc, links=nil)
+    link_doc = create_unsaved(bufs_info_doc)
+    raise "Unable to create link doc for #{bufs_info_doc.inspect}" unless link_doc
+    links = [links].flatten.compact
+    link_doc.uris = links
+    bufs_info_doc.class.namespace.save_doc(link_doc)
+    #link_doc.save
+    #raise "ID: #{link_doc['_id']}"
+    #bufs_info_doc.get(link_doc['_id'])
+    bufs_info_doc.class.user_linkClass.get(link_doc['_id'])
+  end
+
+  def self.add_links(user_doc, uri_list)
+    uri_list = [uri_list].flatten
+    uri_list.each do |uri_string|
+      URI.parse(uri_string) #validates uri
+    end
+    link_id = user_doc.links_doc_id #user_doc['_id'] + user_doc.class.link_base_id
+    link_doc = nil
+    if user_doc.class.user_linkClass.get(link_id)
+      link_doc = user_doc.class.user_linkClass.get(link_id)
+    else
+      link_doc = user_doc.class.user_linkClass.create(user_doc)
+    end
+    #link_doc = BufsInfoLink.get(link_id)||BufsInfoLink.create(bufs_info_doc)
+    raise "Unable to find existing links db doc or create new one for #{user_doc} Link ID: #{link_id}" unless link_doc
+    link_doc.uris += uri_list
+    link_doc.uris.compact!
+    #raise link_doc.inspect
+    link_doc.save
+    link_doc.class.get(link_doc['_id'])
+  end
+
+  #NEEDS INTEGRATION AND TESTING
+  def self.remove_links(user_doc, remove_these_uris)
+    remove_these_uris = [remove_these_uris].flatten
+    link_id = user_doc.links_doc_id
+    link_doc = user_doc.class.user_linkClass.get(link_id)
+    link_doc.uris = link_doc.uris - remove_these_uris
+    puts "NEW LIST: #{link_doc.uris.inspect}"
+    link_doc.save
+    link_doc.class.get(link_doc['_id'])
+  end
+      
+end
+=begin
 #This class will include the Office 2007 extension types when looking up MIME types.
 #  TODO: Create this as its own class and include other MIME types that might have to be added
 class MimeNew
@@ -42,26 +103,14 @@ class MimeNew
     end
   end
 end
+=end
 
 #Module of helper functions for BufsInfoAttachment that performs manipulations on the
 #file attachment structures and metadata
 
+=begin
 module BufsInfoAttachmentHelpers
 
-  #Attachment data format: attachment_name => attachment info
-  #attachment info format: { 'data' => attachment data, 'md' => attachment metadata }
-  #attachment data is sorted into the data and metadata CouchDB attachments can handle natively
-  #and the additional metadata that CouchDB attachments do not handle (boo, hiss)
-  # 
-  # Usage Example:
-  #   BufsInfoAttachmentHelpers.sort_attachment_data(attachments)
-  #   #=> { 'data_by_name' => { attachment_1 => raw_attachment_data1,
-  #                           attachment_2 => raw_attachment_data2 }.
-  #       'att_md_by_name' => { attachment_1 => CouchDB metadata fields1,
-  #                             attachment_2 => CouchDB metadata fields2}
-  #       'obj_md_by_name' => { attachment_1 => Custom metadata fields1,
-  #                             attachment_2 => Custom metadata fields2}
-  #      }
   def self.sort_attachment_data(attachments)
     #-- 
     #TODO: Refactor obj_md to be called custom_md
@@ -163,10 +212,10 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
   #Setter for setting the CoucDB database
   #Referred to name space because it defines the name space in which the 
   #BUFS document categories are unique
-  #def self.set_name_space(name_space)
-  #  @name_space = name_space
-  #  use_database @name_space #binds doc to database
-  #end
+  def self.set_name_space(name_space)
+    @name_space = name_space
+    use_database @name_space #binds doc to database
+  end
 
   #Create an attachment for a particular BUFS document
   #FIXME: Updated from BufsInfoAttachment to support UserDB stuff, but BufsInfoAttachment not updated
@@ -304,3 +353,4 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
   end
 
 end
+=end
