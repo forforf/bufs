@@ -6,7 +6,6 @@
 require 'mime/types'
 
 #This class will include the Office 2007 extension types when looking up MIME types.
-#  TODO: Create this as its own class and include other MIME types that might have to be added
 class MimeNew
 
   #Returns the mime type of a file

@@ -28,13 +28,10 @@ module BufsInfoAttachmentHelpers
   #                           attachment_2 => raw_attachment_data2 }.
   #       'att_md_by_name' => { attachment_1 => CouchDB metadata fields1,
   #                             attachment_2 => CouchDB metadata fields2}
-  #       'obj_md_by_name' => { attachment_1 => Custom metadata fields1,
+  #       'cust_md_by_name' => { attachment_1 => Custom metadata fields1,
   #                             attachment_2 => Custom metadata fields2}
   #      }
   def self.sort_attachment_data(attachments)
-    #-- 
-    #TODO: Refactor obj_md to be called custom_md
-    #++
     all_couch_attach_params = {}
     all_custom_attach_params = {}
     all_attach_data = {}
@@ -51,7 +48,7 @@ module BufsInfoAttachmentHelpers
           #md holds all file metadata (both couch and custom)
           split_metadata = self.split_attachment_metadata(info_value)
           att_params = split_metadata['att_md']
-          obj_params = split_metadata['obj_md']
+          obj_params = split_metadata['cust_md']
         end
       end
       all_couch_attach_params[esc_att_name] = att_params
@@ -60,7 +57,7 @@ module BufsInfoAttachmentHelpers
     end
     sorted =  {'data_by_name' => all_attach_data,
       'att_md_by_name' => all_couch_attach_params,
-      'obj_md_by_name' => all_custom_attach_params}
+      'cust_md_by_name' => all_custom_attach_params}
     return sorted
   end
 
@@ -89,12 +86,12 @@ module BufsInfoAttachmentHelpers
   #Takes the abstracted attachment data and splits it into
   #the data used by this class and the underlying CouchDB format
   def self.split_attachment_metadata(combined_metadata)
-    split_metadata = {'obj_md' => {}, 'att_md' => {}}
+    split_metadata = {'cust_md' => {}, 'att_md' => {}}
     combined_metadata.each do |param, param_value|
       if BufsInfoAttachment::CouchDBAttachParams.include? param
         split_metadata['att_md'][param] = param_value
       else
-        split_metadata['obj_md'][param] = param_value
+        split_metadata['cust_md'][param] = param_value
       end
     end
     return split_metadata
@@ -119,64 +116,49 @@ end
   #
 
 class BufsInfoAttachment < CouchRest::ExtendedDocument
-  class << self; attr_accessor :name_space end
-  #Used for identifying the database to bind to
-  #TODO:  This needs to move to be a normal instance variable
-  #in order to support multi-user operations
-  @name_space = nil
   
   #CouchDB attachment metadata parameters supported by BufsInfoAttachment
   CouchDBAttachParams = ['content_type', 'stub']
   AttachmentID = "_attachments"
 
-  #Setter for setting the CoucDB database
-  #Referred to name space because it defines the name space in which the 
-  #BUFS document categories are unique
-  #def self.set_name_space(name_space)
-  #  @name_space = name_space
-  #  use_database @name_space #binds doc to database
-  #end
+  #create the attachment document id to be used
+  def self.uniq_att_doc_id(bufs_info_doc)
+    uniq_id = bufs_info_doc['_id'] + bufs_info_doc.class.attachment_base_id 
+  end
 
   #Create an attachment for a particular BUFS document
-  #FIXME: Updated from BufsInfoAttachment to support UserDB stuff, but BufsInfoAttachment not updated
   def self.create_attachment_package(bufs_info_doc, attachments)
     raise "No document provided for attachments" unless bufs_info_doc
     raise "No id found for the document" unless bufs_info_doc['_id']
     raise "No attachments provided for attaching" unless attachments
-    #seperate attachment data from custom attachment metadata
+    #separate attachment data from custom attachment metadata
     #this is necessary since couchdb can't put custom metadata with its attachments
     sorted_attachments = BufsInfoAttachmentHelpers.sort_attachment_data(attachments)
-    uniq_id = bufs_info_doc['_id'] + BufsInfoDoc.attachment_base_id #"_att_temp_id" #AttachmentID #bufs_info_doc.class.attachment_base_id
-    custom_metadata_doc_params = {'_id' => uniq_id, 'md_attachments' => sorted_attachments['obj_md_by_name']}
-    doc = bufs_info_doc.class.user_attachClass.get(uniq_id)
-    #doc = BufsInfoAttachment.get(uniq_id)
-    raise IndexError, "Can't create new attachment document for #{self}. Document already exists in Database" if doc
-    #p bufs_info_doc.class.user_attachClass.new({})
-    doc = bufs_info_doc.class.user_attachClass.new(custom_metadata_doc_params)
-    #doc = BufsInfoAttachment.new(custom_metadata_doc_parms)
-    doc.save
+    att_doc_id  = self.uniq_att_doc_id(bufs_info_doc)
+    custom_metadata_doc_params = {'_id' => att_doc_id, 'md_attachments' => sorted_attachments['cust_md_by_name']}
+    att_doc = bufs_info_doc.class.user_attachClass.get(att_doc_id)
+    raise IndexError, "Can't create new attachment document for #{self}. Document already exists in Database" if att_doc
+    att_doc = bufs_info_doc.class.user_attachClass.new(custom_metadata_doc_params)
+    att_doc.save
     sorted_attachments['att_md_by_name'].each do |att_name, params|
       esc_att_name = BufsEscape.escape(att_name)
-      doc.put_attachment(esc_att_name, sorted_attachments['data_by_name'][esc_att_name],params)
+      att_doc.put_attachment(esc_att_name, sorted_attachments['data_by_name'][esc_att_name],params)
     end
-    #return BufsInfoAttachment.get(uniq_id)
-    return bufs_info_doc.class.user_attachClass.get(uniq_id)
-
+    #returns the updated document from the database
+    return bufs_info_doc.class.user_attachClass.get(att_doc_id)
   end
 
-  #Update this objects attachment data
-  def update_attachment_package(doc, new_attachments)
-    doc.class.user_attachClass.update_attachment_package(self, new_attachments)
+  #Update the attachment data of the attachment document
+  #Note: The attachment is decoupled from the associated bufs document, requiring the bufs document
+  #to explicitly be provided.
+  def update_attachment_package(bufs_doc, new_attachments)
+    bufs_doc.class.user_attachClass.update_attachment_package(self, new_attachments)
   end
 
-#  def update_attachment_package(new_attachments)
-#    BufsInfoAttachment.update_attachment_package(self['_id'], new_attachments)
-#  end
 
   #Update the attachment data for a particular BUFS document
   #  Important Note: Currently existing data is only updated if new data has been modified more recently than the existing data.
   def self.update_attachment_package(att_doc, new_attachments)
-    #att_doc = BufsInfoAttachment.get(att_doc_id)
     existing_attachments = att_doc.get_attachments
     most_recent_attachment = {}
     if existing_attachments
@@ -191,7 +173,7 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
             #update that file and metadata
             sorted_attachments = BufsInfoAttachmentHelpers.sort_attachment_data(esc_new_att_name => new_data)
             #update doc
-            working_doc['md_attachments'] = working_doc['md_attachments'].merge(sorted_attachments['obj_md_by_name'])
+            working_doc['md_attachments'] = working_doc['md_attachments'].merge(sorted_attachments['cust_md_by_name'])
             #update attachments
             working_doc.save
             #Add Couch attachment data
@@ -206,7 +188,7 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
           puts "Attachment Name not found in Attachment Document, adding #{esc_new_att_name}"
           sorted_attachments = BufsInfoAttachmentHelpers.sort_attachment_data(esc_new_att_name => new_data)
           #update doc
-          working_doc['md_attachments'] = working_doc['md_attachments'].merge(sorted_attachments['obj_md_by_name'])
+          working_doc['md_attachments'] = working_doc['md_attachments'].merge(sorted_attachments['cust_md_by_name'])
           #update attachments
           working_doc.save
           #Add Couch attachment data
@@ -223,24 +205,19 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
     return att_doc.class.get(att_doc['_id'])
   end
 
-  #retrieves document attachments for a particular document (given its id)
-  def self.get_attachments(doc)
-    #puts "Getting Attachments"
-    #doc = BufsInfoAttachment.get(doc_id)
-    #puts "BIA: #{doc.inspect}"
-    return nil unless doc
-    custom_md = doc['md_attachments']
-    esc_couch_md = doc['_attachments']
+  #retrieves document attachments for a particular document 
+  def self.get_attachments(att_doc)
+    return nil unless att_doc
+    custom_md = att_doc['md_attachments']
+    esc_couch_md = att_doc['_attachments']
     couch_md = BufsInfoAttachmentHelpers.unescape_names_in_attachments(esc_couch_md)
-    #puts "Unescaped Couch Attachment: #{couch_md.inspect}"
-    #puts "custom metadata: #{custom_md.inspect}"
     raise "data integrity error, attachment metadata inconsistency" if custom_md.keys.sort != couch_md.keys.sort
     (attachment_data = custom_md.dup).merge(couch_md) {|k,v_custom, v_couch| v_custom.merge(v_couch)}
   end
 
   #retrieves document attachments for this document
   def get_attachments
-    BufsInfoAttachment.get_attachments(self)
+    self.class.get_attachments(self) #BufsInfoAttachment.get_attachments(self)
   end
 
 
@@ -250,7 +227,6 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
     #puts "Finding most recent attachment"
     most_recent_attachment_data = nil
     if attachment_data1 && attachment_data2
-      #puts "both attachmnents exist"
       #puts "attachments:"
       #p attachment_data1['file_modified']
       #p attachment_data2['file_modified']
