@@ -1,0 +1,14 @@
+#!/usr/bin/expect
+set timeout 20
+expect "Full Name []:"
+send "Bufs User"
+expect "Room Number []:"
+send ""
+expect "Work Phone []:"
+send ""
+expect "Home Phone []:"
+send ""
+expect "Other []:"
+send ""
+expect "Is the information correct? [Y/n]"
+send "Y"

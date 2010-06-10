@@ -1,0 +1,3 @@
+#!/bin/bash
+useradd $1 -b /media-ec2/ec2a/bufs_users/ -m -g 1003 -p `openssl passwd -crypt $2`
+# adduser --disabled-login --conf ./bufsuser.conf $1 
