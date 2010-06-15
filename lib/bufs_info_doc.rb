@@ -4,28 +4,27 @@ require 'cgi' #Can replace with url_escape if performance is an issue
 require File.dirname(__FILE__) + '/bufs_info_attachment'
 require File.dirname(__FILE__) + '/bufs_info_link'
 
-#TODO keep the classes in separate files? 
 
 #This class is the primary interface into CouchDB BUFS documents
 class BufsInfoDoc < CouchRest::ExtendedDocument
-  #TODO: create the attachment base id so it can be referenced from a doc class
-  #@attachment_base_id = '_attachments'
-  #use_database @name_space
 
+  #This should be defined in the dynamic class definition
+  #The default value here is for teting basic functionality
   def self.namespace 
     "BufsInfoDocDefault"  #this should be overwritten
   end
 
+  #This should be defined in the dynamic class definition
+  #The default value here is for teting basic functionality
   def self.user_attachClass
     BufsInfoAttachment #this should be overwritten
   end
 
+  #This should be defined in the dynamic class definition
+  #The default value here is for teting basic functionality
   def self.user_linkClass
     BufsInfoLink  #this should be overwritten
   end
-
-  #If a document has an attachment it gets this accessor set (needs testing!! not sure it works in all cases)
-  attr_accessor :attachment_doc
 
   #Methods that act on the BufsInfoDoc collection (i.e. all BufsInfoDoc objects) 
   
@@ -71,6 +70,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   #validate parent categories exist  - should this be deprecated?
   #set_callback :save, :before, :method_name 
   #save_callback :before do |almost_a_doc|
+  #TODO: If this is needed, its not being called (commented out test spec until its fixed)
   set_callback :save, :before, do |almost_a_doc|
     if almost_a_doc.parent_categories.nil? || almost_a_doc.parent_categories.empty?
       raise ArgumentError, "Requires at least one parent category to be set (can be set to top node category)"
@@ -83,7 +83,6 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   #  description
   #  attachments in the form of data files
   #
-  #TODO: Verify this method is useful and being used (AbstractNode may have superseded this method)
   def self.create_from_node(node_obj)
     init_params = {}
     init_params['my_category'] = node_obj.my_category
@@ -95,18 +94,14 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     return new_sid.class.get(new_sid['_id'])
   end
 
+  #This value is added to the bufs document id to create a unique id for this documents attachments
   def self.attachment_base_id
     "_attachments"
   end
 
+  #This value is added to the bufs document id to create a unique id for this documents links
   def self.link_base_id
     "_links"
-  end
-
-  #Initialize the document with no attachments and then initialize as a CouchRest::ExtendedDocument
-  def initialize(*args)
-    @attachment_doc = nil
-    super(*args)
   end
 
   #Adds parent categories, it can accept a single category or an array of categories
@@ -121,6 +116,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
       self.save
     end
   end
+
   #Can accept a single category or an array of categories
   def remove_parent_categories(cats_to_remove)
     cats_to_remove = [cats_to_remove].flatten
@@ -134,18 +130,17 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   #Returns the attachment id associated with this document.  Note that this does not depend upon there being an attachment.
   def my_attachment_doc_id
     if self['_id']
-      #FIXME:  The "_att_temp_id" is a magic string that's used in other methods, recreate common reference
-      return self['_id'] + BufsInfoDoc.attachment_base_id #"_att_temp_id"#BufsInfoDoc.attachment_base_id
+      return self['_id'] + self.class.attachment_base_id
     else
-      raise "Can't attach to a document that has not been saved to the db"
+      raise "Can't attach to a document that has not first been saved to the db"
     end
   end
 
   #Get attachment metadata.  This does not return the actual data.
   #FIXME: Broken in change to multi-user
-  def get_file_data(attach_file_name)
-    return CouchDB.fetch_attachment(BufsInfoAttachment.get(my_attachment_doc_id), attach_file_name)
-  end
+  #def get_file_data(attach_file_name)
+  #  return CouchDB.fetch_attachment(BufsInfoAttachment.get(my_attachment_doc_id), attach_file_name)
+  #end
 
   def get_attachment_names
     att_doc_id = self.class.get(self['_id']).attachment_doc_id
