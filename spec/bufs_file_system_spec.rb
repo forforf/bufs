@@ -119,7 +119,7 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     node_to_save.save
 
     #check results 
-    file_node_path = node_to_save.class.namespace + '/' + node_to_save.my_category
+    file_node_path = node_to_save.path_to_node_data #node_to_save.class.namespace + '/' + node_to_save.my_category
     File.exists?(file_node_path).should == true
     data_file_path = file_node_path + '/' + BufsFileSystem.data_file_name
     #read node file data
@@ -250,6 +250,27 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
       node_remove_parent_cat.parent_categories.should_not include removed_cat
     end
   end
+
+  it "should save data files as a regular file" do
+    #set initial conditions    
+    test_filename = BufsFixtures.test_files['binary_data_pptx']
+    test_basename = File.basename(test_filename)
+    node_params = get_default_params.merge({:my_category => 'find_me'})
+    node_to_save = make_node_no_attachment(node_params.dup)
+    node_to_save.save
+    #check initial conditions
+    node_to_save.attached_files?.should == false
+    #test
+    node_to_save.add_data_file(test_filename)
+    #check results
+    esc_test_basename = BufsEscape.escape(test_basename)
+    data_file_location = node_to_save.path_to_node_data + '/' + esc_test_basename
+    File.exists?(data_file_location).should == true
+    node_to_save.attached_files?.should == true
+    node_to_save.file_metadata['file_modified'].should == File.mtime(data_file_location).to_s
+    node_to_save.filename.should == esc_test_basename
+  end
+
 end
 
 #TestFileLocation = 'C:/Documents and Settings/dmartin/My Documents/tmp/'

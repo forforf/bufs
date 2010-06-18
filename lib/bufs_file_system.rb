@@ -3,7 +3,7 @@ require 'cgi'
 #JSON Hack
 require 'json'
 
-#require 'bufs_escape'   #need to insert this 
+require 'bufs_escape'   #need to insert this 
 
 class Dir  #monkey patch  (duck punching?)
   def self.working_entries(dir=Dir.pwd)
@@ -68,6 +68,8 @@ class BufsFileSystem
   #@parent_categories_file_basename = 'parent_categories.txt'
   #@description_file_basename = 'description.txt'
 
+
+  #TODO: Determine if there's a way for file_metadata and filename to be added dynamically
   attr_accessor :file_metadata, :filename, 
                 :my_dir, :attached_files, :node_data_hash
 
@@ -93,7 +95,7 @@ class BufsFileSystem
       wkg_dir = my_dir + cat_entry + '/'
       files = Dir.file_data_entries(wkg_dir)
       files.each do |f|
-        esc_f = BufsEscape.escape(f)
+        esc_f = ::BufsEscape.escape(f)
         unless f == esc_f
           full_f = wkg_dir + f
           full_esc_f = wkg_dir + esc_f
@@ -104,11 +106,11 @@ class BufsFileSystem
   end
 
   def self.all
-    unless File.exists?(BufsFileSystem.namespace)
-      raise "Can't get all. The File System Directory to work from does not exist: #{BufsFileSystem.name_space}"
+    unless File.exists?(self.namespace)
+      raise "Can't get all. The File System Directory to work from does not exist: #{self.name_space}"
     end
     all_nodes = []
-    my_dir = BufsFileSystem.namespace + '/'
+    my_dir = self.namespace + '/'
     all_entries = Dir.working_entries(my_dir)
     all_entries.each do |cat_entry|
       wkg_dir = my_dir + cat_entry + '/'
@@ -123,11 +125,11 @@ class BufsFileSystem
       #if File.exists?(desc_fname)
       #  desc = File.open(wkg_dir + BufsFileSystem.description_file_basename){|f| f.read}
       #end
-      data_fname = BufsFileSystem.data_file_name
+      data_fname = self.data_file_name
       bfs = nil
       if File.exists?(wkg_dir + data_fname)
        bfs_data = JSON.parse(File.open(wkg_dir + data_fname) {|f| f.read})
-        bfs = BufsFileSystem.new(bfs_data)
+        bfs = self.new(bfs_data)
         files = Dir.file_data_entries(wkg_dir)
         files.each do |f|
           full_filename = wkg_dir + '/' + f
@@ -204,11 +206,18 @@ class BufsFileSystem
 
   def initialize(init_params = {})
     raise "No parameters were passed to #{self.class} initialization" if (init_params.nil?||init_params.empty?)
+    raise "No directory has been set for #{self}" unless self.class.namespace
     @node_data_hash = {}
     init_params.each do |attr_name, attr_value|
       iv_set(attr_name, attr_value)
     end
-    @my_dir = BufsFileSystem.namespace + '/' + self.my_category + '/' if self.my_category
+
+    #Hack to get around the fact that if my_category hasn't been set
+    #then there is no my_category method either
+    #iv_set(:my_category, nil)
+    #raise "NS: #{self.class.namespace.inspect} My Cat: #{self.my_category.inspect}"
+    @my_dir = self.class.namespace + '/' + self.my_category + '/' if self.my_category
+
     @attached_files = []
   end
 
@@ -229,6 +238,12 @@ class BufsFileSystem
     #the data store is needed to iterate over all values stored by 
     #the instance
   end
+  
+  #TODO: Add to spec
+  def path_to_node_data
+    raise "The category has not been set for #{self}" unless self.my_category
+    self.class.namespace + '/' + self.my_category
+  end
 
   def to_hash
     @node_data_hash
@@ -245,10 +260,10 @@ class BufsFileSystem
     #end
 
     #make model directory
-    my_dir = BufsFileSystem.namespace + '/' + self.my_category + '/'
+    my_dir = self.class.namespace + '/' + self.my_category + '/'
     FileUtils.mkdir_p(my_dir)
 
-    node_data_file = my_dir + BufsFileSystem.data_file_name
+    node_data_file = my_dir + self.class.data_file_name
     node_data_hash = self.to_hash
     raise "No data found for #{self}" unless node_data_hash
 
@@ -286,7 +301,7 @@ class BufsFileSystem
     #file_name = unescape(file_name)  #Hack to avoid escaping twice (and changing the name in the process)
     #content type is lost when data is saved into the file model.
     puts "Add Raw Data --- (Unesc) File Name: #{File.basename(file_name)}"
-    esc_filename = BufsEscape.escape(file_name)
+    esc_filename = ::BufsEscape.escape(file_name)
     puts "Add Raw Data --- (Esc) File Name: #{File.basename(esc_filename)}"
     raw_data_dir = @my_dir # + my_cat
     FileUtils.mkdir_p(raw_data_dir) unless File.exist?(raw_data_dir)
@@ -309,7 +324,7 @@ class BufsFileSystem
   def add_data_file(filename)
     #my_dir = BufsInfoFileSystem.name_space + '/' + self.my_category + '/'
     puts "Add Data File --- Basename (Unesc) #{File.basename(filename)}"
-    my_dest_basename = BufsEscape.escape(File.basename(filename))
+    my_dest_basename = ::BufsEscape.escape(File.basename(filename))
     puts "Add Data File --- Basename (Esc) #{my_dest_basename}"
     @filename = my_dest_basename
     FileUtils.mkdir_p(@my_dir) unless File.exist?(@my_dir) #TODO Throw error if its a file
@@ -336,7 +351,7 @@ class BufsFileSystem
   #TODO Add to spec
   def destroy_node
     if self.my_category
-      my_dir = BufsFileSystem.namespace + '/' + self.my_category + '/'
+      my_dir = self.class.namespace + '/' + self.my_category + '/'
       p "Destroying: #{my_dir}"
       #rm_f(Dir.glob(my_dir + '*'))
       FileUtils.remove_dir(my_dir, :force => true)
