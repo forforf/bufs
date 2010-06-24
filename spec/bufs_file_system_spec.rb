@@ -140,7 +140,9 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     found_node = BufsFileSystem.by_my_category('find_me').first
     #check results
     node_to_save.node_data_hash.each do |parm_key, parm_val|
-      parm_val.should == found_node.node_data_hash[parm_key.to_s]
+      puts "pk: #{parm_key.inspect}, pv: #{parm_val.inspect}"
+      puts "fnv: #{found_node.node_data_hash.inspect}"
+      parm_val.should == found_node.node_data_hash[parm_key]
     end
   end
 

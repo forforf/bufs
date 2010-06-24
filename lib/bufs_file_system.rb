@@ -3,7 +3,7 @@ require 'cgi'
 #JSON Hack
 require 'json'
 
-require 'bufs_escape'   #need to insert this 
+require File.dirname(__FILE__) + '/bufs_escape'   #need to insert this 
 
 class Dir  #monkey patch  (duck punching?)
   def self.working_entries(dir=Dir.pwd)
@@ -89,7 +89,7 @@ class BufsFileSystem
     unless File.exists?(BufsFileSystem.name_space)
       raise "Cannot normalize. The File System Directory to work from does not exist: #{BufsFileSystem.name_space}"
     end
-    my_dir = BufsFileSystem.name_space + '/'
+    my_dir = self.class.name_space + '/'
     all_entries = Dir.working_entries(my_dir)
     all_entries.each do |cat_entry|
       wkg_dir = my_dir + cat_entry + '/'
@@ -156,14 +156,16 @@ class BufsFileSystem
   end
 
   def self.by_my_category(my_cat)
-    puts "Searching for #{my_cat.inspect}"
-    my_dir = BufsFileSystem.namespace + '/'
+    #raise "nt: #{nodetest.my_category.inspect}" if nodetest
+    raise "No category provided for search" unless my_cat
+    #puts "Searching for #{my_cat.inspect}"
+    my_dir = self.namespace + '/'
     my_cat_dir = my_cat
     wkg_dir = my_dir + my_cat_dir + '/'
     if File.exists?(wkg_dir)
       #added 2/24 at 10:23 am due to spec failure in sync_node seems like BufsFileSystem bug fix
-      node_data  = JSON.parse(File.open(wkg_dir + BufsFileSystem.data_file_name){|f| f.read})
-      bfs = BufsFileSystem.new(node_data)
+      node_data  = JSON.parse(File.open(wkg_dir + self.data_file_name){|f| f.read})
+      bfs = self.new(node_data)
       #
       #cat_files = Dir.working_entries(wkg_dir)
       #puts "Files in #{wkg_dir.inspect}"
@@ -209,9 +211,8 @@ class BufsFileSystem
     raise "No directory has been set for #{self}" unless self.class.namespace
     @node_data_hash = {}
     init_params.each do |attr_name, attr_value|
-      iv_set(attr_name, attr_value)
+      iv_set(attr_name.to_sym, attr_value)
     end
-
     #Hack to get around the fact that if my_category hasn't been set
     #then there is no my_category method either
     #iv_set(:my_category, nil)
@@ -221,7 +222,13 @@ class BufsFileSystem
     @attached_files = []
   end
 
+
   #this method is basically to make it sort of act like a hash and struct
+  #FIXME: IMPORTANT: This breaks under some circumstances of dynamic classing
+  #When a new instance is created from the same class, these methods are
+  #recreated and use the new instances hash?  At least I think that's what's
+  #going on.  Need to isolate and test.  Work around is to use the hash to
+  #access the data
   def iv_set(attr_var, attr_value)
     #update the data store
     @node_data_hash[attr_var] = attr_value
@@ -344,11 +351,10 @@ class BufsFileSystem
   end
 
   def get_file_data
-    my_dest = @my_dir + @filename
+    my_dest = @my_dir + '/' + @filename
     return  File.open(my_dest, 'rb'){|f| f.read}
   end
 
-  #TODO Add to spec
   def destroy_node
     if self.my_category
       my_dir = self.class.namespace + '/' + self.my_category + '/'

@@ -32,6 +32,14 @@ module UserFileNodeSpecHelpers
     new_node.add_data_file(test_filename)
     return new_node 
   end
+
+  def node_data_from_file(nodeClass, mycat)
+    node_data = nil
+    file_node_path = nodeClass.namespace + '/' + mycat
+    data_file_path = file_node_path + '/' + nodeClass.data_file_name
+    node_file_data = File.open(data_file_path, 'r'){|f| f.read}
+    node_data = JSON.parse(node_file_data)
+  end
 end
 
 describe UserFileNode, "Initialization" do
@@ -162,11 +170,9 @@ describe UserFileNode, "Basic file operations" do
     end
     #check results
     UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
-      file_node_path = nodes_to_save[user_id].class.namespace + '/' + nodes_to_save[user_id].my_category
       nodes_params[user_id].keys.each do |param|
-        data_file_path = file_node_path + '/' + nodeClass.data_file_name
-        node_file_data = File.open(data_file_path, 'r'){|f| f.read}
-        node_data = JSON.parse(node_file_data)
+        mycat = nodes_to_save[user_id].my_category
+        node_data = node_data_from_file(nodeClass, mycat)
         nodes_params[user_id].keys.each do |parm_key|
           node_data[parm_key.to_s].should == nodes_params[user_id][parm_key]
         end
@@ -181,142 +187,163 @@ describe UserFileNode, "Basic file operations" do
     end 
   end
 
-end
-=begin
 #adding categories
   it  "should add a single category (and add the property :parent_categories) for an initial category setting for a new doc" do
     #set initial conditions
     orig_parent_cats = {}
-    doc_params = {}
-    docs_with_new_parent_cat = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
+    nodes_params = {}
+    nodes_with_new_parent_cat = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
       orig_parent_cats[user_id] = ['old parent cat']
       new_params = get_default_params.merge({:my_category => "cat_test#{user_id}", :parent_categories => orig_parent_cats[user_id]})
-      doc_params[user_id] = new_params
-      docs_with_new_parent_cat[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
+      nodes_params[user_id] = new_params
+      nodes_with_new_parent_cat[user_id] = make_node_no_attachment(user_id, nodes_params[user_id])
     end
 
     new_cat = 'new parent cat'
 
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      #p docs_with_new_parent_cat[user_id]
-    end
+    #UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      #p nodes_with_new_parent_cat[user_id]
+    #end
 
     #test
 
-    UserDB.user_to_docClass.each do |user_id, docClass|
-     docs_with_new_parent_cat[user_id].add_parent_categories(new_cat)
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+     nodes_with_new_parent_cat[user_id].add_parent_categories(new_cat)
     end
     #check results
-    UserDB.user_to_docClass.each do |user_id, docClass|
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
       #check doc in memory
-      docs_with_new_parent_cat[user_id].parent_categories.should include new_cat
-      #check database
-      doc_params[user_id].keys.each do |param|
-        db_param = docClass.namespace.get(docs_with_new_parent_cat[user_id]['_id'])[param]
-        docs_with_new_parent_cat[user_id][param].should == db_param
+      nodes_with_new_parent_cat[user_id].parent_categories.should include new_cat
+      #check file system
+      mycat = nodes_with_new_parent_cat[user_id].my_category
+      nodes_params[user_id].keys.each do |param|
+        node_data = node_data_from_file(nodeClass, mycat)
+        nodes_with_new_parent_cat[user_id].parent_categories.should include new_cat
+        #file_param = nodeClass.namespace.get(nodes_to_save[user_id]['_id'])[par
+        nodes_with_new_parent_cat[user_id].parent_categories.should include new_cat
         #test accessor method
-        docs_with_new_parent_cat[user_id].__send__(param).should == db_param
+        #nodes_with_new_parent_cat[user_id].__send__(param).should == nodes_params[user_id][param]
       end
     end
   end
 
-  it "should add categories to existing categories and existing doc" do
+  it "should add categories to existing categories and existing node" do
     #set initial conditions
     orig_parent_cats = {}
-    doc_params = {}
-    doc_existing_new_parent_cats = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
+    nodes_params = {}
+    node_existing_new_parent_cats = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
       orig_parent_cats[user_id] = ["#{user_id}-orig_cat1", "#{user_id}-orig_cat2"]
-      doc_params[user_id] = get_default_params.merge({:my_category => "#{user_id}-cat_test2", :parent_categories => orig_parent_cats[user_id]})
-      doc_existing_new_parent_cats[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
-      doc_existing_new_parent_cats[user_id].save
+      nodes_params[user_id] = get_default_params.merge({:my_category => "#{user_id}-cat_test2", :parent_categories => orig_parent_cats[user_id]})
+      node_existing_new_parent_cats[user_id] = make_node_no_attachment(user_id, nodes_params[user_id])
+      #raise "#{node_existing_new_parent_cats[user_id].my_category.inspect}"
+      node_existing_new_parent_cats[user_id].save
+      #raise "#{node_existing_new_parent_cats[user_id].my_category.inspect}"
+
     end
     #verify initial conditions
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_params[user_id].keys.each do |param|
-        db_param = docClass.get(doc_existing_new_parent_cats[user_id]['_id'])[param]
-        doc_existing_new_parent_cats[user_id][param].should == db_param
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      nodes_params[user_id].keys.each do |param|
+        key_parm = nodes_params[user_id][:my_category]
+        x = node_existing_new_parent_cats[user_id]
+        file_node = node_existing_new_parent_cats[user_id].class.by_my_category(key_parm).first
+        file_node_data = file_node.to_hash
+        node_existing_new_parent_cats[user_id].to_hash[param.to_sym].should == file_node_data[param]
         #test accessor method
-        doc_existing_new_parent_cats[user_id].__send__(param).should == db_param
+        node_existing_new_parent_cats[user_id].__send__(param.to_sym).should == file_node.__send__(param.to_sym)
       end
     end
     #continue with initial conditions
     new_cats = ['new_cat1', 'new cat2', 'orig_cat2']
     #test
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_existing_new_parent_cats[user_id].add_parent_categories(new_cats)
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      node_existing_new_parent_cats[user_id].add_parent_categories(new_cats)
     end
     #check results
-    #check doc in memory
-    UserDB.user_to_docClass.each do |user_id, docClass|
+    #check node in memory
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
       new_cats.each do |new_cat|
-        doc_existing_new_parent_cats[user_id].parent_categories.should include new_cat
+        node_existing_new_parent_cats[user_id].parent_categories.should include new_cat
       end
     end
-    #check database
-    parent_cats = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      parent_cats[user_id] = docClass.get(doc_existing_new_parent_cats[user_id]['_id'])[:parent_categories]
+    #check filesystem
+    #parent_cats = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+
+      mycat = node_existing_new_parent_cats[user_id].my_category
       new_cats.each do |cat|
-        parent_cats[user_id].should include cat
+        node_data = node_data_from_file(nodeClass, mycat)
+        node_existing_new_parent_cats[user_id].parent_categories.should include cat
+        #file_param = nodeClass.namespace.get(nodes_to_save[user_id]['_id'])[par
+        node_existing_new_parent_cats[user_id].parent_categories.should include cat
+        #test accessor method
+        #nodes_with_new_parent_cat[user_id].__send__(param).should == nodes_params[user_id][param]
       end
     end
+
     #check all cats are there and are unique
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      parent_cats[user_id].sort.should == (orig_parent_cats[user_id] + new_cats).uniq.sort
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      node_existing_new_parent_cats[user_id].parent_categories.sort.should == (orig_parent_cats[user_id] + new_cats).uniq.sort
     end
   end
 
   it "should be able to remove parent categories" do
     orig_parent_cats = {}
-    doc_params = {}
-    doc_remove_parent_cats = {}
+    node_params = {}
+    node_remove_parent_cats = {}
     #set initial conditions
-    UserDB.user_to_docClass.each do |user_id, docClass|
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
       orig_parent_cats[user_id]  = ['orig_cat3', 'orig_cat4', 'del_this_cat1', "del_this_cat2-#{user_id}"]
-      doc_params[user_id] = get_default_params.merge({:my_category => 'cat_test3', :parent_categories => orig_parent_cats[user_id]})
-      doc_remove_parent_cats[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
-      doc_remove_parent_cats[user_id].save
+      node_params[user_id] = get_default_params.merge({:my_category => 'cat_test3', :parent_categories => orig_parent_cats[user_id]})
+      node_remove_parent_cats[user_id] = make_node_no_attachment(user_id, node_params[user_id])
+      node_remove_parent_cats[user_id].save
     end
     #verify initial conditions
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_params[user_id].keys.each do |param|
-        db_param = docClass.get(doc_remove_parent_cats[user_id]['_id'])[param]
-        doc_remove_parent_cats[user_id][param].should == db_param
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      node_params[user_id].keys.each do |param|
+        mycat = node_remove_parent_cats[user_id].my_category
+        retrieved_node = nodeClass.by_my_category(mycat).first
+        node_param = retrieved_node.node_data_hash[param]
+        node_remove_parent_cats[user_id].node_data_hash[param].should == node_param
         #test accessor method
-        doc_remove_parent_cats[user_id].__send__(param).should == db_param
+        node_remove_parent_cats[user_id].__send__(param).should == node_param
       end
     end
     #continue with initial conditions
     remove_multi_cats = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
       remove_multi_cats[user_id] = ['del_this_cat1', "del_this_cat2-#{user_id}"]
       remove_multi_cats[user_id].each do |cat|
-        doc_remove_parent_cats[user_id].parent_categories.should include cat
+        node_remove_parent_cats[user_id].parent_categories.should include cat
       end
     end
 
     #test
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_remove_parent_cats[user_id].remove_parent_categories(remove_multi_cats[user_id])
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      node_remove_parent_cats[user_id].remove_parent_categories(remove_multi_cats[user_id])
     end
 
     #verify results
-    UserDB.user_to_docClass.each do |user_id, docClass|
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
       remove_multi_cats[user_id].each do |cat|
-        doc_remove_parent_cats[user_id].parent_categories.should_not include cat
+        node_remove_parent_cats[user_id].parent_categories.should_not include cat
       end
     end
 
-    cats_in_db = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      cats_in_db[user_id] = docClass.get(doc_remove_parent_cats[user_id]['_id'])['parent_categories']
+    cats_in_file = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      mycat = node_remove_parent_cats[user_id].my_category
+      node_from_file = nodeClass.by_my_category(mycat).first
+      cats_in_file[user_id] = node_from_file.parent_categories
       remove_multi_cats[user_id].each do |removed_cat|
-        cats_in_db[user_id].should_not include removed_cat
+        cats_in_file[user_id].should_not include removed_cat
       end
     end
   end
+
+end
+=begin
 
   it "should only have unique categories" do
     #verify initial state
