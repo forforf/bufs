@@ -342,158 +342,156 @@ describe UserFileNode, "Basic file operations" do
     end
   end
 
-end
-=begin
-
   it "should only have unique categories" do
     #verify initial state
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      docClass.all.size.should == 0
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      nodeClass.all.size.should == 0
     end
 
     orig_parent_cats = {}
-    doc_params = {}
-    doc_uniq_parent_cats = {}
+    node_params = {}
+    node_uniq_parent_cats = {}
     orig_sizes = {}
     new_cats = {}
     expected_sizes = {}
     #set initial conditions
-    UserDB.user_to_docClass.each do |user_id, docClass|
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
       orig_parent_cats[user_id] = ['dup cat1', 'dup cat2', 'uniq cat1']
-      doc_params[user_id] = get_default_params.merge({:my_category => 'cat_test3', :parent_categories => orig_parent_cats[user_id]})
-      doc_uniq_parent_cats[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
-      doc_uniq_parent_cats[user_id].save
-      orig_sizes[user_id] = doc_uniq_parent_cats[user_id].parent_categories.size
+      node_params[user_id] = get_default_params.merge({:my_category => 'cat_test3', :parent_categories => orig_parent_cats[user_id]})
+      node_uniq_parent_cats[user_id] = make_node_no_attachment(user_id, node_params[user_id])
+      node_uniq_parent_cats[user_id].save
+      orig_sizes[user_id] = node_uniq_parent_cats[user_id].parent_categories.size
       new_cats[user_id] = ['dup cat1', 'dup cat2', 'uniq_cat2']
       expected_sizes[user_id] = orig_sizes[user_id] + 1 #uniq_cat2
     end
 
     #test
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_uniq_parent_cats[user_id].add_parent_categories(new_cats[user_id])
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      node_uniq_parent_cats[user_id].add_parent_categories(new_cats[user_id])
     end
 
     #verify results
     records = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      expected_sizes[user_id].should == doc_uniq_parent_cats[user_id].parent_categories.size
-      docClass.get(doc_uniq_parent_cats[user_id]['_id'])['parent_categories'].sort.should == doc_uniq_parent_cats[user_id].parent_categories.sort
-      records[user_id]  = docClass.by_my_category(:key => doc_uniq_parent_cats[user_id].my_category)
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      expected_sizes[user_id].should == node_uniq_parent_cats[user_id].parent_categories.size
+      mycat = node_uniq_parent_cats[user_id].my_category
+      node_from_file = nodeClass.by_my_category(mycat).first
+      node_from_file.parent_categories.sort.should == node_uniq_parent_cats[user_id].parent_categories.sort
+      records[user_id]  = nodeClass.by_my_category(mycat)
       records[user_id].size.should == 1
     end
   end
 end
 
-describe UserDB, "Document Operations with Attachments" do
-  include UserDocSpecHelpers
+describe UserFileNode, "Node Operations with Attachments" do
+  include UserFileNodeSpecHelpers
 
   before(:all) do
     @test_files = BufsFixtures.test_files
   end
 
   before(:each) do
-    #delete any existing db records
-    #TODO This only works if the db entry also exists in UserDB
-    #Need to query each user database (how do we know the names?)
+    #delete any existing files
+    #TODO This only works if UserFileNode.nodeClasses has been correctly populated
+    #Need to query each user filesystem (how do we know the names?)
     # => need to enforce database naming convention.
-    #query for couchrest-type that matches /UserDB::UserDoc*/
-    UserDB.docClasses.each do |docClass|
-      attachClass = docClass.user_attachClass
-      all_attach_docs = attachClass.all
-      all_attach_docs.each do |attach_doc|
-        attach_doc.destroy
-      end
-      all_user_docs = docClass.all
-      all_user_docs.each do |user_doc|
-        user_doc.destroy
+    UserFileNode.nodeClasses.each do |nodeClass|
+      all_user_files = nodeClass.all || []
+      all_user_files.each do |user_file|
+        user_file.destroy
       end
     end
 
     @user1_id = "User001"
     @user2_id = "User002"
-    @user1_db = UserDB.new(CouchDB, @user1_id)
-    @user2_db = UserDB.new(CouchDB2, @user2_id)
+    @user1_fs = UserFileNode.new(FileSystem1, @user1_id)
+    @user2_fs = UserFileNode.new(FileSystem2, @user2_id)
   end
+#TODO: Currently Attachments are part of this class.  Maybe change in the future?
+#  it "has an attachment class associated with it" do
+#     UserDB.user_to_docClass.each do |user_id, docClass|
+#       docClass.user_attachClass.name.should == "UserDB::UserAttach#{user_id}"
+#     end
+#   end
 
-  it "has an attachment class associated with it" do
-     UserDB.user_to_docClass.each do |user_id, docClass|
-       docClass.user_attachClass.name.should == "UserDB::UserAttach#{user_id}"
-     end
-   end
+  it "should save data files (metadata is derived from data file)" do
 
-  it "should save data files as an attachment with metadata" do
     #initial conditions (attachment file)
     #TODO: vary filename by user
     test_filename = @test_files['binary_data_spaces_in_fname_pptx']
     test_basename = File.basename(test_filename)
     raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
-    #intial conditions (doc)
+    #intial conditions (node)
     parent_cats = {}
-    doc_params = {}
-    basic_docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      parent_cats[user_id] = ['docs with attachments']
-      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_id]})
-      basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
-      basic_docs[user_id].save #doc must be saved before we can attach
+    node_params = {}
+    basic_nodes = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      parent_cats[user_id] = ['nodes with attachments']
+      node_params[user_id] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_id]})
+      basic_nodes[user_id] = make_node_no_attachment(user_id, node_params[user_id])
+      basic_nodes[user_id].save #node must be saved before we can attach
     end
     #check initial conditions
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      docClass.get(basic_docs[user_id]['_id']['attachment_doc_id']).should == nil
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      nodeClass.by_my_category(basic_nodes[user_id].my_category).first.attached_files?.should == false
     end
     #test
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      basic_docs[user_id].add_data_file(test_filename)
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      basic_nodes[user_id].add_data_file(test_filename)
     end
     #check results
-    att_doc_ids = {}
-    att_docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
+    att_node = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      att_node_cat = node_params[user_id][:my_category]
+      att_node[user_id] = nodeClass.by_my_category(att_node_cat).first
       #puts "Attachment Doc: #{att_docs[user_id].inspect}"
       #p att_docs[user_id]['_attachments'].keys
-      docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
-      att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_basename)
-      att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
-     
+      #docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
+      att_node[user_id].attached_files?.should == true
+      att_node[user_id].list_attached_files.should include BufsEscape.escape(test_basename)
+      #att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_basename)
+      #att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
+      att_filename = att_node[user_id].path_to_node_data + '/' + BufsEscape.escape(test_basename)
+      File.mtime(att_filename).should == File.mtime(test_filename)  
     end
   end
+
 
   it "should cleanly remove all attachments" do
     #initial conditions 
     #TODO: vary filename by user
     test_filename = @test_files['binary_data_spaces_in_fname_pptx']
     parent_cats = {}
-    doc_params = {}
-    basic_docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      parent_cats[user_id] = ['docs with attachments']
-      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_id]})
-      basic_docs[user_id] = make_doc_w_attach_from_file(user_id, test_filename, doc_params[user_id])
+    node_params = {}
+    basic_nodes = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      parent_cats[user_id] = ['nodes with attachments']
+      node_params[user_id] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_id]})
+      basic_nodes[user_id] = make_node_w_attach_from_file(user_id, test_filename, node_params[user_id])
     end
     #verify initial conditions
-    att_doc_ids = {}
-    att_docs = {}
+    att_node = {}
     test_basename = File.basename(test_filename)
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
-      docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
-      att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_base
-      att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      att_node_cat = node_params[user_id][:my_category]
+      att_node[user_id] = nodeClass.by_my_category(att_node_cat).first
+      att_filename = att_node[user_id].path_to_node_data + '/' + BufsEscape.escape(test_basename)
+      File.mtime(att_filename).should == File.mtime(test_filename)
     end
     #test
     attachment_name = test_basename
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      doc = docClass.get(basic_docs[user_id]['_id'])
-      doc.remove_attachments(attachment_name)
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      att_node_cat = node_params[user_id][:my_category]
+      node = nodeClass.by_my_category(att_node_cat).first
+      node.remove_attached_files(attachment_name)
     end
     #check results
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      docClass.get(basic_docs[user_id]['_id']).attachment_doc_id.should == nil   #reference to attachment doc from user doc
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])  #attachment doc
-      att_docs[user_id].should == nil
+    nodes = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      att_node_cat = node_params[user_id][:my_category]
+      nodes[user_id] = nodeClass.by_my_category(att_node_cat).first
+      att_node = nodes[user_id].list_attached_files
+      att_node.should == []
     end
   end
 
@@ -502,37 +500,35 @@ describe UserDB, "Document Operations with Attachments" do
     #TODO: vary filename by user, support multiple attachments
     test_filename = @test_files['binary_data_spaces_in_fname_pptx']
     parent_cats = {}
-    doc_params = {}
-    basic_docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      parent_cats[user_id] = ['docs with attachments']
-      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_id]})
+    node_params = {}
+    basic_nodes = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      parent_cats[user_id] = ['nodes with attachments']
+      node_params[user_id] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_id]})
 
-      basic_docs[user_id] = make_doc_w_attach_from_file(user_id, test_filename, doc_params[user_id])
+      basic_nodes[user_id] = make_node_w_attach_from_file(user_id, test_filename, node_params[user_id])
     end
     #verify initial conditions
-    att_doc_ids = {}
-    att_docs = {}
+    att_nodes = {}
     test_basename = File.basename(test_filename)
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
-      docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
-      att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #
-      att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      att_node_cat = node_params[user_id][:my_category]
+      att_nodes[user_id] = nodeClass.by_my_category(att_node_cat).first
+      att_filename = att_nodes[user_id].path_to_node_data + '/' + BufsEscape.escape(test_basename)
+      File.mtime(att_filename).should == File.mtime(test_filename)
     end
     #test
     attachment_names = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      doc = docClass.get(basic_docs[user_id]['_id'])
-      attachment_names[user_id] = doc.get_attachment_names
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      att_node_cat = node_params[user_id][:my_category]
+      node = nodeClass.by_my_category(att_node_cat).first
+      attachment_names[user_id] = node.get_attachment_names
     end
     #check results
-    UserDB.user_to_docClass.each do |user_id, docClass|
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
       attachment_names[user_id].size.should == 1
       attachment_names[user_id].first.should == BufsEscape.escape(test_basename)
     end
-
   end
 
   it "should avoid creating hellish names when escaping and unescaping" do
@@ -543,67 +539,69 @@ describe UserDB, "Document Operations with Attachments" do
     raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
     #intial conditions (doc)
     parent_cats = {}
-    doc_params = {}
-    basic_docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
+    node_params = {}
+    basic_nodes = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
       parent_cats[user_id] = ['text file', 'test file']
-      doc_params[user_id] = get_default_params.merge({:my_category => 'strange_characters', :parent_categories => parent_cats[user_id]})
-      basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
-      basic_docs[user_id].save #doc must be saved before we can attach
+      node_params[user_id] = get_default_params.merge({:my_category => 'strange_characters', :parent_categories => parent_cats[user_id]})
+      basic_nodes[user_id] = make_node_no_attachment(user_id, node_params[user_id])
+      basic_nodes[user_id].save #doc must be saved before we can attach
     end
     #test
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      basic_docs[user_id].add_data_file(test_filename)
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      basic_nodes[user_id].add_data_file(test_filename)
     end
     #check results
-    att_doc_ids = {}
-    att_docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
-      #puts "Attachment Doc ID: #{att_doc_id}"
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
-      #puts "Attachment Doc: #{att_doc.inspect}"
-      #p att_doc['_attachments'].keys
-      att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_basename)
-      att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
+    #att_nodes = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      att_node_cat = node_params[user_id][:my_category]
+      node = nodeClass.by_my_category(att_node_cat).first
+      att_names  = node.get_attachment_names
+      att_names.should include BufsEscape.escape(test_basename) #URI.escape(test_basename)
     end
   end
 
   it "should create an attachment from raw data" do
     #TODO organize the test and chekcing results sections
     #set initial conditions
-    data_file = @test_files['binary_data3_pptx'] #@test_files['strange_characters_in_file_name']
+    data_file = @test_files['binary_data3_pptx'] 
     binary_data = File.open(data_file, 'rb'){|f| f.read}
     binary_data_content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     attach_name = File.basename(data_file)
-    #intial conditions (doc)
+    #intial conditions (node)
     parent_cats = {}
-    doc_params = {}
-    basic_docs = {}
+    node_params = {}
+    basic_nodes = {}
     metadata = {}
-    att_doc_ids = {}
-    att_docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      parent_cats[user_id] = ['docs with attachments']
-      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_raw_data_att', :parent_categories => parent_cats[user_id]})
-      basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params)
-      basic_docs[user_id].save
+    orig_mod_time = File.mtime(data_file)
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      parent_cats[user_id] = ['nodes with attachments']
+      node_params[user_id] = get_default_params.merge({:my_category => 'doc_w_raw_data_att', :parent_categories => parent_cats[user_id]})
+      #raise "#{node_params[user_id]}"
+      basic_nodes[user_id] = make_node_no_attachment(user_id, node_params[user_id])
+      basic_nodes[user_id].save
+      #TODO fix save so that it returns the new node
+      node_no_att = nodeClass.by_my_category(node_params[user_id][:my_category])
       #test
       #metadata[user_id] = basic_docs[user_id].add_raw_data(attach_name, binary_data_content_type, binary_data)
       #metadata[user_id].should == ["should be the metadata for that user"]
-      basic_docs[user_id].add_raw_data(attach_name, binary_data_content_type, binary_data)
+      basic_nodes[user_id].add_raw_data(attach_name, node_params[:my_category], binary_data, orig_mod_time.to_s)
       #verify results
-      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_attachment_doc_id
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
+      att_node_cat = node_params[user_id][:my_category]
+      #raise "#{att_node_cat}"
+      node_w_att = nodeClass.by_my_category(att_node_cat).first
       esc_att_name = BufsEscape.escape(attach_name)
-      att_docs[user_id].should_not == nil
-      att_docs[user_id]['_attachments'].keys.should include esc_att_name
-      file_mod_time = att_docs[user_id]['md_attachments'][esc_att_name]['file_modified']
-      Time.parse(file_mod_time).should > (Time.now - 4) #4 seconds should be enough time
-      att_docs[user_id]['_attachments'][esc_att_name]['content_type'].should == binary_data_content_type
+      node_w_att.should_not == nil
+      node_w_att.get_attachment_names.should include esc_att_name
+      att_filename = node_w_att.path_to_node_data + '/' + esc_att_name
+      file_mod_time = File.mtime(att_filename)
+      file_mod_time.should > (Time.now - 4) #4 seconds should be enough time
+      file_mod_time.should == orig_mod_time
+      File.size(data_file).should == File.size(att_filename)
     end
   end
-
+end
+=begin
 #creating a db doc from a directory entry
   it "should create a full doc from a node object without files" do
     NodeMock = Struct.new(:my_category, :parent_categories, :description, :files)

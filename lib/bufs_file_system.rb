@@ -1,5 +1,5 @@
 require 'cgi'
-
+require 'time'
 #JSON Hack
 require 'json'
 
@@ -44,7 +44,7 @@ class BufsFileSystem
   end
 
   def self.data_file_name
-    "node_data.json"
+    ".node_data.json"
   end
 
   #TODO: Remove the hard coding of data as filenames
@@ -279,6 +279,7 @@ class BufsFileSystem
     #File.open(desc_file, 'w') { |f| f.write(self.description.to_s)} if self.description
     File.open(node_data_file, 'w') {|f| f.write(node_data_hash.to_json)}
     #file metadata is part of the data file itself (if it exists)
+    #self  <-- Right thing to do, but need stability beofre changing (for testing)
   end
 
   def add_parent_categories(new_cats)
@@ -304,6 +305,7 @@ class BufsFileSystem
     raise "temp error due to no parent categories existing" if self.parent_categories.empty?
   end
 
+  #TODO: Rationalize with BufsInfoDoc
   def add_raw_data(file_name, my_cat, raw_data, file_modified_at = nil)
     #file_name = unescape(file_name)  #Hack to avoid escaping twice (and changing the name in the process)
     #content type is lost when data is saved into the file model.
@@ -330,9 +332,9 @@ class BufsFileSystem
   #other node types for future compatibility.  Same issue for get file
   def add_data_file(filename)
     #my_dir = BufsInfoFileSystem.name_space + '/' + self.my_category + '/'
-    puts "Add Data File --- Basename (Unesc) #{File.basename(filename)}"
+    #puts "Add Data File --- Basename (Unesc) #{File.basename(filename)}"
     my_dest_basename = ::BufsEscape.escape(File.basename(filename))
-    puts "Add Data File --- Basename (Esc) #{my_dest_basename}"
+    #puts "Add Data File --- Basename (Esc) #{my_dest_basename}"
     @filename = my_dest_basename
     FileUtils.mkdir_p(@my_dir) unless File.exist?(@my_dir) #TODO Throw error if its a file
     my_dest = @my_dir + '/' + @filename
@@ -343,11 +345,34 @@ class BufsFileSystem
   end
 
   def attached_files?
-    if @attached_files.size > 0
+    #if @attached_files.size > 0
+    #  return true
+    #else
+     
+    #Its better to check the authorative model
+    if Dir.file_data_entries(path_to_node_data).size > 0
+      #raise "#{path_to_node_data.inspect}"
+      #raise "#{Dir.file_data_entries(path_to_node_data).inspect}"
       return true
     else
       return false
     end
+  end
+  
+  def list_attached_files
+    #FIXME: Fix @attached_files to work or get rid of it and replace with this method
+    Dir.file_data_entries(path_to_node_data)
+  end
+
+  def get_attachment_names
+    list_attached_files.map {|fn| File.basename(fn)}
+  end
+
+  def remove_attached_files(att_basenames)
+    att_basenames = [att_basenames].flatten
+    att_esc_bn = att_basenames.collect {|bn| BufsEscape.escape(bn)}
+    att_filenames = att_esc_bn.collect {|bn| path_to_node_data + '/' + bn}
+    FileUtils.rm_f(att_filenames)
   end
 
   def get_file_data
