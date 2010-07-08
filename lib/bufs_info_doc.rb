@@ -83,6 +83,9 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   #  description
   #  attachments in the form of data files
   #
+  #TODO If this is handled in the base models then each base model should
+  #have a common way of providing the collection of parameters
+  #rathre than this hard coded version
   def self.create_from_node(node_obj)
     init_params = {}
     init_params['my_category'] = node_obj.my_category

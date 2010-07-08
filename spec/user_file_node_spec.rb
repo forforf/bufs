@@ -600,7 +600,10 @@ describe UserFileNode, "Node Operations with Attachments" do
       File.size(data_file).should == File.size(att_filename)
     end
   end
-end
+
+#TODO: This is not consistent across the various models
+# Each model should have a consistent way of providing it's collection
+# of parameters and values.
 =begin
 #creating a db doc from a directory entry
   it "should create a full doc from a node object without files" do
@@ -644,7 +647,7 @@ end
     end
   end
 
-  #more of a test of couchrest
+  #this is already used throughout the specs
   it "should be able to return documents by its category" do
     parent_cats = {}
     doc_params = {}
@@ -669,58 +672,43 @@ end
       end
     end
   end
-
-  it "should only have a single entry for each doc category" do
-    all_nodes = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      all_nodes[user_id] = docClass.all
-      all_nodes[user_id].each do |doc|
-        docClass.by_my_category(:key => doc.my_category).size.should == 1
-      end
-    end
-  end
+=end
 
   it "should be able to delete (destroy) the model" do
     parent_cats = {}
-    doc_params = {}
-    basic_docs = {}
+    node_params = {}
+    basic_nodes = {}
     #set initial conditions (doc with attachment)
-    UserDB.user_to_docClass.each do |user_id, docClass|
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
       parent_cats[user_id] = ['deletion testing']
-      doc_params[user_id] = get_default_params.merge({:my_category => 'delete_test1', :parent_categories => parent_cats[user_id]})
-      basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
-      basic_docs[user_id].save
+      node_params[user_id] = get_default_params.merge({:my_category => 'delete_test1', :parent_categories => parent_cats[user_id]})
+      basic_nodes[user_id] = make_node_no_attachment(user_id, node_params[user_id])
+      basic_nodes[user_id].save
       test_filename = @test_files['strange_characters_in_file_name']
       test_basename = File.basename(test_filename)
-      basic_docs[user_id].add_data_file(test_filename)
+      basic_nodes[user_id].add_data_file(test_filename)
     end
     #verify initial conditions
-    docs = {}
-    doc_att_ids = {}
-    doc_atts = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      docs[user_id] = docClass.by_my_category(:key => 'delete_test1')
-      docs[user_id].size.should == 1
-      doc = docs[user_id].first
-      doc_att_ids[user_id] = docClass.get(doc['_id']).attachment_doc_id
-      doc_atts[user_id] = docClass.get(doc_att_ids[user_id])
-      doc_atts[user_id].should_not == nil
+    nodes = {}
+    node_atts = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      nodes[user_id] = nodeClass.by_my_category('delete_test1')
+      nodes[user_id].size.should == 1
+      node = nodes[user_id].first
+      node_atts[user_id] = node.list_attached_files
+      node_atts[user_id].should_not == nil
     end
     #test
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_latest = docClass.get(basic_docs[user_id]['_id'])
-      doc_latest.destroy_node
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      node_latest = nodeClass.by_my_category(basic_nodes[user_id].my_category)
+      node_latest.first.destroy_node
     end
     #verify results
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      doc = docs[user_id].first
-      doc.my_category.should == 'delete_test1'
-      docClass.by_my_category(:key => doc.my_category).size.should == 0
-      doc_att_ids[user_id].should_not == nil
-      puts "doc_att_doc_id: #{doc_att_ids[user_id]}"
-      doc_atts[user_id] = docClass.user_attachClass.get(doc_att_ids[user_id])
-      #p bia
-      doc_atts[user_id].should == nil
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      node = nodes[user_id].first
+      node.my_category.should == 'delete_test1'
+      #FIXME: Note doc node returns empty array, not nil
+      nodeClass.by_my_category(node.my_category).should == nil
     end
   end
 
@@ -728,42 +716,39 @@ end
   #it "should return all model data when queried by the model's category name (my_category)" do
   #  ScoutInfoDoc.node_by_title('test_spec1.pptx').should == ScoutInfoDoc.by_title('test_spec1.pptx')
   #end
-
-
 end
 
-describe UserDB, "Document Operations with Links" do
-  include UserDocSpecHelpers
+describe UserFileNode, "Node Operations with Links" do
+  include UserFileNodeSpecHelpers
 
   before(:each) do
-    #delete any existing db records
-    #TODO This only works if the db entry also exists in UserDB
-    #Need to query each user database (how do we know the names?)
+    #delete any existing nodes
+    #TODO This only works if the node entry also exists in UserFileNode
+    #Need to query each user directory (how do we know the names?)
     # => need to enforce database naming convention.
-    #query for couchrest-type that matches /UserDB::UserDoc*/
-    UserDB.docClasses.each do |docClass|
-      linkClass = docClass.user_linkClass
-      all_link_docs = linkClass.all
-      all_link_docs.each do |link_doc|
-        link_doc.destroy
-      end
-      all_user_docs = docClass.all
-      all_user_docs.each do |user_doc|
-        user_doc.destroy
+    UserFileNode.nodeClasses.each do |nodeClass|
+    #  linkClass = nodeClass.user_linkClass
+    #  all_link_nodes = linkClass.all
+    #  all_link_nodes.each do |link_node|
+    #    link_doc.destroy
+    #  end
+      all_user_nodes = nodeClass.all
+      all_user_nodes.each do |user_node|
+        user_node.destroy
       end
     end
 
     @user1_id = "User001"
     @user2_id = "User002"
-    @user1_db = UserDB.new(CouchDB, @user1_id)
-    @user2_db = UserDB.new(CouchDB2, @user2_id)
+    @user1_fs = UserFileNode.new(FileSystem1, @user1_id)
+    @user2_fs = UserFileNode.new(FileSystem2, @user2_id)
   end
 
-  it "has an attachment class associated with it" do
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      docClass.user_linkClass.name.should == "UserDB::UserLink#{user_id}"
-    end
-  end
+  #it "has an link class associated with it" do
+  #  UserDB.user_to_docClass.each do |user_id, docClass|
+  #    docClass.user_linkClass.name.should == "UserDB::UserLink#{user_id}"
+  #  end
+  #end
 
   it "should save links" do
     #initial conditions (attachment file)
@@ -771,33 +756,27 @@ describe UserDB, "Document Operations with Links" do
     test_links= ["http://www.google.com", "http://www.bing.com"]
     #intial conditions (doc)
     parent_cats = {}
-    doc_params = {}
-    basic_docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      parent_cats[user_id] = ['docs with links']
-      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_link1', :parent_categories => parent_cats[user_id]})
-      basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
-      basic_docs[user_id].save #doc must be saved before we can add links
+    node_params = {}
+    basic_nodes = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      parent_cats[user_id] = ['nodes with links']
+      node_params[user_id] = get_default_params.merge({:my_category => 'doc_w_link1', :parent_categories => parent_cats[user_id]})
+      basic_nodes[user_id] = make_node_no_attachment(user_id, node_params[user_id])
+      basic_nodes[user_id].save #node must be saved before we can add links?
     end
     #check initial conditions
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      docClass.get(basic_docs[user_id]['_id']['links_doc_id']).should == nil
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      nodeClass.by_my_category(basic_nodes[user_id].my_category).first.list_links.should == nil
     end
     #test
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      basic_docs[user_id].add_links(test_links)
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      basic_nodes[user_id].add_links(test_links)
     end
     #check results
-    link_doc_ids = {}
-    link_docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      link_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_link_doc_id
-      link_docs[user_id] = docClass.get(link_doc_ids[user_id])
-      user_doc_from_db = docClass.get(basic_docs[user_id]['_id'])
-      #docClass.get(basic_docs[user_id]['_id'])['links_doc_id'].should == link_docs[user_id]['_id']
-      user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
-      links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
-      links_in_user_doc.uris.sort.should == test_links.sort
+    #links = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      user_node = nodeClass.by_my_category(basic_nodes[user_id].my_category).first
+      user_node.list_links.sort.should == test_links.sort
     end
   end
 
@@ -806,48 +785,36 @@ describe UserDB, "Document Operations with Links" do
     test_links= ["http://www.google.com", "http://www.bing.com"]
     remove_link = "http://www.bing.com"
     parent_cats = {}
-    doc_params = {}
-    basic_docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      parent_cats[user_id] = ['docs with links']
-      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_link2', :parent_categories => parent_cats[user_id]})
-      basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
-      basic_docs[user_id].save #doc must be saved before we can add links
+    node_params = {}
+    basic_nodes = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      parent_cats[user_id] = ['nodes with links']
+      node_params[user_id] = get_default_params.merge({:my_category => 'doc_w_link2', :parent_categories => parent_cats[user_id]})
+      basic_nodes[user_id] = make_node_no_attachment(user_id, node_params[user_id])
+      basic_nodes[user_id].save #node must be saved before we can add links
     end
     #check initial conditions
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      docClass.get(basic_docs[user_id]['_id']['links_doc_id']).should == nil
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      basic_nodes[user_id].list_links.should == nil
     end
     #add links
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      basic_docs[user_id].add_links(test_links)
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      basic_nodes[user_id].add_links(test_links)
     end
    #check initial conditions
-    link_doc_ids = {}
-    link_docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      link_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_link_doc_id
-      link_docs[user_id] = docClass.get(link_doc_ids[user_id])
-      user_doc_from_db = docClass.get(basic_docs[user_id]['_id'])
-      #docClass.get(basic_docs[user_id]['_id'])['links_doc_id'].should == link_docs[user_id]['_id']
-      user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
-      links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
-      links_in_user_doc.uris.sort.should == test_links.sort
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      user_node = nodeClass.by_my_category(basic_nodes[user_id].my_category).first
+      user_node.list_links.sort.should == test_links.sort
     end
+
     #test
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      basic_docs[user_id].remove_links(remove_link)
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      basic_nodes[user_id].remove_links(remove_link)
     end
     #verify
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      link_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_link_doc_id
-      link_docs[user_id] = docClass.get(link_doc_ids[user_id])
-      user_doc_from_db = docClass.get(basic_docs[user_id]['_id'])
-      #docClass.get(basic_docs[user_id]['_id'])['links_doc_id'].should == link_d
-      user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
-      links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
-      links_in_user_doc.uris.sort.should == (test_links-[remove_link]).sort
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      user_node = nodeClass.by_my_category(basic_nodes[user_id].my_category).first
+      user_node.list_links.sort.should == (test_links - [remove_link]).sort
     end
   end
 end
-=end
