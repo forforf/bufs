@@ -269,7 +269,7 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     data_file_location = node_to_save.path_to_node_data + '/' + esc_test_basename
     File.exists?(data_file_location).should == true
     node_to_save.attached_files?.should == true
-    node_to_save.file_metadata['file_modified'].should == File.mtime(data_file_location).to_s
+    node_to_save.file_metadata[test_filename]['file_modified'].should == File.mtime(data_file_location).to_s
     node_to_save.filename.should == esc_test_basename
   end
 

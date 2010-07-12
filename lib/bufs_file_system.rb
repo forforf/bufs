@@ -1,10 +1,13 @@
+#common libraries
 require 'cgi'
 require 'time'
 #JSON Hack
 require 'json'
 
+#bufs libraries
 require File.dirname(__FILE__) + '/bufs_escape'   #need to insert this 
 
+#File Node Helpers
 class Dir  #monkey patch  (duck punching?)
   def self.working_entries(dir=Dir.pwd)
     ignore_list = ['thumbs.db','all_child_files']
@@ -24,17 +27,18 @@ end
 
 
 class BufsFileSystem
-  class << self 
-    attr_accessor :bfs_dir
+  #class << self 
+    #attr_accessor :bfs_dir
       #:name_space, :parent_categories_file_basename,
       #:description_file_basename, :win_dir, :linux_dir
-  end
+  #end
 
+ #bind to directory model
   #must be set before it can be used
   #child classes should set this in their
   #class definitions
  #---
-  def self.use_directory(bfs_dir)
+ def self.use_directory(bfs_dir)
     @bfs_dir = bfs_dir
     FileUtils.mkdir_p(File.expand_path(@bfs_dir))
   end
@@ -287,6 +291,27 @@ class BufsFileSystem
     #self  <-- Right thing to do, but need stability beofre changing (for testing)
   end
 
+  def self.create_from_doc_node(node_obj)
+    init_params = {}
+    init_params['my_category'] = node_obj.my_category
+    init_params['description'] = node_obj.description if node_obj.description
+    new_bfs = self.new(init_params)
+    new_bfs.add_parent_categories(node_obj.parent_categories)
+    new_bfs.save
+    if node_obj.get_attachment_names.nil? || node_obj.get_attachment_names.empty?
+      #do nothing, easier to read like this
+    else
+      node_obj.get_attachment_names.each do |att_name|
+        raw_data = node_obj.attachment_data(att_name)
+        #att_file_name = self.namespace + '/' + new_bfs.my_category + '/' 
+        new_bfs.add_raw_data(att_name, new_bfs.my_category, raw_data,
+                             node_obj.file_metadata[att_name]) 
+      end
+    end
+    return new_bfs.class.by_my_category(new_bfs.my_category).first
+  end
+
+
   def add_parent_categories(new_cats)
     current_cats = orig_cats = self.parent_categories||[]
     new_cats = [new_cats].flatten
@@ -311,6 +336,7 @@ class BufsFileSystem
   end
 
   #TODO: Rationalize with BufsInfoDoc
+  #FIXME: my_cat not needed?
   def add_raw_data(file_name, my_cat, raw_data, file_modified_at = nil)
     #file_name = unescape(file_name)  #Hack to avoid escaping twice (and changing the name in the process)
     #content type is lost when data is saved into the file model.
@@ -332,21 +358,20 @@ class BufsFileSystem
     @filename = esc_filename
   end
 
-  #TODO: Currently this only allows a single file stored in the node
-  #this is ok for my purposes, but I need to fix this to be consistent with
-  #other node types for future compatibility.  Same issue for get file
-  def add_data_file(filename)
-    #my_dir = BufsInfoFileSystem.name_space + '/' + self.my_category + '/'
-    #puts "Add Data File --- Basename (Unesc) #{File.basename(filename)}"
-    my_dest_basename = ::BufsEscape.escape(File.basename(filename))
-    #puts "Add Data File --- Basename (Esc) #{my_dest_basename}"
-    @filename = my_dest_basename
-    FileUtils.mkdir_p(@my_dir) unless File.exist?(@my_dir) #TODO Throw error if its a file
-    my_dest = @my_dir + '/' + @filename
-    @attached_files << my_dest
-    same_file = filename == my_dest
-    FileUtils.cp(filename, my_dest, :preserve => true, :verbose => true ) unless same_file
-    self.file_metadata = {'file_modified' => File.mtime(filename).to_s}
+  #TODO: Need to update spec to include multiple files 
+  def add_data_file(filenames)
+    filenames = [filenames].flatten
+    filenames.each do |filename|
+      my_dest_basename = ::BufsEscape.escape(File.basename(filename))
+      #puts "Add Data File --- Basename (Esc) #{my_dest_basename}"
+      @filename = my_dest_basename
+      FileUtils.mkdir_p(@my_dir) unless File.exist?(@my_dir) #TODO Throw error if its a file
+      my_dest = @my_dir + '/' + @filename
+      @attached_files << my_dest
+      same_file = filename == my_dest
+      FileUtils.cp(filename, my_dest, :preserve => true, :verbose => true ) unless same_file
+      self.file_metadata = {filename => {'file_modified' => File.mtime(filename).to_s}}
+    end
   end
 
   def attached_files?

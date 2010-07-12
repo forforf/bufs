@@ -1,15 +1,17 @@
-require 'couchrest'
+#require 'couchrest'
 
+#bufs model
 require File.dirname(__FILE__) + '/bufs_info_doc'
 
 class UserDB
-  #attr_accessor :namespace
-  class << self; attr_accessor :user_to_docClass, :docClass_users, :docClasses; end
+  class << self; attr_accessor :docClasses, :user_to_docClass, :docClass_users; end
   UserDB.docClasses = []
   UserDB.user_to_docClass = {}
   UserDB.docClass_users = {}
 
-  attr_reader :docClass, :namespace #, :user_attach_class_name
+  attr_reader :docClass, :namespace
+
+  #create the bufs model class to handle specific users 
   def initialize(couchdb, user_id)
     @namespace = couchdb
     @user_doc_class_name = "UserDoc#{user_id}"

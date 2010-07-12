@@ -502,7 +502,6 @@ describe UserDB, "Document Operations with Attachments" do
       attachment_names[user_id].size.should == 1
       attachment_names[user_id].first.should == BufsEscape.escape(test_basename)
     end
-
   end
 
   it "should avoid creating hellish names when escaping and unescaping" do
@@ -576,14 +575,14 @@ describe UserDB, "Document Operations with Attachments" do
 
 #creating a db doc from a directory entry
   it "should create a full doc from a node object without files" do
-    NodeMock = Struct.new(:my_category, :parent_categories, :description, :files)
+    NodeMock = Struct.new(:my_category, :parent_categories, :description, :list_attached_files)
     node_obj_mock_no_files = NodeMock.new('node_mock_category',
                                           ['mock_mom', 'mock_dad'],
                                           'mock description')
 
     docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      docs[user_id] = docClass.create_from_node(node_obj_mock_no_files)
+      docs[user_id] = docClass.create_from_file_node(node_obj_mock_no_files)
       docs[user_id].my_category.should == node_obj_mock_no_files.my_category
       docs[user_id].parent_categories.should == node_obj_mock_no_files.parent_categories
       docs[user_id].description.should == node_obj_mock_no_files.description
@@ -594,7 +593,7 @@ describe UserDB, "Document Operations with Attachments" do
     #initial conditions
     test_filename = @test_files['strange_characters_in_file_name']
     test_basename = File.basename(test_filename)
-    NodeMock = Struct.new(:my_category, :parent_categories, :description, :files)
+    NodeMock = Struct.new(:my_category, :parent_categories, :description, :list_attached_files)
     node_obj_mock_with_files = NodeMock.new('node_mock_category',
                                           ['mock_mom', 'mock_dad'],
                                           'mock description',
@@ -604,7 +603,7 @@ describe UserDB, "Document Operations with Attachments" do
     att_docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
       #test
-      docs[user_id] = docClass.create_from_node(node_obj_mock_with_files)
+      docs[user_id] = docClass.create_from_file_node(node_obj_mock_with_files)
       #check results
       docs[user_id].my_category.should == node_obj_mock_with_files.my_category
       docs[user_id].parent_categories.should == node_obj_mock_with_files.parent_categories

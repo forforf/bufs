@@ -1,4 +1,6 @@
+#bufs model
 require File.dirname(__FILE__) + '/bufs_file_system'
+
 
 
 class UserFileNode
@@ -7,7 +9,9 @@ class UserFileNode
   UserFileNode.user_to_nodeClass = {}
   UserFileNode.nodeClass_users = {}
 
-  attr_reader :namespace, :nodeClass #, :user_attach_class_name
+  attr_reader :nodeClass, :namespace
+
+  #create the bufs model class to handle specific users
   def initialize(filesys, user_id)
     @namespace = filesys
     @user_node_class_name = "UserFN#{user_id}"
@@ -59,7 +63,7 @@ class UserFileNode
     #@docClass.user_attachClass = @attachClass
     #@docClass.user_linkClass = @linkClass
 
-    ##Perform user <=> CouchDB Document bindings
+    ##Perform user <=> File System bindings
     ##Add to List of docClasses
     UserFileNode.nodeClasses << @nodeClass
     UserFileNode.nodeClasses.uniq!

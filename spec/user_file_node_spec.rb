@@ -601,52 +601,75 @@ describe UserFileNode, "Node Operations with Attachments" do
     end
   end
 
-#TODO: This is not consistent across the various models
-# Each model should have a consistent way of providing it's collection
-# of parameters and values.
-=begin
 #creating a db doc from a directory entry
   it "should create a full doc from a node object without files" do
-    NodeMock = Struct.new(:my_category, :parent_categories, :description, :files)
+    NodeMock = Struct.new(:my_category, :parent_categories, :description,
+                          :get_attachment_names)
     node_obj_mock_no_files = NodeMock.new('node_mock_category',
                                           ['mock_mom', 'mock_dad'],
-                                          'mock description')
+                                          'mock description', [])
 
-    docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
-      doc[user_id] = docClass.create_from_node(node_obj_mock_no_files)
-      docs[user_id].my_category.should == node_obj_mock_no_files.my_category
-      docs[user_id].parent_categories.should == node_obj_mock_no_files.parent_categories
-      docs[user_id].description.should == node_obj_mock_no_files.description
+    new_nodes = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
+      new_nodes[user_id] = nodeClass.create_from_doc_node(node_obj_mock_no_files)
+      new_nodes[user_id].should_not == nil
+      new_nodes[user_id].my_category.should == node_obj_mock_no_files.my_category
+      new_nodes[user_id].parent_categories.should == node_obj_mock_no_files.parent_categories
+      new_nodes[user_id].description.should == node_obj_mock_no_files.description
     end
   end
 
-  it "should create a full doc from a node object with files" do
+  it "should create a full file node from a doc node object with files" do
     #initial conditions
     test_filename = @test_files['strange_characters_in_file_name']
     test_basename = File.basename(test_filename)
-    NodeMock = Struct.new(:my_category, :parent_categories, :description, :files)
+    test_data = File.open(test_filename, 'rb'){|f| f.read}
+    #NodeMock = Struct.new(:my_category, :parent_categories, :description,
+    #                      :get_attachment_names, :stub_data)
+    class NodeMock
+      attr_accessor :my_category, :parent_categories, :description, :file_metadata
+
+      def initialize(cat, par_cat, desc, att_nams, att_datas, mtime)
+        @my_category = cat
+        @parent_categories = par_cat
+        @description = desc
+        @att_names = att_nams
+        @att_data = att_datas
+        @file_metadata = {'file_modified' => mtime}
+      end
+
+      def get_attachment_names
+        @att_names
+      end
+
+      def attachment_data(a_name)
+        @att_data[a_name]
+      end
+    end 
     node_obj_mock_with_files = NodeMock.new('node_mock_category',
                                           ['mock_mom', 'mock_dad'],
                                           'mock description',
-                                           [test_filename])
-    docs = {}
-    att_doc_ids = {}
-    att_docs = {}
-    UserDB.user_to_docClass.each do |user_id, docClass|
+                                           [test_basename], {test_basename => test_data},
+                                          File.mtime(test_filename))
+    nodes = {}
+    #att_doc_ids = {}
+    #att_docs = {}
+    UserFileNode.user_to_nodeClass.each do |user_id, nodeClass|
       #test
-      docs[user_id] = docClass.create_from_node(node_obj_mock_with_files)
+      nodes[user_id] = nodeClass.create_from_doc_node(node_obj_mock_with_files)
       #check results
-      docs[user_id].my_category.should == node_obj_mock_with_files.my_category
-      docs[user_id].parent_categories.should == node_obj_mock_with_files.parent_categories
-      docs[user_id].description.should == node_obj_mock_with_files.description
-      att_doc_ids[user_id] = docClass.get(docs[user_id]['_id']).attachment_doc_id
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
-      att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename)
-      att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
+      nodes[user_id].my_category.should == node_obj_mock_with_files.my_category
+      nodes[user_id].parent_categories.should == node_obj_mock_with_files.parent_categories
+      nodes[user_id].description.should == node_obj_mock_with_files.description
+      nodes[user_id].get_attachment_names.should include BufsEscape.escape(test_basename)
+      nodes[user_id].list_attached_files.each do |att_file|
+        att_file_name = nodes[user_id].path_to_node_data + '/' + att_file
+        File.mtime(att_file_name).should == File.mtime(test_filename)
+      end
     end
   end
 
+=begin
   #this is already used throughout the specs
   it "should be able to return documents by its category" do
     parent_cats = {}

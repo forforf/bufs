@@ -1,12 +1,16 @@
+#common libraries
 require 'couchrest'
 require 'cgi' #Can replace with url_escape if performance is an issue
 
+#bufs libraries
 require File.dirname(__FILE__) + '/bufs_info_attachment'
 require File.dirname(__FILE__) + '/bufs_info_link'
 
 
 #This class is the primary interface into CouchDB BUFS documents
 class BufsInfoDoc < CouchRest::ExtendedDocument
+
+  #binding to database handled by CouchRest (use_database)
 
   #This should be defined in the dynamic class definition
   #The default value here is for teting basic functionality
@@ -86,15 +90,15 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   #TODO If this is handled in the base models then each base model should
   #have a common way of providing the collection of parameters
   #rathre than this hard coded version
-  def self.create_from_node(node_obj)
+  def self.create_from_file_node(node_obj)
     init_params = {}
     init_params['my_category'] = node_obj.my_category
     init_params['description'] = node_obj.description if node_obj.description
-    new_sid = self.new(init_params)
-    new_sid.add_parent_categories(node_obj.parent_categories)
-    new_sid.save
-    new_sid.add_data_file(node_obj.files) if node_obj.files
-    return new_sid.class.get(new_sid['_id'])
+    new_bid = self.new(init_params)
+    new_bid.add_parent_categories(node_obj.parent_categories)
+    new_bid.save
+    new_bid.add_data_file(node_obj.list_attached_files) if node_obj.list_attached_files
+    return new_bid.class.get(new_bid['_id'])
   end
 
   #This value is added to the bufs document id to create a unique id for this documents attachments
@@ -253,6 +257,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     current_node_attachment_doc.save
   end
 
+#TODO: Add to spec
   def attachment_url(attachment_name)
     current_node_doc = self.class.get(self['_id'])
     att_doc_id = current_node_doc['attachment_doc_id']
@@ -266,6 +271,9 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
     current_node_attachment_doc.read_attachment(attachment_name)
   end
+
+
+
   #Save the object to the CouchDB database
   #  save_type can be either :additions or :deletions
   #  :additions will merge parent categories with any categories in the database
