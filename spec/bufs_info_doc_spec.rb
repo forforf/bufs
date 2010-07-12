@@ -65,9 +65,9 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     bad_bufs_info_doc1 = BufsInfoDoc.new(:parent_categories => ['no_my_category'],
                                           :description => 'some description',
                                           :file_metadata => {})
-    #bad_bufs_info_doc2 = BufsInfoDoc.new(:my_category => 'no_parent_categories',
-    #                                      :description => 'some description',
-    #                                      :file_metadata => {})
+    bad_bufs_info_doc2 = BufsInfoDoc.new(:my_category => 'no_parent_categories',
+                                          :description => 'some description',
+                                          :file_metadata => {})
                                       
     #test
     lambda { bad_bufs_info_doc1.save }.should raise_error(ArgumentError)
