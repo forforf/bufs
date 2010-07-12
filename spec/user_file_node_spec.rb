@@ -614,7 +614,7 @@ describe UserFileNode, "Node Operations with Attachments" do
 
     docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      docs[user_id] = docClass.create_from_node(node_obj_mock_no_files)
+      doc[user_id] = docClass.create_from_node(node_obj_mock_no_files)
       docs[user_id].my_category.should == node_obj_mock_no_files.my_category
       docs[user_id].parent_categories.should == node_obj_mock_no_files.parent_categories
       docs[user_id].description.should == node_obj_mock_no_files.description
