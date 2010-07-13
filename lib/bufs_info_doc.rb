@@ -212,6 +212,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
       file_data = File.open(at_f, "rb"){|f| f.read}
       ##{at_basename => {:file_modified => File.mtime(at_f)}}
       #Unescaping '+' to space  because CouchDB will escape it leading to space -> + -> %2b
+      #TODO: Change to BUFS.unescape?
       unesc_at_basename = CGI.unescape(at_basename)
       attachment_package[unesc_at_basename] = {'data' => file_data, 'md' => file_metadata}
     end
@@ -270,6 +271,12 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     att_doc_id = current_node_doc['attachment_doc_id']
     current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
     current_node_attachment_doc.read_attachment(attachment_name)
+  end
+
+  def get_attachment_metadata
+    current_node_doc = self.class.get(self['_id'])
+    att_doc_id = current_node_doc['attachment_doc_id']
+    current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
   end
 
 

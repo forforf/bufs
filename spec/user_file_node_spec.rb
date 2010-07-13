@@ -595,7 +595,8 @@ describe UserFileNode, "Node Operations with Attachments" do
       node_w_att.get_attachment_names.should include esc_att_name
       att_filename = node_w_att.path_to_node_data + '/' + esc_att_name
       file_mod_time = File.mtime(att_filename)
-      file_mod_time.should > (Time.now - 4) #4 seconds should be enough time
+      #TODO: verify the time window isn't masking any problems
+      file_mod_time.should > (Time.now - 30) #30 seconds should be enough time
       file_mod_time.should == orig_mod_time
       File.size(data_file).should == File.size(att_filename)
     end
@@ -635,7 +636,7 @@ describe UserFileNode, "Node Operations with Attachments" do
         @description = desc
         @att_names = att_nams
         @att_data = att_datas
-        @file_metadata = {'file_modified' => mtime}
+        @file_metadata = {'file_modified' => mtime.to_s}
       end
 
       def get_attachment_names
@@ -644,6 +645,14 @@ describe UserFileNode, "Node Operations with Attachments" do
 
       def attachment_data(a_name)
         @att_data[a_name]
+      end
+
+      def get_attachment_metadata
+        md = {}
+        @att_names.each do |a_name|
+          md[BufsEscape.escape(a_name)] = @file_metadata
+        end
+        {'md_attachments' => md}
       end
     end 
     node_obj_mock_with_files = NodeMock.new('node_mock_category',

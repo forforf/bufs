@@ -294,9 +294,9 @@ class BufsFileSystem
   def self.create_from_doc_node(node_obj)
     init_params = {}
     init_params['my_category'] = node_obj.my_category
+    init_params['parent_categories'] = node_obj.parent_categories
     init_params['description'] = node_obj.description if node_obj.description
     new_bfs = self.new(init_params)
-    new_bfs.add_parent_categories(node_obj.parent_categories)
     new_bfs.save
     if node_obj.get_attachment_names.nil? || node_obj.get_attachment_names.empty?
       #do nothing, easier to read like this
@@ -304,16 +304,19 @@ class BufsFileSystem
       node_obj.get_attachment_names.each do |att_name|
         raw_data = node_obj.attachment_data(att_name)
         #att_file_name = self.namespace + '/' + new_bfs.my_category + '/' 
+        puts "Adding Raw Data For: #{node_obj.inspect}"
+        file_modified_at = node_obj.get_attachment_metadata['md_attachments'][::BufsEscape.escape(att_name)]['file_modified']
         new_bfs.add_raw_data(att_name, new_bfs.my_category, raw_data,
-                             node_obj.file_metadata[att_name]) 
+                   file_modified_at) 
       end
     end
     return new_bfs.class.by_my_category(new_bfs.my_category).first
   end
 
-
+  #TODO: replace hard coded methods based on data names with dynamically generated ones
   def add_parent_categories(new_cats)
     current_cats = orig_cats = self.parent_categories||[]
+    #current_cats = orig_cats = self.parent_categories||[]
     new_cats = [new_cats].flatten
     current_cats += new_cats
     current_cats.uniq!
