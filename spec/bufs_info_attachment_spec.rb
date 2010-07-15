@@ -39,7 +39,14 @@ describe BufsInfoAttachment do
 
   before(:each) do
     BufsInfoAttachment.all.each do |doc|
-      doc.destroy
+      begin
+        doc.destroy
+      rescue ArgumentError => e
+        puts "Rescued Error:[#{e}] while trying to destroy #{doc.class}"
+        raise "#{doc.inspect}" #doc['_id'].inspect}"
+        me = doc.class.get(doc['_id'])
+        me.destroy 
+      end
     end
   end
 

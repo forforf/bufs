@@ -9,11 +9,15 @@ class UserFileNode
   UserFileNode.user_to_nodeClass = {}
   UserFileNode.nodeClass_users = {}
 
+  ModelDir = "model"
+ 
+
   attr_reader :nodeClass, :namespace
 
   #create the bufs model class to handle specific users
   def initialize(filesys, user_id)
-    @namespace = filesys
+    #TODO: Check for appropriate / 
+    @namespace = filesys + ModelDir
     @user_node_class_name = "UserFN#{user_id}"
     #@user_attach_class_name = "UserAttach#{user_id}"
     #@user_link_class_name = "UserLink#{user_id}"

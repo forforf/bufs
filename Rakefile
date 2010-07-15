@@ -15,7 +15,9 @@ spec_set_1 = ['spec/bufs_escape_spec.rb',
               'spec/bufs_file_system_spec.rb',
               'spec/user_doc_spec.rb',
               'spec/user_file_node_spec.rb',
-              'spec/convert_node_type_spec.rb']
+              'spec/convert_node_type_spec.rb',
+              'spec/bind_user_file_system_spec.rb']
+
 spec_set_2 = [#'spec/abstract_node_spec.rb',
               'spec/sync_node_spec.rb']
 
