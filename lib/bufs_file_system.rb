@@ -276,6 +276,9 @@ class BufsFileSystem
     #end
 
     #make model directory
+      #debug for permissions problems
+      FileUtils.mkdir_p "/tmp/bfs_test"
+      #end debug
     my_dir = self.class.namespace + '/' + self.my_category + '/'
     FileUtils.mkdir_p(my_dir)
 
