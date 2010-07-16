@@ -20,7 +20,8 @@ WorkPackage = Struct.new(:working_dir, :nodes)
     end
     #TODO: Figure out more elegant way than deleting and rebuilding (also see doc on rm_rf)
     FileUtils.rm_rf(parent_dir)
-    FileUtils.mkdir(parent_dir)
+    #TODO: Test with various permissions
+    FileUtils.mkdir(parent_dir) unless File.exist?(parent_dir) 
 
     build_view_layer(parent_dir, top_level_nodes)
   end
@@ -58,7 +59,7 @@ WorkPackage = Struct.new(:working_dir, :nodes)
     FileUtils.mkdir_p(this_dir) unless File.exist? this_dir
     puts " --- file?: #{node.attached_files?.inspect}"
     if node.attached_files?
-      node.attached_files.each do |att_full_filename|
+      node.list_attached_files.each do |att_full_filename|
         att_basename = File.basename(att_full_filename)
         #att_full_filename may == model_file_location
         puts "Attachment Names"

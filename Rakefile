@@ -23,6 +23,8 @@ spec_set_2 = [#'spec/abstract_node_spec.rb',
 
 spec_set_3 = ['spec/abstract_node_spec.rb']
 
+spec_set_4 = ['spec/bufs_view_builder_spec.rb']
+
 desc "Run Specs with RCov"
   Spec::Rake::SpecTask.new('specs_with_rcov') do |t|
     t.spec_files = spec_set_1

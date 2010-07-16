@@ -1,15 +1,15 @@
 #bufs model
 require File.dirname(__FILE__) + '/bufs_file_system'
-
+require File.dirname(__FILE__) + '/bufs_view_builder'
 
 
 class UserFileNode
-  class << self; attr_accessor :nodeClasses, :user_to_nodeClass, :nodeClass_users; end #:user_to_docClass, :docClass_users, :docClasses; end
+  class << self; attr_accessor :nodeClasses, :user_to_nodeClass, :nodeClass_users, :model_dir; end #:user_to_docClass, :docClass_users, :docClasses; end
   UserFileNode.nodeClasses = []
   UserFileNode.user_to_nodeClass = {}
   UserFileNode.nodeClass_users = {}
-
-  ModelDir = "model"
+  #TODO: Modify model dir to be settable on a per user basis
+  UserFileNode.model_dir = "model"
  
 
   attr_reader :nodeClass, :namespace
@@ -17,7 +17,7 @@ class UserFileNode
   #create the bufs model class to handle specific users
   def initialize(filesys, user_id)
     #TODO: Check for appropriate / 
-    @namespace = filesys + ModelDir
+    @namespace = filesys + UserFileNode.model_dir
     @user_node_class_name = "UserFN#{user_id}"
     #@user_attach_class_name = "UserAttach#{user_id}"
     #@user_link_class_name = "UserLink#{user_id}"

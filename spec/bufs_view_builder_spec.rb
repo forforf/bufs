@@ -13,7 +13,7 @@ require BufsViewBuilderSpec::LibDir + 'bufs_view_builder'
 FSModelDir = BufsFixtures::ProjectLocation  + 'sandbox_for_specs/bufs_view_builder_spec/model/'
 CreatedViewDir = BufsFixtures::ProjectLocation  + 'sandbox_for_specs/bufs_view_builder_spec/view_created'
 StaticViewDir = BufsFixtures::ProjectLocation  + 'sandbox_for_specs/bufs_view_builder_spec/view_static'
-BufsFileSystem.name_space = FSModelDir
+BufsFileSystem.use_directory FSModelDir
 
 describe BufsViewBuilder do
   before(:all) do

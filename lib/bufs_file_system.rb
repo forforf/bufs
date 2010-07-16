@@ -373,6 +373,7 @@ class BufsFileSystem
       @filename = my_dest_basename
       FileUtils.mkdir_p(@my_dir) unless File.exist?(@my_dir) #TODO Throw error if its a file
       my_dest = @my_dir + '/' + @filename
+      #FIXME: obj.attached_files is broken, list_attached_files should work
       @attached_files << my_dest
       same_file = filename == my_dest
       FileUtils.cp(filename, my_dest, :preserve => true, :verbose => true ) unless same_file
