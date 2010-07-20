@@ -620,23 +620,26 @@ describe UserFileNode, "Node Operations with Attachments" do
     end
   end
 
-  it "should create a full file node from a doc node object with files" do
+  it "should create a full file node from a doc node object with files and links" do
     #initial conditions
     test_filename = @test_files['strange_characters_in_file_name']
     test_basename = File.basename(test_filename)
     test_data = File.open(test_filename, 'rb'){|f| f.read}
+    test_links = ["http://www.google.com", "http://www.bing.com"]
     #NodeMock = Struct.new(:my_category, :parent_categories, :description,
     #                      :get_attachment_names, :stub_data)
     class NodeMock
-      attr_accessor :my_category, :parent_categories, :description, :file_metadata
+      attr_accessor :my_category, :parent_categories, :description, 
+                    :file_metadata, :links
 
-      def initialize(cat, par_cat, desc, att_nams, att_datas, mtime)
+      def initialize(cat, par_cat, desc, att_nams, att_datas, mtime, links)
         @my_category = cat
         @parent_categories = par_cat
         @description = desc
         @att_names = att_nams
         @att_data = att_datas
         @file_metadata = {'file_modified' => mtime.to_s}
+        @links = links
       end
 
       def get_attachment_names
@@ -654,12 +657,18 @@ describe UserFileNode, "Node Operations with Attachments" do
         end
         {'md_attachments' => md}
       end
+
+      def list_links
+        @links
+      end
     end 
     node_obj_mock_with_files = NodeMock.new('node_mock_category',
                                           ['mock_mom', 'mock_dad'],
                                           'mock description',
-                                           [test_basename], {test_basename => test_data},
-                                          File.mtime(test_filename))
+                                           [test_basename], 
+                                           {test_basename => test_data},
+                                          File.mtime(test_filename),
+                                           test_links)
     nodes = {}
     #att_doc_ids = {}
     #att_docs = {}
@@ -675,6 +684,7 @@ describe UserFileNode, "Node Operations with Attachments" do
         att_file_name = nodes[user_id].path_to_node_data + '/' + att_file
         File.mtime(att_file_name).should == File.mtime(test_filename)
       end
+      nodes[user_id].list_links.sort.should == test_links.sort
     end
   end
 

@@ -306,6 +306,8 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     link_names = links
   end
 
+  alias_method(:list_links, :get_link_names) #TODO: synchronize with bufs_file_system
+
   #Deletes the object and its CouchDB entry
   def destroy_node
     att_doc = self.class.get(self.attachment_doc_id)

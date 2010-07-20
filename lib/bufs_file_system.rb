@@ -313,6 +313,13 @@ class BufsFileSystem
                    file_modified_at) 
       end
     end
+    if node_obj.respond_to?(:list_links) && (node_obj.list_links.nil? || node_obj.list_links.empty?)
+      #do nothing, no link data
+    elsif node_obj.respond_to?(:list_links)
+      new_bfs.add_links(node_obj.list_links) 
+    else
+      #do nothing, no link method
+    end 
     return new_bfs.class.by_my_category(new_bfs.my_category).first
   end
 
@@ -320,6 +327,7 @@ class BufsFileSystem
   def add_parent_categories(new_cats)
     current_cats = orig_cats = self.parent_categories||[]
     #current_cats = orig_cats = self.parent_categories||[]
+    #TODO: should update node_data_hash
     new_cats = [new_cats].flatten
     current_cats += new_cats
     current_cats.uniq!
@@ -333,6 +341,7 @@ class BufsFileSystem
   alias :add_categories :add_parent_categories
 
   def remove_parent_categories(cats_to_remove)
+    #TODO: should update node_data_hash
     cats_to_remove = [cats_to_remove].flatten
     cats_to_remove.each do |remove_cat|
       self.parent_categories.delete(remove_cat)

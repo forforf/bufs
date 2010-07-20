@@ -70,6 +70,12 @@ WorkPackage = Struct.new(:working_dir, :nodes)
         FileUtils.ln_s(model_file_location, this_link_name) unless File.exist?(this_link_name)
       end
     end
+    #TODO: Add spec to test for links 
+    if node.list_links
+      html_link = node.list_links.map {|link| "<a href=\"#{link}\">#{link}</a>"}
+      html_str = html_link.join("<br />")
+      File.open("#{this_dir}/links.html", 'w') {|f| f.write(html_str)}   
+    end
     sub_nodes = @all_nodes.select{ |n|n.parent_categories.include? node.my_category }
     work_package = WorkPackage.new(this_dir, sub_nodes) if sub_nodes && sub_nodes.size > 0
   end  
