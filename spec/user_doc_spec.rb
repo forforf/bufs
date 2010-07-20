@@ -457,7 +457,7 @@ describe UserDB, "Document Operations with Attachments" do
     attachment_name = test_basename
     UserDB.user_to_docClass.each do |user_id, docClass|
       doc = docClass.get(basic_docs[user_id]['_id'])
-      doc.remove_attachments(attachment_name)
+      doc.remove_attachments
     end
     #check results
     UserDB.user_to_docClass.each do |user_id, docClass|
@@ -466,6 +466,52 @@ describe UserDB, "Document Operations with Attachments" do
       att_docs[user_id].should == nil
     end
   end
+
+  it "should cleanly remove a single  attachment" do
+    #initial conditions
+    #TODO: vary filename by user
+    test_filename1 = @test_files['binary_data_spaces_in_fname_pptx']
+    test_filename2 = @test_files['binary_data2_docx'] 
+    parent_cats = {}
+    doc_params = {}
+    basic_docs = {}
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      parent_cats[user_id] = ['docs with attachments']
+      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_att2', :parent_categories => parent_cats[user_id]})
+      basic_docs[user_id] = make_doc_w_attach_from_file(user_id, test_filename1, doc_params[user_id])
+      basic_docs[user_id].add_data_file(test_filename2)
+
+    end
+    #verify initial conditions
+    att_doc_ids = {}
+    att_docs = {}
+    test_basename1 = File.basename(test_filename1)
+    test_basename2 = File.basename(test_filename2)
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
+      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
+      docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
+      att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename1)
+      att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename2) 
+      att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename1)]['file_modified'].should == File.mtime(test_filename1).to_s
+      att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename2)]['file_modified'].should == File.mtime(test_filename2).to_s
+    end
+    #test
+    attachment_name1 = BufsEscape.escape(test_basename1)
+    attachment_name2 = BufsEscape.escape(test_basename2)
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      doc = docClass.get(basic_docs[user_id]['_id'])
+      doc.remove_attachment(attachment_name1)
+    end
+    #check results
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
+      docClass.get(basic_docs[user_id]['_id']).attachment_doc_id.should == att_docs[user_id]['_id']   #reference to attachment doc from user doc
+      att_docs[user_id]['_attachments'].keys.size.should == 1
+      att_docs[user_id]['_attachments'].keys.first.should == BufsEscape.escape(attachment_name2)
+    end
+  end
+
 
   it "should list attachment list" do
     #initial conditions

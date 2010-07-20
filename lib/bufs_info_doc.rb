@@ -1,21 +1,22 @@
 #common libraries
 require 'couchrest'
-require 'cgi' #Can replace with url_escape if performance is an issue
 
 #bufs libraries
 require File.dirname(__FILE__) + '/bufs_info_attachment'
 require File.dirname(__FILE__) + '/bufs_info_link'
-
+require File.dirname(__FILE__) + '/bufs_escape'
 
 #This class is the primary interface into CouchDB BUFS documents
 class BufsInfoDoc < CouchRest::ExtendedDocument
-
-  #binding to database handled by CouchRest (use_database)
+  #class configuration
+  DummyNamespace = "BufsInfoDocDefault"
+  AttachmentBaseID = "_attachments"
+  LinkBaseID = "_links"
 
   #This should be defined in the dynamic class definition
   #The default value here is for teting basic functionality
   def self.namespace 
-    "BufsInfoDocDefault"  #this should be overwritten
+    DummyNamespace
   end
 
   #This should be defined in the dynamic class definition
@@ -71,15 +72,6 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
 
   timestamps!
 
-  #validate parent categories exist  - should this be deprecated?
-  #set_callback :save, :before, :method_name 
-  #save_callback :before do |almost_a_doc|
-  #TODO: If this is needed, its not being called (commented out test spec until its fixed)
-  set_callback :save, :before, do |almost_a_doc|
-    if almost_a_doc.parent_categories.nil? || almost_a_doc.parent_categories.empty?
-      raise ArgumentError, "Requires at least one parent category to be set (can be set to top node category)"
-    end
-  end
 
   #Create the document in the BUFS node format from an existing node.  A BUFS node is an object that has the following properties:
   #  my_category
@@ -89,7 +81,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   #
   #TODO If this is handled in the base models then each base model should
   #have a common way of providing the collection of parameters
-  #rathre than this hard coded version
+  #rather than this hard coded version.
   def self.create_from_file_node(node_obj)
     init_params = {}
     init_params['my_category'] = node_obj.my_category
@@ -101,14 +93,16 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     return new_bid.class.get(new_bid['_id'])
   end
 
-  #This value is added to the bufs document id to create a unique id for this documents attachments
+  #Returns the id that will be appended to the document ID to uniquely
+  #identify attachment documents associated with the main document
   def self.attachment_base_id
-    "_attachments"
+    AttachmentBaseID 
   end
 
-  #This value is added to the bufs document id to create a unique id for this documents links
+  #Returns the id that will be appended to the document ID to uniquely
+  #identify link documents associated with the main document
   def self.link_base_id
-    "_links"
+    LinkBaseID 
   end
 
   #Adds parent categories, it can accept a single category or an array of categories
@@ -143,12 +137,6 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     end
   end
 
-  #Get attachment metadata.  This does not return the actual data.
-  #FIXME: Broken in change to multi-user
-  #def get_file_data(attach_file_name)
-  #  return CouchDB.fetch_attachment(BufsInfoAttachment.get(my_attachment_doc_id), attach_file_name)
-  #end
-
   def get_attachment_names
     att_doc_id = self.class.get(self['_id']).attachment_doc_id
     att_doc = self.class.get(att_doc_id)||{}
@@ -156,8 +144,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     att_names = attachments.keys
   end
 
-  #Get attachment data.  Note that the data is read in as a complete block, this may be something that needs optimized.
-
+  #Get attachment content.  Note that the data is read in as a complete block, this may be something that needs optimized.
   def add_raw_data(attach_name, content_type, raw_data, file_modified_at = nil)
     file_metadata = {}
     if file_modified_at
@@ -165,33 +152,21 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     else
       file_metadata['file_modified'] = Time.now.to_s
     end
-    file_metadata['content_type'] = content_type #|| 'application/x-unknown'
+    file_metadata['content_type'] = content_type #TODO: is unknown content handled gracefully?
     attachment_package = {}
-    unesc_attach_name = CGI.unescape(attach_name)
+    unesc_attach_name = BufsEscape.unescape(attach_name)
     attachment_package[unesc_attach_name] = {'data' => raw_data, 'md' => file_metadata}
-    
-    #puts "My Attach ID: #{ self.my_attachment_doc_id}"
-    #puts "My Attach Package: #{attachment_package.inspect}"
-
     bia = self.class.user_attachClass.get(self.my_attachment_doc_id)
-    #p my_attachment_doc_id
-    #puts "SIA found: #{bia.inspect}"
     if bia
-      #puts "Updating Attachment"
       bia.update_attachment_package(self, attachment_package)
     else
-      #puts "Creating new Attachment"
       bia = self.class.user_attachClass.create_attachment_package(self, attachment_package)
-      #bia = BufsInfoAttachment.create_attachment_package(self['_id'], attachment_package)
-      #puts "BIA created: #{bia.inspect}"
     end
 
-    #puts "Current ID #{self['_id']}"
     current_node_doc = self.class.get(self['_id'])
     current_node_doc.attachment_doc_id = bia['_id']
     current_node_attach = self.class.user_attachClass.get(current_node_doc.attachment_doc_id)
     current_node_attach.save
-    #puts "New Attach: #{current_node_attach.inspect}"
   end
 
   #Add an attachment to the BufsInfoDoc object from a file
@@ -200,37 +175,28 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     attachment_package = {}
     attachment_filenames = [attachment_filenames].flatten
     attachment_filenames.each do |at_f|
-      #puts "Filename to attach: #{at_f.inspect}"
       at_basename = File.basename(at_f)
       #basename can't contain '+', replace with space
       at_basename.gsub!('+', ' ')
-      #sc_at_basename = CGI::escape(at_basename)
-      #p at_basename
       file_metadata = {}
       file_metadata['file_modified'] = File.mtime(at_f).to_s
       file_metadata['content_type'] = MimeNew.for_ofc_x(at_basename)
       file_data = File.open(at_f, "rb"){|f| f.read}
       ##{at_basename => {:file_modified => File.mtime(at_f)}}
       #Unescaping '+' to space  because CouchDB will escape it leading to space -> + -> %2b
-      #TODO: Change to BUFS.unescape?
-      unesc_at_basename = CGI.unescape(at_basename)
+      unesc_at_basename = BufsEscape.unescape(at_basename)
       attachment_package[unesc_at_basename] = {'data' => file_data, 'md' => file_metadata}
     end
-    #puts "getting attachment doc id"
-    #p my_attachment_doc_id
+    #getting attachment doc id
     attachment_record = self.class.user_attachClass.get(my_attachment_doc_id)
-    #p my_attachment_doc_id
-    # puts "SIA found: #{sia.inspect}"
     if attachment_record
-      puts "Updating Attachment"
+      #puts "Updating Attachment"
       attachment_record.update_attachment_package(self, attachment_package)
     else
-      puts "Creating new Attachment"
+      #puts "Creating new Attachment"
       attachment_record = self.class.user_attachClass.create_attachment_package(self, attachment_package)
-      #puts "SIA created: #{sia.inspect}"
     end
 
-    #puts "Current ID #{self['_id']}"
     current_node_doc = self.class.get(self['_id'])
     current_node_doc.attachment_doc_id = attachment_record['_id']
     current_node_doc.save
@@ -238,8 +204,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     current_node_attach.save
   end
 
-  def remove_attachments(attachment_name)
-    #FIXME attachment name is meaningless here, also need specs for this
+  def remove_attachments  #Spec is in user_doc_spec
     current_node_doc = self.class.get(self['_id'])
     att_doc_id = current_node_doc.delete('attachment_doc_id')
     current_node_doc.save
@@ -249,7 +214,6 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
 
 
   def remove_attachment(attachment_name)
-    #TODO: need specs
     current_node_doc = self.class.get(self['_id'])
     att_doc_id = current_node_doc['attachment_doc_id']
     current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
@@ -258,7 +222,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     current_node_attachment_doc.save
   end
 
-#TODO: Add to spec
+#TODO: Add to spec (currently not used)
   def attachment_url(attachment_name)
     current_node_doc = self.class.get(self['_id'])
     att_doc_id = current_node_doc['attachment_doc_id']
@@ -286,7 +250,6 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   #  :additions will merge parent categories with any categories in the database
   #  :deletions will replace any existing parent categories with those of the object
   def save(save_type = :additions)
-    puts "Entered save method"
     #save_type :additions or :deletions
     #refers to whether parent category information is merged or deleted
     #I'll probably have to change this when dealing with files too
@@ -295,14 +258,7 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     #self['_id'] = BufsInfoDoc.name_space.to_s + '_' + self.class.to_s + '_' + self.my_category
     existing_doc = BufsInfoDoc.get(self['_id'])
     begin
-      #before_self = self.parent_categories
-      #super
-      puts self.class.inspect
-      #puts self.class.namespace.inspect
       self.database.save_doc(self)
-      #self.class.namespace.save_doc(self) #saving using database method, not ExtendedDoc method (didn't work for some reason)
-      #BufsInfoDoc.name_space.save_doc(self) #saving using database method, not ExtendedDoc method (didn't work for some reason) 
-      #raise "Self: #{before_self}, Before: #{existing_doc.parent_categories.inspect}, after: #{BufsInfoDoc.get(self['_id']).parent_categories.inspect}" #if save_type == :deletions
     rescue RestClient::RequestFailed => e
       if e.http_code == 409
         puts "Found existing doc (id: #{self['_id']} while trying to save ... using it instead"
@@ -335,7 +291,6 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     self.links_doc_id = self.my_link_doc_id  
     self.save
     self.class.user_linkClass.add_links(self, links)
-    #self.save
   end
 
   def remove_links(links_to_remove)
@@ -344,14 +299,12 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     self.class.user_linkClass.remove_links(self, links_to_remove)
   end
 
-
   def get_link_names
     link_doc_id = self.class.get(self['_id']).links_doc_id
     link_doc = self.class.get(link_doc_id)||{}
     links = link_doc['uris']||{}
     link_names = links
   end
-
 
   #Deletes the object and its CouchDB entry
   def destroy_node
@@ -367,6 +320,5 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
       me.destroy
     end
   end
-
 end
 
