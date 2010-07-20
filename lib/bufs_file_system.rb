@@ -215,6 +215,18 @@ class BufsFileSystem
     end
   end
 
+  def self.by_parent_categories(par_cats)
+    par_cats = [par_cats].flatten
+    matched_nodes = []
+    all_nodes = self.all
+    par_cats.each do |par_cat|
+      all_nodes.each do |node|
+        matched_nodes << node if node.parent_categories.include?(par_cat)
+      end 
+    end
+    return matched_nodes
+  end
+
   def initialize(init_params = {})
     raise "No parameters were passed to #{self.class} initialization" if (init_params.nil?||init_params.empty?)
     raise "No directory has been set for #{self}" unless self.class.namespace

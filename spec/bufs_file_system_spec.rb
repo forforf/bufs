@@ -146,6 +146,30 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     end
   end
 
+  it "should have a class method for finding nodes by parent categories" do
+    #set initial conditions
+    node_params = []
+    node_params[1] = get_default_params.merge({:my_category => 'find_me1',
+                                            :parent_categories => ['find_me', 'mom', 'dad']})
+    node_params[2] = get_default_params.merge({:my_category => 'find_me2',
+                                            :parent_categories => ['find_me', 'mom2', 'dad']})
+    node_params[3] = get_default_params.merge({:my_category => 'dont_find_me',
+                                          :parent_categories => ['mom', 'dad', 'mom2']})
+    node_params.compact!
+    node_params.each do |node_param|
+      node_to_save = make_node_no_attachment(node_param.dup)
+      node_to_save.save
+    end
+    #test
+    found_pc_nodes = BufsFileSystem.by_parent_categories('find_me')
+    #check results
+    found_pc_nodes.size.should == 2
+    found_pc_nodes.each do |found_node|
+      found_node.parent_categories.should include 'find_me'
+      found_node.parent_categories.should_not include 'dont_find_me'
+    end
+  end
+
 
   #adding categories
   it "should add categories for a new node" do
