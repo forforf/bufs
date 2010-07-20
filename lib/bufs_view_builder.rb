@@ -1,6 +1,7 @@
 
 require File.dirname(__FILE__) + '/bufs_file_system'
 
+
 class BufsViewBuilder
 WorkPackage = Struct.new(:working_dir, :nodes)
  
@@ -19,7 +20,8 @@ WorkPackage = Struct.new(:working_dir, :nodes)
       print n.my_category if n.attached_files?
     end
     #TODO: Figure out more elegant way than deleting and rebuilding (also see doc on rm_rf)
-    FileUtils.rm_rf(parent_dir)
+    dirs_to_delete = Dir.glob("#{parent_dir}*") - [@model_dir]
+    FileUtils.rm_rf(dirs_to_delete)
     #TODO: Test with various permissions
     FileUtils.mkdir(parent_dir) unless File.exist?(parent_dir) 
 

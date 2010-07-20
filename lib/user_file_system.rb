@@ -9,7 +9,7 @@ class UserFileNode
   UserFileNode.user_to_nodeClass = {}
   UserFileNode.nodeClass_users = {}
   #TODO: Modify model dir to be settable on a per user basis
-  UserFileNode.model_dir = "model"
+  UserFileNode.model_dir = ".model"
  
 
   attr_reader :nodeClass, :namespace
