@@ -1,10 +1,12 @@
 
 require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
+require File.dirname(__FILE__) + '/../bufs_fixtures/model_fixtures/create_model_dir'
 
 
 module BufsViewBuilderSpec
   LibDir = File.dirname(__FILE__) + '/../lib/'
 end
+
 
   
 
@@ -41,7 +43,7 @@ describe BufsViewBuilder do
     
     created_dir.sort.should == static_dir.sort
   end
-
   #Build View
   #Compare View
 end
+

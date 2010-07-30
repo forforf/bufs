@@ -1,6 +1,8 @@
 puts "Loaded Bufs Fixtures"
 #This database has the necessary data for bootstrapping the fixture
 require 'couchrest'
+require 'fileutils'
+require 'tree'
 fix_db_name = "http://127.0.0.1:5984/bufs_test_fixture_files/"
 FixDB = CouchRest.database!(fix_db_name)
 FixDB.compact!
@@ -19,8 +21,16 @@ module BufsFixtures
   doc_db_name_2 = "http://127.0.0.1:5984/bufs_test_spec_2/"
   CouchDB2 = CouchRest.database!(doc_db_name_2)
   CouchDB2.compact!
-end
 
+  #method to create a File Model
+  SpecSandbox = File.join(ProjectLocation, 'sandbox_for_specs')
+  SampleFileModelDir = File.join(SpecSandbox, 'sample_model_dir')
+  def  self.create_sample_file_model(dir = SampleFileModelDir)
+    FileUtils.rm_rf(dir) if File.exist?(dir)
+  end
+  
+
+end
 FileUtils.mkdir_p(BufsFixtures::TestFileLocation)
 
 BufsFixtures.test_files = {}
@@ -43,3 +53,5 @@ BufsFixtures.test_files.each do |doc, fname|
   puts "#{doc.ljust(33)} ->  #{fname}"
 end
 puts "---------------------------------"
+
+
