@@ -31,6 +31,7 @@ FilesOfChildrenDirName = "__bfs_AllFiles"
     build_view_layer(parent_dir, top_level_nodes)
     #view_of_files_from_subdirs(parent_dir)
     add_file_list(parent_dir)
+    add_html_links(parent_dir)
   end
 
   def build_view_layer(parent_dir, nodes)
@@ -109,6 +110,20 @@ FilesOfChildrenDirName = "__bfs_AllFiles"
         lnk_name = File.join(view_dir, File.basename(file_model))
         FileUtils.ln_sf(file_model, lnk_name) unless File.exists?(lnk_name)
       end
+    end
+  end
+
+  #DRY this with add_file_list
+
+  def add_html_links(dir)
+    html_links = BufsFileViewReader.new(dir).html_link_list
+    html_links.each do |view_dir, html_links|
+      FileUtils.mkdir(view_dir) unless File.exists?(view_dir)
+      #links_fname = File.join(view_dir, File.basename(file_model))
+      #TODO Make the magic string into a constant
+      link_fname =File.join(view_dir, 'all_links.html')
+      link_data = html_links.join("\n")
+      File.open(link_fname,'w'){|f| f.write link_data} #unless File.exists?(lnk_name)
     end
   end
 =begin
