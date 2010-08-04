@@ -303,7 +303,14 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     link_doc_id = self.class.get(self['_id']).links_doc_id
     link_doc = self.class.get(link_doc_id)||{}
     links = link_doc['uris']||{}
-    link_names = links
+    #new_links = {} 
+    #if links.class != Hash  #TODO: fix db to get rid of back compat hack
+    #  links.each {|lnk| new_links[lnk] = nil}
+    #else
+    #  new_links = links
+    #end
+    #raise links.inspect
+    link_names = links #new_links
   end
 
   alias_method(:list_links, :get_link_names) #TODO: synchronize with bufs_file_system

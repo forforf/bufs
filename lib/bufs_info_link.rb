@@ -22,50 +22,92 @@ class BufsInfoLink < CouchRest::ExtendedDocument
     raise "No ID found for the document" unless bufs_info_doc['_id']
     uniq_id = bufs_info_doc['_id'] + bufs_info_doc.class.link_base_id
     link_doc = bufs_info_doc.class.user_linkClass.get(uniq_id)
-    raise IndexError, "Can't create new link document for #{self}. Document already exists in Database" if link_doc
+    raise IndexError, "Can't create new link document for #{bufs_info_doc.inspect}. Document already exists as: #{uniq_id.inspect} DB:#{bufs_info_doc.database.inspect} " if link_doc
     link_doc = bufs_info_doc.class.user_linkClass.new('_id' => uniq_id)
   end
 
   def self.create(bufs_info_doc, links=nil)
     link_doc = create_unsaved(bufs_info_doc)
     raise "Unable to create link doc for #{bufs_info_doc.inspect}" unless link_doc
-    links = [links].flatten.compact
+    #links = [links].flatten.compact
     link_doc.uris = links
-    bufs_info_doc.class.namespace.save_doc(link_doc)
-    #link_doc.save
+    #bufs_info_doc.class.namespace.save_doc(link_doc)
+    link_doc.save
     #raise "ID: #{link_doc['_id']}"
     #bufs_info_doc.get(link_doc['_id'])
     bufs_info_doc.class.user_linkClass.get(link_doc['_id'])
   end
 
-  def self.add_links(user_doc, uri_list)
-    uri_list = [uri_list].flatten
-    uri_list.each do |uri_string|
-      URI.parse(uri_string) #validates uri
+  def self.add_links(user_doc, data_for_links)
+    raise "Expected Hash, received: #{self.class.inspect}" unless data_for_links.respond_to?(:merge)
+    #data_for_links is a hash {src => label}
+    #data_for_links = [data_for_links].flatten
+    #data_for_links.each do |data_for_link|
+    data_for_links.each do |src, lnk|
+      URI.parse(src) #validates_uri
     end
-    link_id = user_doc.links_doc_id #user_doc['_id'] + user_doc.class.link_base_id
+    #uri_list = [uri_list].flatten
+      #uri_lis.each do |uri_string|
+        #URI.parse(uri_string) #validates uri
+      #end
+    #end
+    link_id = user_doc.my_link_doc_id #links_doc_id #user_doc['_id'] + user_doc.class.link_base_id
     link_doc = nil
+    #raise "link_id: #{link_id.inspect}  calc link id #{user_doc.my_link_doc_id.inspect}"
     if user_doc.class.user_linkClass.get(link_id)
       link_doc = user_doc.class.user_linkClass.get(link_id)
     else
+      #raise user_doc.database.inspect
       link_doc = user_doc.class.user_linkClass.create(user_doc)
     end
     #link_doc = BufsInfoLink.get(link_id)||BufsInfoLink.create(bufs_info_doc)
     raise "Unable to find existing links db doc or create new one for #{user_doc} Link ID: #{link_id}" unless link_doc
-    link_doc.uris += uri_list
-    link_doc.uris.compact!
+    #TODO: Fix so labels are propogated, but need to fix dbs as well
+    #uris = data_for_links #data_for_links.map{|d| d.keys}.flatten
+    #link_doc.uris += uri_list
+
+    #make this into a helper function to aggregate data under a hash key
+    #raise "link_doc uris error, #{link_doc.uris.inspect}" if link_doc.uris.class != Hash
+    update_uris = link_doc.uris||{}
+    data_for_links.each do |new_src, new_lbl|
+      if update_uris[new_src]
+         update_uris[new_src] << new_lbl
+         update_uris[new_src].flatten!
+      else 
+         update_uris[new_src] = [new_lbl].flatten
+      end
+    end
+      
+    link_doc.uris = update_uris
+
+    #link_doc.uris.compact!
     #raise link_doc.inspect
     link_doc.save
     link_doc.class.get(link_doc['_id'])
   end
 
+ 
+
   #NEEDS INTEGRATION AND TESTING
-  def self.remove_links(user_doc, remove_these_uris)
-    remove_these_uris = [remove_these_uris].flatten
+  def self.remove_links(user_doc, remove_these_link_names)
+    remove_these_link_names = [remove_these_link_names].flatten
     link_id = user_doc.links_doc_id
     link_doc = user_doc.class.user_linkClass.get(link_id)
-    link_doc.uris = link_doc.uris - remove_these_uris
-    puts "NEW LIST: #{link_doc.uris.inspect}"
+    update_link_data = link_doc.uris
+    remove_these_link_names.each do |link_name_to_del|
+      update_link_data.each do |src, links|
+       if links.include? link_name_to_del
+         new_links = links - [link_name_to_del]
+         if new_links.empty?
+           update_link_data.delete(src)
+         else
+           update_link_data[src] = new_links
+         end
+       end
+      end
+    end
+    link_doc.uris = update_link_data #link_doc.uris - remove_these_uris
+    puts "NEW LIST (from remove link in bufs_info_link): #{link_doc.uris.inspect}"
     link_doc.save
     link_doc.class.get(link_doc['_id'])
   end

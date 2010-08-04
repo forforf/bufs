@@ -14,7 +14,21 @@ end
 require BufsLinkSpec::LibDir + 'bufs_info_doc'  #used for getting the link id
 require BufsLinkSpec::LibDir+ 'bufs_info_link'
 
+module BufsInfoLinkHelpers
+  #for when the hash key points to an array and the arrays need to be additive
+  def self.hash_aggregator(hsh1, hsh2)
+    agg_hsh = {}
+    duped_keys = hsh1.keys & hsh2.keys
+    duped_keys.each do |k|
+      agg_hsh[k] = hsh1[k] + hsh2[k]
+    end
+    final_hsh = (hsh1.merge(hsh2)).merge(agg_hsh)
+  end
+end
+
 describe BufsInfoLink do 
+  include BufsInfoLinkHelpers
+
   before(:all) do
     
   #@test_files = BufsFixtures.test_files
@@ -32,11 +46,15 @@ describe BufsInfoLink do
   end
 
   before(:each) do
-    @test_link = "http://www.google.com"
-    @test_links = ["http://www.yahoo.com", "http:://www.bing.com"]
+    @test_link = {"http://www.google.com" => ["google", "the google"]}
+    @test_links = {"http://www.google.com" => ["another google"], "http://www.yahoo.com" => ["yahoo"], "http:://www.bing.com" => ["bing"]}
     BufsInfoLink.all.each do |doc|
       doc.destroy
     end
+  end
+ 
+  after(:each) do
+    BufsInfoLink.all.each {|doc| doc.destroy }
   end
 
   it "should initialize correctly" do
@@ -67,7 +85,7 @@ describe BufsInfoLink do
     #validate results
     link_id = @test_doc['_id'] + @test_doc.class.link_base_id
     link_doc = BufsInfoLink.get(link_id)  
-    link_doc.uris.should == [@test_link]
+    link_doc.uris.should == @test_link
     #not saved to database yet
     BufsInfoLink.all.size.should == 1
   end
@@ -75,25 +93,28 @@ describe BufsInfoLink do
   it "should be able to add links to new or existing link docs" do
     #check initial conditions
     BufsInfoLink.all.size.should == 0
-    #test empty doc
+    #test adding links to an empty doc
     BufsInfoLink.add_links(@test_doc, @test_link)
     BufsInfoLink.all.size.should == 1
-    #test existing doc
+    #test adding links to an existing doc
     BufsInfoLink.add_links(@test_doc, @test_links)
     #check results
-    expected_uris = @test_links + [@test_link]
+    expected_uris = BufsInfoLinkHelpers.hash_aggregator(@test_links, @test_link)
     link_id = @test_doc['_id'] + @test_doc.class.link_base_id
     link_doc = BufsInfoLink.get(link_id)
     link_doc.should_not == nil
     link_doc.uris.should_not == nil
-    link_doc.uris.sort!.should == expected_uris.sort!
+    all_keys = link_doc.uris.keys + expected_uris.keys
+    all_keys.each do |k|
+      link_doc.uris[k].sort.should == expected_uris[k].sort
+    end
   end
 
 
   it "should not add link if the uri is invalid" do
     #set intitial conditions
     link_db_size = BufsInfoLink.all.size
-    bad_uri_1 = nil
+    bad_uri_1 = {nil => ["some label"]}
     #test
     lambda {BufsInfoLink.add_links(@test_doc, bad_uri_1)}.should raise_error(URI::InvalidURIError)
     #check db

@@ -122,7 +122,7 @@ FilesOfChildrenDirName = "__bfs_AllFiles"
       #links_fname = File.join(view_dir, File.basename(file_model))
       #TODO Make the magic string into a constant
       link_fname =File.join(view_dir, 'all_links.html')
-      link_data = html_links.join("\n")
+      link_data = html_links.join("<br />\n")
       File.open(link_fname,'w'){|f| f.write link_data} #unless File.exists?(lnk_name)
     end
   end

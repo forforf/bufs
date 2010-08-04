@@ -77,6 +77,15 @@ describe UserDB, "Basic database operations" do
     UserDB.docClasses.each do |docClass|
       all_user_docs = docClass.all
       all_user_docs.each do |user_doc|
+        puts "WARNING: this doc has '_id' of nil" unless user_doc["_id"] #{user_
+        #puts "ID: #{user_doc["_id"].inspect}"
+        #puts "Rev: #{user_doc["_rev"].inspect}"
+        #user_doc.destroy unless user_doc["_id"]
+        #if user_doc["_id"]
+         # p user_doc["_id"]
+          #p user_doc["_id"].nil?
+          #user_doc.destroy
+        #end
         user_doc.destroy
       end
     end
@@ -375,7 +384,9 @@ describe UserDB, "Document Operations with Attachments" do
       end
       all_user_docs = docClass.all
       all_user_docs.each do |user_doc|
-        user_doc.destroy
+        # p user_doc.database
+        puts "WARNING: this doc has '_id' of nil" unless user_doc["_id"] #{user_doc.inspect}" #ID:#{user_doc["_id"].inspect} - Rev: #{user_doc["_rev"].inspect}"
+        user_doc.destroy #unless user_doc["_id"]
       end
     end
 
@@ -766,7 +777,10 @@ describe UserDB, "Document Operations with Links" do
       end
       all_user_docs = docClass.all
       all_user_docs.each do |user_doc|
-        user_doc.destroy
+        puts "WARNING: this doc has '_id' of nil" unless user_doc["_id"] #{user_
+        puts "WARNING this doc has valid '_id' but nil '_rev" if (user_doc["_id"] && user_doc["_rev"].nil?)
+        user_doc.destroy #unless user_doc["_id"]
+        #user_#doc.destroy
       end
     end
 
@@ -785,7 +799,7 @@ describe UserDB, "Document Operations with Links" do
   it "should save links" do
     #initial conditions (attachment file)
     #TODO: vary filename by user
-    test_links= ["http://www.google.com", "http://www.bing.com"]
+    test_links= {"http://www.google.com" => ["Google"], "http://www.bing.com" => ["Bing"]}
     #intial conditions (doc)
     parent_cats = {}
     doc_params = {}
@@ -814,14 +828,15 @@ describe UserDB, "Document Operations with Links" do
       #docClass.get(basic_docs[user_id]['_id'])['links_doc_id'].should == link_docs[user_id]['_id']
       user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
       links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
-      links_in_user_doc.uris.sort.should == test_links.sort
+      links_in_user_doc.uris.should == test_links
     end
   end
 
   it "should remove links do" do
     #initial conditions 
-    test_links= ["http://www.google.com", "http://www.bing.com"]
-    remove_link = "http://www.bing.com"
+    test_links= { "http://www.google.com" => ["Googs"], "http://www.bing.com" => ["Bings"]}
+    remove_link = "Bings"
+    remaining_link = { "http://www.google.com" => ["Googs"] }
     parent_cats = {}
     doc_params = {}
     basic_docs = {}
@@ -849,7 +864,7 @@ describe UserDB, "Document Operations with Links" do
       #docClass.get(basic_docs[user_id]['_id'])['links_doc_id'].should == link_docs[user_id]['_id']
       user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
       links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
-      links_in_user_doc.uris.sort.should == test_links.sort
+      links_in_user_doc.uris.should == test_links
     end
     #test
     UserDB.user_to_docClass.each do |user_id, docClass|
@@ -863,7 +878,7 @@ describe UserDB, "Document Operations with Links" do
       #docClass.get(basic_docs[user_id]['_id'])['links_doc_id'].should == link_d
       user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
       links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
-      links_in_user_doc.uris.sort.should == (test_links-[remove_link]).sort
+      links_in_user_doc.uris.should == remaining_link
     end
   end
 end
