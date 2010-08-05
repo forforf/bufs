@@ -3,7 +3,8 @@ require File.dirname(__FILE__) + '/bufs_file_system'
 require File.dirname(__FILE__) + '/bufs_file_view_reader'
 #require File.dirname(__FILE__) + '/files_finder'
 
-
+#TODO: Update spec to test the individual parts rather than comparing to a known static output
+#FIXME: Spec doesn't check for dot files
 class BufsViewBuilder
 WorkPackage = Struct.new(:working_dir, :nodes)
 FilesOfChildrenDirName = "__bfs_AllFiles"
@@ -29,7 +30,6 @@ FilesOfChildrenDirName = "__bfs_AllFiles"
     FileUtils.mkdir(parent_dir) unless File.exist?(parent_dir) 
 
     build_view_layer(parent_dir, top_level_nodes)
-    #view_of_files_from_subdirs(parent_dir)
     add_file_list(parent_dir)
     add_html_links(parent_dir)
   end
@@ -81,11 +81,15 @@ FilesOfChildrenDirName = "__bfs_AllFiles"
         FileUtils.ln_s(model_file_location, this_link_name) unless File.exist?(this_link_name)
       end
     end
-    #TODO: Add spec to test for links 
     if node.list_links
       html_link = node.list_links.map {|link| "<a href=\"#{link}\">#{link}</a>"}
       html_str = html_link.join("<br />")
       File.open("#{this_dir}/links.html", 'w') {|f| f.write(html_str)}   
+    end
+    #TODO: Refactor this and base models so that links, description are arbitrary data
+    #      rather than the data structure being hard coded and hard managed like here
+    if node.description
+      File.open("#{this_dir}/.description.txt", 'w') {|f| f.write(node.description)}
     end
     sub_nodes = @all_nodes.select{ |n|n.parent_categories.include? node.my_category }
     work_package = WorkPackage.new(this_dir, sub_nodes) if sub_nodes && sub_nodes.size > 0
@@ -100,7 +104,6 @@ FilesOfChildrenDirName = "__bfs_AllFiles"
     FileUtils.ln_s(@nodes_with_views[node], this_dir)
   end
 
-  #TODO: Add to spec
   #TODO: Deal with duplicate file names
   def add_file_list(dir)
     file_list = BufsFileViewReader.new(dir).file_list
