@@ -445,15 +445,18 @@ class BufsFileSystem
   def list_links
     node_link_file_name = path_to_node_data + '/' + self.class.link_file_name
     if File.exists?(node_link_file_name)
-      return  JSON.parse(File.open(node_link_file_name) {|f| f.read})
+      links =  JSON.parse(File.open(node_link_file_name) {|f| f.read})
+      return links
     else
       return nil
     end
   end
 
   def add_links(links_to_add)
-    links_to_add = [links_to_add].flatten
-    updated_links = list_links||[] + links_to_add
+    #links_to_add = [links_to_add].flatten
+    existing_links = list_links||{}
+    updated_links = existing_links.merge(links_to_add)
+    #updated_links = list_links||[] + links_to_add
     node_link_file_name = path_to_node_data + '/' + self.class.link_file_name
     File.open(node_link_file_name, 'w') {|f| f.write(updated_links.to_json)}
   end

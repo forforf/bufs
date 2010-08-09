@@ -81,14 +81,27 @@ FilesOfChildrenDirName = "__bfs_AllFiles"
         FileUtils.ln_s(model_file_location, this_link_name) unless File.exist?(this_link_name)
       end
     end
-    if node.list_links
-      html_link = node.list_links.map {|link| "<a href=\"#{link}\">#{link}</a>"}
-      html_str = html_link.join("<br />")
+    node_links = node.list_links
+    if node_links
+      #html_link = node.list_links.map {|link| "<a href=\"#{link}\">#{link}</a>"}
+      #html_str = html_link.join("<br />")
+      html_link = ""
+      html_str = ""
+      node_links.keys.each do |src|
+        node_links[src].uniq!
+      end
+      node_links.each do |src, labels|
+        #next unless labels
+        labels.each do |label|
+          html_link = "<a href=\"#{src}\">#{label}</a><br />\n"
+          html_str += html_link
+        end
+      end
       File.open("#{this_dir}/links.html", 'w') {|f| f.write(html_str)}   
     end
     #TODO: Refactor this and base models so that links, description are arbitrary data
     #      rather than the data structure being hard coded and hard managed like here
-    if node.description
+    if node.respond_to?(:description) && node.description
       File.open("#{this_dir}/.description.txt", 'w') {|f| f.write(node.description)}
     end
     sub_nodes = @all_nodes.select{ |n|n.parent_categories.include? node.my_category }
@@ -125,7 +138,15 @@ FilesOfChildrenDirName = "__bfs_AllFiles"
       #links_fname = File.join(view_dir, File.basename(file_model))
       #TODO Make the magic string into a constant
       link_fname =File.join(view_dir, 'all_links.html')
-      link_data = html_links.join("<br />\n")
+      #raise "#{html_links.inspect}"
+      link_data = ""
+      html_links.each do |src, labels|
+        labels.each do |label|
+          link_el = "<a href=\"#{src}\">#{label}</a><br />"
+          link_data += link_el + "\n"
+        end
+      end
+      #link_data = html_links.join("<br />\n")
       File.open(link_fname,'w'){|f| f.write link_data} #unless File.exists?(lnk_name)
     end
   end

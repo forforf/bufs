@@ -85,11 +85,19 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
   def self.create_from_file_node(node_obj)
     init_params = {}
     init_params['my_category'] = node_obj.my_category
-    init_params['description'] = node_obj.description if node_obj.description
+    init_params['description'] = node_obj.description if (node_obj.respond_to?(:description) && node_obj.description)
     new_bid = self.new(init_params)
     new_bid.add_parent_categories(node_obj.parent_categories)
     new_bid.save
     new_bid.add_data_file(node_obj.list_attached_files) if node_obj.list_attached_files
+    #TODO Add to spec test for links
+    if node_obj.respond_to?(:list_links) && (node_obj.list_links.nil? || node_obj.list_links.empty?)
+      #do nothing, no link data
+    elsif node_obj.respond_to?(:list_links) 
+      new_bid.add_links(node_obj.list_links)
+    else
+      #do nothing, no link mehtod
+    end
     return new_bid.class.get(new_bid['_id'])
   end
 
@@ -171,7 +179,9 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
 
   #Add an attachment to the BufsInfoDoc object from a file
   def add_data_file(attachment_filenames)
-
+    #TODO: Ok to do silent returns here?
+    return if attachment_filenames.nil?
+    return if attachment_filenames.empty?
     attachment_package = {}
     attachment_filenames = [attachment_filenames].flatten
     attachment_filenames.each do |at_f|

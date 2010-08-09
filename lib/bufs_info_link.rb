@@ -39,7 +39,7 @@ class BufsInfoLink < CouchRest::ExtendedDocument
   end
 
   def self.add_links(user_doc, data_for_links)
-    raise "Expected Hash, received: #{self.class.inspect}" unless data_for_links.respond_to?(:merge)
+    raise "Expected hash like object, received: #{data_for_links.inspect}" unless data_for_links.respond_to?(:merge)
     #data_for_links is a hash {src => label}
     #data_for_links = [data_for_links].flatten
     #data_for_links.each do |data_for_link|
@@ -76,6 +76,7 @@ class BufsInfoLink < CouchRest::ExtendedDocument
       else 
          update_uris[new_src] = [new_lbl].flatten
       end
+      update_uris[new_src].uniq!
     end
       
     link_doc.uris = update_uris

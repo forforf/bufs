@@ -47,5 +47,6 @@ class BindUserFileSystem
        home_dir = @@base_home_dir + user_id + '/'
        nodeClass = UserFileNode.user_to_nodeClass[user_id]||BindUserFileSystem.make_nodeClass(user_id, home_dir)
      end
+     nodeClass
    end
 end       
