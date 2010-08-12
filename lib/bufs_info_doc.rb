@@ -6,19 +6,171 @@ require File.dirname(__FILE__) + '/bufs_info_attachment'
 require File.dirname(__FILE__) + '/bufs_info_link'
 require File.dirname(__FILE__) + '/bufs_escape'
 
+#TODO: Move this module to a more centralized place since it will
+#      be used by any of the node based classes
+module NodeElementOperations
+  MyCategoryAddOp = lambda {|this,other| this} #my cat is not allowed to change
+  MyCategorySubtractOp = lambda{ |this, other| this} #TODO use this to delete a node?
+  MyCategoryOps = {:add => MyCategoryAddOp, :subtract => MyCategorySubtractOp}
+  ParentCategoryAddOp = lambda {|this,other| 
+                           this = this + [other].flatten
+                           this.uniq!; this.compact!
+                           this
+                         }
+  ParentCategorySubtractOp = lambda {|this,other| this -= [other].flatten!; this.uniq!; this}
+  ParentCategoryOps = {:add => ParentCategoryAddOp, :subtract => ParentCategorySubtractOp}
+  Ops = {:my_category => MyCategoryOps, :parent_categories => ParentCategoryOps}
+end
+
+module BufsInfoDocEnvMethods
+  include CouchRest::Mixins::Views::ClassMethods
+  #Class Environment
+  
+  #Sets the specific environment needed for this particular class.
+  #The goal is to have the class environment completed abstracted from the
+  #operations (i.e. methods) of the class. Perfect abstraction would yield
+  #a model class that could be readily applied to differnt models, and perhaps 
+  #eliminate the need for an abstract class to encapsulate the modesl (the current approach) 
+  #The class variables should be able to be reused across all models (yet to be seen if this is possible)
+  #The structure of the environment is a hash (which can contain multiple class environments)
+  #           { env_name => env_options_for_that_particular_class }
+  #
+  # Thus all classes would have a set_environment class method, but each class would have its own
+  # environmental variables and structures
+  def self.set_environment(env)
+    env_name = :bufs_info_doc_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
+    couch_db_host = env[env_name][:host]
+    db_name_path = env[env_name][:path]
+    db_user_id = env[env_name][:user_id]
+    @@db_user_id = db_user_id
+    couch_db_location = self.set_db_location(couch_db_host, db_name_path)
+    @@db = CouchRest.database!(couch_db_location)
+    @@collection_namespace = self.set_collection_namespace(db_name_path, db_user_id)
+    @@design_doc = self.set_couch_design(@@db, @@collection_namespace)
+    @@query_all = self.query_for_all_collection_records(@@collection_namespace)
+    @@db_metadata_keys = self.set_db_metadata_keys(@@collection_namespace)
+    @@namespace = self.set_namespace(@@db, db_user_id)
+  end
+
+  def self.set_db_location(couch_db_host, db_name_path)
+    couch_db_host.chop if couch_db_host =~ /\/$/ #removes any trailing slash
+    db_name_path = "/#{db_name_path}" unless db_name_path =~ /^\// #check for le
+    couch_db_location = "#{couch_db_host}#{db_name_path}"
+  end
+
+  #assigns a unique namespace to the collection of nodes belonging to this class
+  def self.set_collection_namespace(db_name_path, db_user_id)
+    lose_leading_slash = db_name_path.split("/")
+    lose_leading_slash.shift
+    db_name = lose_leading_slash.join("")
+    collection_namespace = "#{db_name}_#{db_user_id}"
+  end
+
+  def self.set_namespace(db, db_user_id)
+    namespace = "#{db.to_s}::#{db_user_id}"
+  end
+
+  def self.set_couch_design(db, view_param)
+    design_doc = CouchRest::Design.new
+    design_doc.name = self.to_s + "_Design"
+    #example of a map function that can be passed as a parameter if desired (currently not needed)
+    #map_function = "function(doc) {\n  if(doc['#{@@collection_namespace}']) {\n   emit(doc['_id'], 1);\n  }\n}"
+    #design_doc.view_by collection_namespace.to_sym #, {:map => map_function }
+    design_doc.database = db
+    begin
+      design_doc = db.get(design_doc['_id'])
+    rescue RestClient::ResourceNotFound
+      design_doc.save
+    end
+    self.set_view(db, design_doc, view_param)
+    design_doc
+  end
+
+  def self.set_db_metadata_keys(collection_namespace)
+    db_metadata_keys = ['_id', '_rev', '_pos', collection_namespace]
+  end
+
+  def self.query_for_all_collection_records(collection_namespace)
+    "by_#{collection_namespace}".to_sym
+  end
+
+  def self.set_view(db, design_doc, view_param, opts={})
+    #TODO: Add options for custom maps, etc
+    design_doc.view_by view_param.to_sym, opts
+    begin
+      view_rev_in_db = db.get(design_doc['_id'])['_rev']
+      res = design_doc.save unless design_doc['rev'] == view_rev_in_db
+    rescue RestClient::RequestFailed
+      puts "Warning:: Request Failed, assuming because the design doc was already saved"
+      puts "doc_rev: #{design_doc['_rev'].inspect}"
+      puts "db_rev: #{view_rev_in_db}"
+    end
+  end
+
+  #Magically uses a couple of class methods, but I'm not sure how to get around that yet
+  #FIXME: This binds the model and the data, and I can't figure out a way to unbind it
+  def self.call_view(param, match_keys)
+     case param
+     when :my_category
+       self.by_my_category(@@collection_namespace, match_keys)
+     end
+  end
+
+  def self.by_my_category(namespace, match_keys)
+    match_keys = [match_keys].flatten
+    #namespace = 'bufs_test_spec_StubID1'
+    match_str = "&& ("
+    match_keys.each do |k|
+      match_str += "doc.my_category == '#{k}' || "
+    end
+    match_str += "nil)" 
+    map_str = "function(doc) {
+                  if (doc['#{namespace}'] && doc.my_category #{match_str}) {
+                    emit(doc['_id'], doc);
+                  }
+               }"
+    map_fn = { :map => map_str }
+    self.set_view(@@db, @@design_doc, :my_category, map_fn)
+    raw_res = @@design_doc.view :by_my_category, map_fn
+    #puts "By My Category Response:"
+    rows = raw_res["rows"]
+    records = rows.map{|r| r["value"]}
+  end
+
+end
+
+
+#TODO: Move out the generic aspects into a seperate module
 #This class is the primary interface into CouchDB BUFS documents
-class BufsInfoDoc < CouchRest::ExtendedDocument
-  #class configuration
-  DummyNamespace = "BufsInfoDocDefault"
+class BufsInfoDoc #< CouchRest::ExtendedDocument
+  include BufsInfoDocEnvMethods
   AttachmentBaseID = "_attachments"
   LinkBaseID = "_links"
 
-  #This should be defined in the dynamic class definition
-  #The default value here is for teting basic functionality
-  def self.namespace 
-    DummyNamespace
+  attr_accessor :node_data_hash, :model_metadata, :saved_to_model
+
+  ###Class Methods
+  ##Class Environment
+  def self.set_environment(env)
+    BufsInfoDocEnvMethods.set_environment(env)
   end
 
+  ##Class Accessors
+  #TODO: move to accessor style 
+  def self.collection_namespace
+    @@collection_namespace
+  end
+
+  def self.namespace
+    @@namespace
+  end
+
+  #uncomment if needed for debugging
+  #def self.db
+  #  @@db 
+  #end
+
+  ##Associated Classes (e.g., for attachments)
   #This should be defined in the dynamic class definition
   #The default value here is for teting basic functionality
   def self.user_attachClass
@@ -31,8 +183,46 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     BufsInfoLink  #this should be overwritten
   end
 
-  #Methods that act on the BufsInfoDoc collection (i.e. all BufsInfoDoc objects) 
+  ##Collection Methods
+  #This returns all db records, but does not create
+  #an instance of this class for each record.  Each record is provided
+  #in its native form.
+  def self.all_native_records
+    raw_res = @@design_doc.view @@query_all
+    raw_data = raw_res["rows"]
+    node_ids = raw_data.map {|d| d['id']}#puts "raw_datum: #{d.inspect}"}
+    nodes = node_ids.map{|id| @@db.get(id)}
+  end
+
+  #convert collection of CouchRest::Document into a
+  #collection of this class
+  def self.all
+    nodes = self.all_native_records
+    nodes.map {|n| self.new(n)}
+  end
+
+  #This destroys all nodes in the model
+  #this is more efficient than calling
+  #destroy on instances of this class
+  #as it avoids instantiating only to destroy it
+  def self.destroy_all
+    all_docs = self.all_native_records
+    all_docs.each {|doc| doc.destroy} #works because CouchRest::Document is returned
+    nil
+  end
+
+  def self.call_view(param, match_keys)
+    records = BufsInfoDocEnvMethods.call_view(param, match_keys)
+    docs = records.map {|r| self.new(r)}
+  end
+
+  #I can't figure out how to abstract the queries on collections
+  #to be either model independent or parameter independent.
+  #Each model has different ways of querying collections, and different paramter
+  #data structures need to be mapped in different ways.
   
+
+=begin  
   #Find documents with matching parent categories
   view_by :parent_categories,
     :map =>
@@ -58,20 +248,12 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
       }"
 
 
-  #Find documents by their category
-  view_by :my_category
-
   #Define document parameters
-  property :name_space    #all categories within the name space must be unique
-  property :parent_categories
-  property :my_category
-  property :description
   property :file_metadata
   property :attachment_doc_id
   property :links_doc_id
 
-  timestamps!
-
+=end
 
   #Create the document in the BUFS node format from an existing node.  A BUFS node is an object that has the following properties:
   #  my_category
@@ -113,27 +295,97 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     LinkBaseID 
   end
 
-  #Adds parent categories, it can accept a single category or an array of categories
-  def add_parent_categories(new_cats)
-    current_cats = orig_cats = self['parent_categories']||[]
-    new_cats = [new_cats].flatten
-    current_cats += new_cats
-    current_cats.uniq!
-    current_cats.compact!
-    if current_cats.size > orig_cats.size
-      self['parent_categories'] = current_cats
-      self.save
+  def initialize(init_params = {})
+    @saved_to_model = nil
+    #make sure keys are symbols
+    init_params = init_params.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
+
+    raise "No namespace has been set for #{self}" unless self.class.namespace
+    raise ArgumentError, "Requires a category to be assigned to the instance" unless init_params[:my_category]
+    #CouchDB metadata
+    node_id = self.class.db_id(init_params[:my_category])
+    #rev = init_params[:_rev]
+    #TODO Find a way to genericize this across models
+    @model_metadata = { '_id' => node_id, "#{@@collection_namespace}" => node_id} #'_rev' => rev}
+    if init_params[:_rev]
+      @saved_to_model = init_params[:_rev]
+      @model_metadata.merge!({'_rev' => init_params[:_rev]})
+    end
+    @node_data_hash = {}
+    init_params.each do |attr_name, attr_value|
+      iv_set(attr_name.to_sym, attr_value) 
     end
   end
 
+  def iv_set(attr_var, attr_value)
+    ops = NodeElementOperations::Ops
+    add_op_method(attr_var, ops[attr_var]) if ops[attr_var] #incorporates predefined methods
+    @node_data_hash[attr_var] = attr_value unless @@db_metadata_keys.include? attr_var.to_s
+    #manually setting instance variable, so @node_data_hash can be updated
+    #dynamic method acting like an instance variable getter
+    self.class.__send__(:define_method, "#{attr_var}".to_sym,
+       lambda {@node_data_hash[attr_var]} )
+    #dynamic method acting like an instance variable setter
+    self.class.__send__(:define_method, "#{attr_var}=".to_sym,
+       lambda {|new_val| @node_data_hash[attr_var] = new_val} )
+    #create view not quite working as I want yet
+    #create_view(attr_var)
+  end
+     
+  def add_op_method(param, ops)
+       ops.each do |op_name, op_proc|
+         method_name = "#{param.to_s}_#{op_name.to_s}".to_sym
+         #puts method_name
+
+         wrapped_op = method_wrapper(param, op_proc)
+         self.class.send(:define_method, method_name, wrapped_op)
+       end
+  end  
+
+  def method_wrapper(param, unbound_op)
+    #What I want is to call obj.param_op(other)   example: obj.links_add(new_link)
+    #which would then add new_link to obj.links
+    #however, the predefined operation (add in the example) has no way of knowing
+    #about links, so the predefined operation takes two parameters (this, other)
+    #and this method wraps the obj.links so that the links_add method doesn't have to
+    #include itself as a paramter to the predefined operation
+    #lambda {|other| @node_data_hash[param] = unbound_op.call(@node_data_hash[param], other)}
+    lambda {|other| orig = self.send("#{param}".to_sym)
+                    new = self.send("#{param}=".to_sym, unbound_op.call(self.send("#{param}".to_sym), other))
+                    self.save unless (@saved_to_model && orig == new)
+           }
+  end
+
+  def create_view(param)
+    BufsInfoDocEnvMethods.set_view(@@db, @@design_doc, param)
+  end
+
+  def destroy
+    puts "Destroy Method Size: #{BufsInfoDoc.all.size}"
+  end
+
+  #Adds parent categories, it can accept a single category or an array of categories
+  #aliased for backwards compatibility, this method is dynamically defined and generated
+  def add_parent_categories(new_cats)
+    puts "Warning:: add_parent_categories is being deprecated, use <param_name>_add instead ex: parent_categories_add(cats_to_add) "
+    parent_categories_add(new_cats)
+  #  if current_cats.size > orig_cats.size
+  #    self.parent_categories = current_cats
+  #    self.save
+  #  end
+  end
+
   #Can accept a single category or an array of categories
+  #aliased for backwards compatiblity the method is dynamically defined and generated
   def remove_parent_categories(cats_to_remove)
-    cats_to_remove = [cats_to_remove].flatten
-    cats_to_remove.each do |remove_cat|
-      self['parent_categories'].delete(remove_cat)
-    end
-    self.save(:deletions)
-    raise "temp error due to no parent categories existing" if self.parent_categories.empty?
+    puts "Warning:: remove_parent_categories is being deprecated, use <param_name>_subtract instead ex: parent_categories_subtract(cats_to_remove)"
+    parent_categories_subtract(cats_to_remove)
+    #cats_to_remove = [cats_to_remove].flatten
+    #cats_to_remove.each do |remove_cat|
+    #  self['parent_categories'].delete(remove_cat)
+    #end
+    #self.save(:deletions)
+    #raise "temp error due to no parent categories existing" if self.parent_categories.empty?
   end  
 
   #Returns the attachment id associated with this document.  Note that this does not depend upon there being an attachment.
@@ -253,34 +505,71 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
     current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
   end
 
+  #TODO: Move to class methods, in collection space
+  def self.get(id)
+    #maybe put in some validations to ensure its from the proper collection namespace?
+    rtn = begin
+      data = @@db.get(id)
+      BufsInfoDoc.new(data)
+    rescue RestClient::ResourceNotFound => e
+      nil
+    end
+    rtn
+  end
+ 
+  #TODO: move to class method section
+  def self.db_id(node_id)
+    @@collection_namespace + '::' + node_id
+  end
 
+  def db_id
+    self.class.db_id(self.my_category)
+  end
+  
+  #meta_data should not be in node data so this shouldn't be necessary
+  #def remove_node_db_metadata
+  #  remove_node_db_metadata(@node_data_hash)
+  #end
+  
+  #this won't work as an instance method because the data needs to be
+  #purged before creating the instance
+  #def remove_db_metadata(raw_data)
+  #  db_metadata_keys = @db_metadata
+  #  db_metadata_keys.each {|k| raw_data.delete(k)}
+  #  raw_data #now with metadata removed
+  #end
+
+  def inject_node_db_metadata
+    inject_db_metadata(@node_data_hash)
+  end
+
+  def inject_db_metadata(node_data)
+    node_data.merge(@model_metadata)
+    #node_data.delete('_rev')
+    #node_data
+  end
 
   #Save the object to the CouchDB database
-  #  save_type can be either :additions or :deletions
-  #  :additions will merge parent categories with any categories in the database
-  #  :deletions will replace any existing parent categories with those of the object
-  def save(save_type = :additions)
-    #save_type :additions or :deletions
-    #refers to whether parent category information is merged or deleted
-    #I'll probably have to change this when dealing with files too
+  def save
+    #puts "Saving"
     raise ArgumentError, "Requires my_category to be set before saving" unless self.my_category
-    self['_id'] = self.class.namespace.to_s + '_' + self.class.to_s + '_' + self.my_category
-    #self['_id'] = BufsInfoDoc.name_space.to_s + '_' + self.class.to_s + '_' + self.my_category
-    existing_doc = BufsInfoDoc.get(self['_id'])
+    existing_doc = BufsInfoDoc.get(self.db_id)
     begin
-      self.database.save_doc(self)
+      res = @@db.save_doc(inject_node_db_metadata)
     rescue RestClient::RequestFailed => e
       if e.http_code == 409
-        puts "Found existing doc (id: #{self['_id']} while trying to save ... using it instead"
-	case save_type
-	when :additions
+        raise "Document Conflict in the Database (most likely) Error Code 409, however my handling routine needs to be updated to new architecture"
+        puts "Found existing doc (id: #{self.db_id} while trying to save ... using it instead"
+	#case save_type
+	#when :additions
           existing_doc.parent_categories = (existing_doc.parent_categories + self.parent_categories).uniq
-	when :deletions
-	  existing_doc.parent_categories = self.parent_categories
-	else
-	  raise "save type parameter of #{save_type} not understood"
-	end
+	#when :deletions
+	#  existing_doc.parent_categories = self.parent_categories
+	#else
+	#  raise "save type parameter of #{save_type} not understood"
+	#end
         existing_doc.description = self.description if self.description
+        #TODO: Update the below to the new class scheme 
         existing_doc['_attachments'] = existing_doc['attachments'].merge(self['_attachments']) if self['_attachments']
         existing_doc['file_metadata'] = existing_doc['file_metadata'].merge(self['file_metadata']) if self['file_metadata']
         existing_doc.save
@@ -289,7 +578,15 @@ class BufsInfoDoc < CouchRest::ExtendedDocument
         raise e
       end
     end
+      rev_data = {"_rev" => res['rev']}
+      update_self(rev_data)
+      #self.model_metadata.merge!(rev_data)
     return self
+  end
+
+  def update_self(rev_data)
+    self.model_metadata.merge!(rev_data)
+    @saved_to_model = rev_data["_rev"]
   end
 
   def my_link_doc_id
