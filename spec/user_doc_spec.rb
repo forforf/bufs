@@ -121,12 +121,10 @@ describe UserDB, "Basic database operations" do
     #TODO: Fix the database state so that these tests are valid (fixed?)
     UserDB.user_to_docClass[@user1_id].should == @user1_db.docClass
     UserDB.user_to_docClass[@user2_id].should == @user2_db.docClass
-    p UserDB.user_to_docClass[@user1_id].all
-    UserDB.user_to_docClass[@user1_id].all.first[:my_category].should == "user1_data"  #dangerous test, depends on db state
-    UserDB.user_to_docClass[@user2_id].all.first[:my_category].should == "user2_data"  #dangerous test dependos on db state
+    UserDB.user_to_docClass[@user1_id].all.first.my_category.should == "user1_data"  #dangerous test, depends on db state
+    UserDB.user_to_docClass[@user2_id].all.first.my_category.should == "user2_data"  #dangerous test dependos on db state
   end
-end
-=begin
+
   it "should not save if required fields don't exist" do
     #set initial condition
     orig_db_size = {}
@@ -134,15 +132,16 @@ end
     all_users = UserDB.user_to_docClass.keys
     all_users.each do |user_id|
       orig_db_size[user_id] = UserDB.user_to_docClass[user_id].all.size
-      bad_user_doc[user_id] = UserDB.user_to_docClass[user_id].new(:parent_categories => ['no_my_category'],
+     lambda { bad_user_doc[user_id] = UserDB.user_to_docClass[user_id].new(:parent_categories => ['no_my_category'],
                                           :description => 'some description',
                                           :file_metadata => {})
+            }.should raise_error(ArgumentError)
     end
 
     #test
-    all_users.each do |user_id|
-      lambda { bad_user_doc[user_id].save }.should raise_error(ArgumentError)
-    end
+    #all_users.each do |user_id|
+    #  lambda { bad_user_doc[user_id].save }.should raise_error(ArgumentError)
+    #end
     #removed validation check for parent categories, not clear this is an issue
     #lambda { bad_bufs_info_doc2.save }.should raise_error(ArgumentError)
 
@@ -174,8 +173,10 @@ end
     #check results
     UserDB.user_to_docClass.each do |user_id, docClass|
       docs_params[user_id].keys.each do |param|
-        db_param = docClass.namespace.get(docs_to_save[user_id]['_id'])[param]
-        docs_to_save[user_id][param].should == db_param
+        doc_id = docs_to_save[user_id].model_metadata['_id']
+        doc_from_db = docClass.db.get(doc_id)
+        db_param = doc_from_db[param]
+        docs_to_save[user_id].node_data_hash[param].should == db_param
         #test accessor method
         docs_to_save[user_id].__send__(param).should == db_param
       end
@@ -215,8 +216,8 @@ end
       docs_with_new_parent_cat[user_id].parent_categories.should include new_cat
       #check database
       doc_params[user_id].keys.each do |param|
-        db_param = docClass.namespace.get(docs_with_new_parent_cat[user_id]['_id'])[param]
-        docs_with_new_parent_cat[user_id][param].should == db_param
+        db_param = docClass.db.get(docs_with_new_parent_cat[user_id].model_metadata['_id'])[param]
+        docs_with_new_parent_cat[user_id].node_data_hash[param].should == db_param
         #test accessor method
         docs_with_new_parent_cat[user_id].__send__(param).should == db_param
       end
@@ -237,8 +238,11 @@ end
     #verify initial conditions
     UserDB.user_to_docClass.each do |user_id, docClass|
       doc_params[user_id].keys.each do |param|
-        db_param = docClass.get(doc_existing_new_parent_cats[user_id]['_id'])[param]
-        doc_existing_new_parent_cats[user_id][param].should == db_param
+        doc_id = doc_existing_new_parent_cats[user_id].model_metadata['_id']
+        db_doc = docClass.get(doc_id)
+        #raise db_doc.model_metadata.inspect
+        db_param = db_doc.node_data_hash[param]
+        doc_existing_new_parent_cats[user_id].node_data_hash[param].should == db_param
         #test accessor method
         doc_existing_new_parent_cats[user_id].__send__(param).should == db_param
       end
@@ -259,7 +263,7 @@ end
     #check database
     parent_cats = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      parent_cats[user_id] = docClass.get(doc_existing_new_parent_cats[user_id]['_id'])[:parent_categories]
+      parent_cats[user_id] = docClass.get(doc_existing_new_parent_cats[user_id].model_metadata['_id']).parent_categories
       new_cats.each do |cat|
         parent_cats[user_id].should include cat
       end
@@ -284,8 +288,8 @@ end
     #verify initial conditions
     UserDB.user_to_docClass.each do |user_id, docClass|
       doc_params[user_id].keys.each do |param|
-        db_param = docClass.get(doc_remove_parent_cats[user_id]['_id'])[param]
-        doc_remove_parent_cats[user_id][param].should == db_param
+        db_param = docClass.get(doc_remove_parent_cats[user_id].model_metadata['_id']).node_data_hash[param]
+        doc_remove_parent_cats[user_id].node_data_hash[param].should == db_param
         #test accessor method
         doc_remove_parent_cats[user_id].__send__(param).should == db_param
       end
@@ -313,7 +317,9 @@ end
 
     cats_in_db = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      cats_in_db[user_id] = docClass.get(doc_remove_parent_cats[user_id]['_id'])['parent_categories']
+      doc_id = doc_remove_parent_cats[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      cats_in_db[user_id] = db_doc.node_data_hash[:parent_categories].inspect
       remove_multi_cats[user_id].each do |removed_cat|
         cats_in_db[user_id].should_not include removed_cat
       end
@@ -352,13 +358,16 @@ end
     records = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
       expected_sizes[user_id].should == doc_uniq_parent_cats[user_id].parent_categories.size
-      docClass.get(doc_uniq_parent_cats[user_id]['_id'])['parent_categories'].sort.should == doc_uniq_parent_cats[user_id].parent_categories.sort
-      records[user_id]  = docClass.by_my_category(:key => doc_uniq_parent_cats[user_id].my_category)
+      doc_id = doc_uniq_parent_cats[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      db_doc.node_data_hash[:parent_categories].sort.should == doc_uniq_parent_cats[user_id].parent_categories.sort
+      records[user_id] = docClass.call_view(:parent_categories, doc_uniq_parent_cats[user_id].parent_categories)
       records[user_id].size.should == 1
     end
   end
 end
 
+=begin
 describe UserDB, "Document Operations with Attachments" do
   include UserDocSpecHelpers
 

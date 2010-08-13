@@ -1,5 +1,6 @@
 #common libraries
 require 'couchrest'
+require 'monitor'
 
 #bufs libraries
 require File.dirname(__FILE__) + '/bufs_info_attachment'
@@ -22,13 +23,11 @@ module NodeElementOperations
   Ops = {:my_category => MyCategoryOps, :parent_categories => ParentCategoryOps}
 end
 
-module AbstractBufsModelMethods
-
-end
-
-require 'thread'
 module BufsInfoDocEnvMethods
-  mutex = Mutex.new
+  ##Uncomment all mutexs and monitors for thread safety for this module (untested)
+  #TODO Test for thread safety
+  @@mutex = Mutex.new
+  @@monitor = Monitor.new
   include CouchRest::Mixins::Views::ClassMethods
   #Class Environment
   
@@ -43,66 +42,61 @@ module BufsInfoDocEnvMethods
   #
   # Thus all classes would have a set_environment class method, but each class would have its own
   # environmental variables and structures
-=begin
-  def self.set_environment(env)
-    env_name = :bufs_info_doc_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
-    couch_db_host = env[env_name][:host]
-    db_name_path = env[env_name][:path]
-    db_user_id = env[env_name][:user_id]
-    @@db_user_id = db_user_id
-    couch_db_location = self.set_db_location(couch_db_host, db_name_path)
-    @@db = CouchRest.database!(couch_db_location)
-    @@collection_namespace = self.set_collection_namespace(db_name_path, db_user_id)
-    @@design_doc = self.set_couch_design(@@db, @@collection_namespace)
-    @@query_all = self.query_for_all_collection_records(@@collection_namespace)
-    @@db_metadata_keys = self.set_db_metadata_keys(@@collection_namespace)
-    @@namespace = self.set_namespace(@@db, db_user_id)
-  end
-=end
+
   def self.set_db_location(couch_db_host, db_name_path)
-    couch_db_host.chop if couch_db_host =~ /\/$/ #removes any trailing slash
-    db_name_path = "/#{db_name_path}" unless db_name_path =~ /^\// #check for le
-    couch_db_location = "#{couch_db_host}#{db_name_path}"
+    @@mutex.synchronize {
+      couch_db_host.chop if couch_db_host =~ /\/$/ #removes any trailing slash
+      db_name_path = "/#{db_name_path}" unless db_name_path =~ /^\// #check for le
+      couch_db_location = "#{couch_db_host}#{db_name_path}"
+    }
   end
 
   #assigns a unique namespace to the collection of nodes belonging to this class
   def self.set_collection_namespace(db_name_path, db_user_id)
-    lose_leading_slash = db_name_path.split("/")
-    lose_leading_slash.shift
-    db_name = lose_leading_slash.join("")
-    collection_namespace = "#{db_name}_#{db_user_id}"
+    @@mutex.synchronize {
+      lose_leading_slash = db_name_path.split("/")
+      lose_leading_slash.shift
+      db_name = lose_leading_slash.join("")
+      collection_namespace = "#{db_name}_#{db_user_id}"
+    }
   end
 
   def self.set_namespace(db, db_user_id)
-    namespace = "#{db.to_s}::#{db_user_id}"
+    @@mutex.synchronize {
+      namespace = "#{db.to_s}::#{db_user_id}"
+    }
   end
 
   def self.set_couch_design(db) #, view_name)
-    design_doc = CouchRest::Design.new
-    design_doc.name = self.to_s + "_Design"
-    #example of a map function that can be passed as a parameter if desired (currently not needed)
-    #map_function = "function(doc) {\n  if(doc['#{@@collection_namespace}']) {\n   emit(doc['_id'], 1);\n  }\n}"
-    #design_doc.view_by collection_namespace.to_sym #, {:map => map_function }
-    design_doc.database = db
-    begin
-      design_doc = db.get(design_doc['_id'])
-    rescue RestClient::ResourceNotFound
-      design_doc.save
-    end
-    #self.set_view_all(db, design_doc)
-    design_doc
+    @@mutex.synchronize {
+      design_doc = CouchRest::Design.new
+      design_doc.name = self.to_s + "_Design"
+      #example of a map function that can be passed as a parameter if desired (currently not needed)
+      #map_function = "function(doc) {\n  if(doc['#{@@collection_namespace}']) {\n   emit(doc['_id'], 1);\n  }\n}"
+      #design_doc.view_by collection_namespace.to_sym #, {:map => map_function }
+      design_doc.database = db
+      begin
+        design_doc = db.get(design_doc['_id'])
+      rescue RestClient::ResourceNotFound
+        design_doc.save
+      end
+      #self.set_view_all(db, design_doc)
+      design_doc
+    }
   end
 
   def self.set_view_all(db, design_doc, db_namespace)
-    view_name = "all_bufs"
-    namespace_id = "bufs_namespace"
-    map_str = "function(doc) {
-                  if (doc['#{namespace_id}'] == '#{db_namespace}') {
-                    emit(doc['_id'], doc);
-                  }
-               }"
-    map_fn = { :map => map_str }
-    self.set_view(db, design_doc, view_name, map_fn)
+    @@monitor.synchronize {
+      view_name = "all_bufs"
+      namespace_id = "bufs_namespace"
+      map_str = "function(doc) {
+                    if (doc['#{namespace_id}'] == '#{db_namespace}') {
+                       emit(doc['_id'], doc);
+                    }
+                 }"
+      map_fn = { :map => map_str } #returned from synced block
+      self.set_view(db, design_doc, view_name, map_fn)
+    }
   end
 
   def self.set_db_metadata_keys #(collection_namespace)
@@ -115,54 +109,35 @@ module BufsInfoDocEnvMethods
   end
 
   def self.set_view(db, design_doc, view_name, opts={})
-    #TODO: Add options for custom maps, etc
-    design_doc.view_by view_name.to_sym, opts
-    begin
-      view_rev_in_db = db.get(design_doc['_id'])['_rev']
-      res = design_doc.save unless design_doc['rev'] == view_rev_in_db
-    rescue RestClient::RequestFailed
-      puts "Warning:: Request Failed, assuming because the design doc was already saved"
-      puts "doc_rev: #{design_doc['_rev'].inspect}"
-      puts "db_rev: #{view_rev_in_db}"
-    end
+      #raise view_name if view_name == :parent_categories
+    @@monitor.synchronize {
+      #raise view_name if view_name == :parent_categories
+      #TODO: Add options for custom maps, etc
+      design_doc.view_by view_name.to_sym, opts
+      #design_doc['_rev'] = nil 
+      #raise "View Name: #{view_name} \n Des Doc: #{design_doc.inspect}" unless (view_name == "all_bufs" || view_name.to_s == "my_category")
+      #db_view_name = "by_#{view_name}"
+      #unless design_doc['views'].keys.include? db_view_name
+      #  design_doc['_rev'] = nil
+      #end
+      begin
+        view_rev_in_db = db.get(design_doc['_id'])['_rev']
+        res = design_doc.save unless design_doc['rev'] == view_rev_in_db
+      rescue RestClient::RequestFailed
+        puts "Warning:: Request Failed, assuming because the design doc was already saved"
+        puts "doc_rev: #{design_doc['_rev'].inspect}"
+        puts "db_rev: #{view_rev_in_db}"
+      end
+    }  
   end
 
-  #Magically uses a couple of class methods, but I'm not sure how to get around that yet
-  #FIXME: This binds the model and the data, and I can't figure out a way to unbind it
-=begin
-  def self.call_view(param, match_keys)
-     case param
-     when :my_category
-       self.by_my_category(@@collection_namespace, match_keys)
-     end
-  end
-
-  def self.by_my_category(namespace, match_keys)
-    match_keys = [match_keys].flatten
-    #namespace = 'bufs_test_spec_StubID1'
-    match_str = "&& ("
-    match_keys.each do |k|
-      match_str += "doc.my_category == '#{k}' || "
-    end
-    match_str += "nil)" 
-    map_str = "function(doc) {
-                  if (doc['#{namespace}'] && doc.my_category #{match_str}) {
-                    emit(doc['_id'], doc);
-                  }
-               }"
-    map_fn = { :map => map_str }
-    self.set_view(@@db, @@design_doc, :my_category, map_fn)
-    raw_res = @@design_doc.view :by_my_category, map_fn
-    #puts "By My Category Response:"
-    rows = raw_res["rows"]
-    records = rows.map{|r| r["value"]}
-  end
-=end
 end
 
 
 #TODO: Move out the generic aspects into a seperate module
-#This class is the primary interface into CouchDB BUFS documents
+#This is the abstract class used.  Each user would get a unique
+#class derived from this one.  In other words, a class context
+#is specific to a user.  [User being used loosely to indicate a client-like relationship]
 class BufsInfoDoc #< CouchRest::ExtendedDocument
   include BufsInfoDocEnvMethods
   AttachmentBaseID = "_attachments"
@@ -241,36 +216,46 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     puts "Raw Response"
     p raw_res
     raw_data = raw_res["rows"]
-    node_ids = raw_data.map {|d| d['id']}#puts "raw_datum: #{d.inspect}"}
-    nodes = node_ids.map{|id| self.db.get(id)}
+    records = raw_data.map {|d| d['value']}#puts "raw_datum: #{d.inspect}"}
+    puts "Records"
+    records
+    #nodes = node_ids.map{|id| self.db.get(id)}
   end
 
   #convert collection of CouchRest::Document into a
   #collection of this class
   def self.all
     nodes = self.all_native_records
-    nodes.map {|n| self.new(n)}
+    nodes.map! {|n| self.new(n)}
   end
 
+  ## CouchDB View Creation
   #Magically uses a couple of class methods, but I'm not sure how to get around that yet
   #FIXME: This binds the model and the data, and I can't figure out a way to unbind it
+  #Thus its cluttering up the class. The bindings of dynamic data to the map/reduce creation
+  #make it problematic to decouple and abstract
   def self.call_view(param, match_keys)
      case param
      when :my_category
        self.by_my_category(self.collection_namespace, match_keys)
+     when :parent_categories
+       self.by_parent_categories(self.collection_namespace, match_keys)
+     else
+       raise "Unknown design view called for: #{param}"
      end
   end
 
+  ## CouchDB View Definitions
+  #
   def self.by_my_category(namespace, match_keys)
     match_keys = [match_keys].flatten
-    #namespace = 'bufs_test_spec_StubID1'
     match_str = "&& ("
     match_keys.each do |k|
       match_str += "doc.my_category == '#{k}' || "
     end
-    match_str += "nil)"
+    match_str += "null)"
     map_str = "function(doc) {
-                  if (doc['#{namespace}'] && doc.my_category #{match_str}) {
+                  if (doc['bufs_namespace']=='#{namespace}' && doc.my_category #{match_str}) {
                     emit(doc['_id'], doc);
                   }
                }"
@@ -281,15 +266,63 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     rows = raw_res["rows"]
     records = rows.map{|r| r["value"]}
   end
+  #
+  def self.by_parent_categories(namespace, match_keys)
+    match_keys = [match_keys].flatten
+    match_str = ""
+    match_keys.each do |k|
+      match_str += "cat == '#{k}' || "
+    end
+    #TODO Fix up the match string to exclude the last ||, or use it for a feature (like wildcard)
+    match_str += "*"
+    map_str = "function(doc) {
+                  if (doc['bufs_namespace'] == '#{namespace}' && doc.parent_categories) {
+                     doc.parent_categories.forEach(function(cat){
+                        if (#{match_str}) {
+                            emit(doc['_id'], doc);
+                        }
+                      });
+                  };
+               }"
+    map_fn = { :map => map_str }
+    BufsInfoDocEnvMethods.set_view(self.db, self.design_doc, :parent_categories, map_fn)
+    raw_res = self.design_doc.view :by_parent_categories, map_fn
+    #puts "By Parent Category Response:"
+    puts "Raw #{ raw_res.inspect}"
+    rows = raw_res["rows"]
+    #TODO Move the uniq funtion to a reduce function in CouchDB
+    records = rows.map{|r| r["value"]}.uniq
+  end
 
+
+  def self.get(id)
+    #maybe put in some validations to ensure its from the proper collection namespace?
+    rtn = begin
+      p self
+      #p self.db_user_id
+      p @db
+      p BufsInfoDoc.db
+      p self.db
+      #STOP
+      data = self.db.get(id)
+      self.new(data)
+    rescue RestClient::ResourceNotFound => e
+      nil
+    end
+    rtn
+  end
 
   #This destroys all nodes in the model
   #this is more efficient than calling
   #destroy on instances of this class
   #as it avoids instantiating only to destroy it
   def self.destroy_all
-    all_docs = self.all_native_records
-    all_docs.each {|doc| doc.destroy} #works because CouchRest::Document is returned
+    all_records = self.all_native_records
+    all_records.each do |record|
+      self.db.delete_doc(record)
+    end
+    ##This might work if 'couchrest-type' is used
+    #all_docs.each {|doc| doc.destroy} 
     nil
   end
 
@@ -588,18 +621,6 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
   end
 
-  #TODO: Move to class methods, in collection space
-  def self.get(id)
-    #maybe put in some validations to ensure its from the proper collection namespace?
-    rtn = begin
-      data = @db.get(id)
-      BufsInfoDoc.new(data)
-    rescue RestClient::ResourceNotFound => e
-      nil
-    end
-    rtn
-  end
- 
   #TODO: move to class method section
   def self.db_id(node_id)
     @collection_namespace + '::' + node_id
@@ -636,7 +657,8 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
   def save
     #puts "Saving"
     raise ArgumentError, "Requires my_category to be set before saving" unless self.my_category
-    existing_doc = BufsInfoDoc.get(self.db_id)
+    puts "From save: #{self.inspect}"
+    existing_doc = self.class.get(self.db_id)
     begin
       res = self.class.db.save_doc(inject_node_db_metadata)
     rescue RestClient::RequestFailed => e
