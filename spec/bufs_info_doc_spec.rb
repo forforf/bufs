@@ -95,6 +95,7 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
   it "should save" do
     #set initial conditions
     orig_db_size = BufsInfoDoc.all.size
+    orig_db_size.should == 0
     doc_params = get_default_params.merge({:my_category => 'save_test'})
     doc_to_save = make_doc_no_attachment(doc_params.dup)
 

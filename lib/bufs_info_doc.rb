@@ -22,7 +22,13 @@ module NodeElementOperations
   Ops = {:my_category => MyCategoryOps, :parent_categories => ParentCategoryOps}
 end
 
+module AbstractBufsModelMethods
+
+end
+
+require 'thread'
 module BufsInfoDocEnvMethods
+  mutex = Mutex.new
   include CouchRest::Mixins::Views::ClassMethods
   #Class Environment
   
@@ -37,6 +43,7 @@ module BufsInfoDocEnvMethods
   #
   # Thus all classes would have a set_environment class method, but each class would have its own
   # environmental variables and structures
+=begin
   def self.set_environment(env)
     env_name = :bufs_info_doc_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
     couch_db_host = env[env_name][:host]
@@ -51,7 +58,7 @@ module BufsInfoDocEnvMethods
     @@db_metadata_keys = self.set_db_metadata_keys(@@collection_namespace)
     @@namespace = self.set_namespace(@@db, db_user_id)
   end
-
+=end
   def self.set_db_location(couch_db_host, db_name_path)
     couch_db_host.chop if couch_db_host =~ /\/$/ #removes any trailing slash
     db_name_path = "/#{db_name_path}" unless db_name_path =~ /^\// #check for le
@@ -70,7 +77,7 @@ module BufsInfoDocEnvMethods
     namespace = "#{db.to_s}::#{db_user_id}"
   end
 
-  def self.set_couch_design(db, view_param)
+  def self.set_couch_design(db) #, view_name)
     design_doc = CouchRest::Design.new
     design_doc.name = self.to_s + "_Design"
     #example of a map function that can be passed as a parameter if desired (currently not needed)
@@ -82,21 +89,34 @@ module BufsInfoDocEnvMethods
     rescue RestClient::ResourceNotFound
       design_doc.save
     end
-    self.set_view(db, design_doc, view_param)
+    #self.set_view_all(db, design_doc)
     design_doc
   end
 
-  def self.set_db_metadata_keys(collection_namespace)
-    db_metadata_keys = ['_id', '_rev', '_pos', collection_namespace]
+  def self.set_view_all(db, design_doc, db_namespace)
+    view_name = "all_bufs"
+    namespace_id = "bufs_namespace"
+    map_str = "function(doc) {
+                  if (doc['#{namespace_id}'] == '#{db_namespace}') {
+                    emit(doc['_id'], doc);
+                  }
+               }"
+    map_fn = { :map => map_str }
+    self.set_view(db, design_doc, view_name, map_fn)
   end
 
+  def self.set_db_metadata_keys #(collection_namespace)
+    db_metadata_keys = ['_id', '_rev', '_pos', '_deleted_conflicts', 'bufs_namespace']
+  end
+
+  #TODO: this is a bit convoluted to just return the query string, simplify.
   def self.query_for_all_collection_records(collection_namespace)
-    "by_#{collection_namespace}".to_sym
+    "by_all_bufs".to_sym
   end
 
-  def self.set_view(db, design_doc, view_param, opts={})
+  def self.set_view(db, design_doc, view_name, opts={})
     #TODO: Add options for custom maps, etc
-    design_doc.view_by view_param.to_sym, opts
+    design_doc.view_by view_name.to_sym, opts
     begin
       view_rev_in_db = db.get(design_doc['_id'])['_rev']
       res = design_doc.save unless design_doc['rev'] == view_rev_in_db
@@ -109,6 +129,7 @@ module BufsInfoDocEnvMethods
 
   #Magically uses a couple of class methods, but I'm not sure how to get around that yet
   #FIXME: This binds the model and the data, and I can't figure out a way to unbind it
+=begin
   def self.call_view(param, match_keys)
      case param
      when :my_category
@@ -136,7 +157,7 @@ module BufsInfoDocEnvMethods
     rows = raw_res["rows"]
     records = rows.map{|r| r["value"]}
   end
-
+=end
 end
 
 
@@ -147,28 +168,52 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
   AttachmentBaseID = "_attachments"
   LinkBaseID = "_links"
 
+  ##Class Accessors
+  class << self; attr_accessor :db_uder_id,
+                               :db,
+                               :collection_namespace,
+                               :design_doc,
+                               :query_all,
+                               :db_metadata_keys,
+                               :namespace
+  end
+
+  ##Instance Accessors
   attr_accessor :node_data_hash, :model_metadata, :saved_to_model
 
   ###Class Methods
   ##Class Environment
   def self.set_environment(env)
-    BufsInfoDocEnvMethods.set_environment(env)
+    #BufsInfoDocEnvMethods.set_environment(env)
+    env_name = :bufs_info_doc_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
+    couch_db_host = env[env_name][:host]
+    db_name_path = env[env_name][:path]
+    db_user_id = env[env_name][:user_id]
+    @db_user_id = db_user_id
+    couch_db_location = BufsInfoDocEnvMethods.set_db_location(couch_db_host, db_name_path)
+    @db = CouchRest.database!(couch_db_location)
+    @collection_namespace = BufsInfoDocEnvMethods.set_collection_namespace(db_name_path, db_user_id)
+    @design_doc = BufsInfoDocEnvMethods.set_couch_design(@db)#, @collection_namespace)
+    @query_all = BufsInfoDocEnvMethods.query_for_all_collection_records(@collection_namespace)
+    @db_metadata_keys = BufsInfoDocEnvMethods.set_db_metadata_keys #(@collection_namespace)
+    @namespace = BufsInfoDocEnvMethods.set_namespace(@db, db_user_id)
+    BufsInfoDocEnvMethods.set_view_all(@db, @design_doc, @collection_namespace)
+    return @namespace 
   end
 
   ##Class Accessors
   #TODO: move to accessor style 
   def self.collection_namespace
-    @@collection_namespace
+    @collection_namespace
   end
 
   def self.namespace
-    @@namespace
+    @namespace
   end
 
-  #uncomment if needed for debugging
-  #def self.db
-  #  @@db 
-  #end
+  def self.db
+    @db 
+  end
 
   ##Associated Classes (e.g., for attachments)
   #This should be defined in the dynamic class definition
@@ -188,10 +233,16 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
   #an instance of this class for each record.  Each record is provided
   #in its native form.
   def self.all_native_records
-    raw_res = @@design_doc.view @@query_all
+    puts "In self.all Design_doc: #{self.design_doc.name}"
+    puts "Query: #{self.query_all}"
+    
+    #query db
+    raw_res = self.design_doc.view self.query_all
+    puts "Raw Response"
+    p raw_res
     raw_data = raw_res["rows"]
     node_ids = raw_data.map {|d| d['id']}#puts "raw_datum: #{d.inspect}"}
-    nodes = node_ids.map{|id| @@db.get(id)}
+    nodes = node_ids.map{|id| self.db.get(id)}
   end
 
   #convert collection of CouchRest::Document into a
@@ -200,6 +251,37 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     nodes = self.all_native_records
     nodes.map {|n| self.new(n)}
   end
+
+  #Magically uses a couple of class methods, but I'm not sure how to get around that yet
+  #FIXME: This binds the model and the data, and I can't figure out a way to unbind it
+  def self.call_view(param, match_keys)
+     case param
+     when :my_category
+       self.by_my_category(self.collection_namespace, match_keys)
+     end
+  end
+
+  def self.by_my_category(namespace, match_keys)
+    match_keys = [match_keys].flatten
+    #namespace = 'bufs_test_spec_StubID1'
+    match_str = "&& ("
+    match_keys.each do |k|
+      match_str += "doc.my_category == '#{k}' || "
+    end
+    match_str += "nil)"
+    map_str = "function(doc) {
+                  if (doc['#{namespace}'] && doc.my_category #{match_str}) {
+                    emit(doc['_id'], doc);
+                  }
+               }"
+    map_fn = { :map => map_str }
+    BufsInfoDocEnvMethods.set_view(self.db, self.design_doc, :my_category, map_fn)
+    raw_res = self.design_doc.view :by_my_category, map_fn
+    #puts "By My Category Response:"
+    rows = raw_res["rows"]
+    records = rows.map{|r| r["value"]}
+  end
+
 
   #This destroys all nodes in the model
   #this is more efficient than calling
@@ -211,10 +293,11 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     nil
   end
 
-  def self.call_view(param, match_keys)
-    records = BufsInfoDocEnvMethods.call_view(param, match_keys)
-    docs = records.map {|r| self.new(r)}
-  end
+  #obsolete
+  #def self.call_view(param, match_keys)
+  #  records = BufsInfoDocEnvMethods.call_view(param, match_keys)
+  #  docs = records.map {|r| self.new(r)}
+  #end
 
   #I can't figure out how to abstract the queries on collections
   #to be either model independent or parameter independent.
@@ -306,7 +389,7 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     node_id = self.class.db_id(init_params[:my_category])
     #rev = init_params[:_rev]
     #TODO Find a way to genericize this across models
-    @model_metadata = { '_id' => node_id, "#{@@collection_namespace}" => node_id} #'_rev' => rev}
+    @model_metadata = { '_id' => node_id, 'bufs_namespace' => "#{self.class.collection_namespace}"} #'_rev' => rev}
     if init_params[:_rev]
       @saved_to_model = init_params[:_rev]
       @model_metadata.merge!({'_rev' => init_params[:_rev]})
@@ -320,7 +403,7 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
   def iv_set(attr_var, attr_value)
     ops = NodeElementOperations::Ops
     add_op_method(attr_var, ops[attr_var]) if ops[attr_var] #incorporates predefined methods
-    @node_data_hash[attr_var] = attr_value unless @@db_metadata_keys.include? attr_var.to_s
+    @node_data_hash[attr_var] = attr_value unless self.class.db_metadata_keys.include? attr_var.to_s
     #manually setting instance variable, so @node_data_hash can be updated
     #dynamic method acting like an instance variable getter
     self.class.__send__(:define_method, "#{attr_var}".to_sym,
@@ -357,7 +440,7 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
   end
 
   def create_view(param)
-    BufsInfoDocEnvMethods.set_view(@@db, @@design_doc, param)
+    BufsInfoDocEnvMethods.set_view(self.class.db, self.class.design_doc, param)
   end
 
   def destroy
@@ -509,7 +592,7 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
   def self.get(id)
     #maybe put in some validations to ensure its from the proper collection namespace?
     rtn = begin
-      data = @@db.get(id)
+      data = @db.get(id)
       BufsInfoDoc.new(data)
     rescue RestClient::ResourceNotFound => e
       nil
@@ -519,7 +602,7 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
  
   #TODO: move to class method section
   def self.db_id(node_id)
-    @@collection_namespace + '::' + node_id
+    @collection_namespace + '::' + node_id
   end
 
   def db_id
@@ -555,10 +638,10 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     raise ArgumentError, "Requires my_category to be set before saving" unless self.my_category
     existing_doc = BufsInfoDoc.get(self.db_id)
     begin
-      res = @@db.save_doc(inject_node_db_metadata)
+      res = self.class.db.save_doc(inject_node_db_metadata)
     rescue RestClient::RequestFailed => e
       if e.http_code == 409
-        raise "Document Conflict in the Database (most likely) Error Code 409, however my handling routine needs to be updated to new architecture"
+        raise "Document Conflict in the Database, most likely. Error Code was 409, however my handling routine needs to be updated to new architecture"
         puts "Found existing doc (id: #{self.db_id} while trying to save ... using it instead"
 	#case save_type
 	#when :additions

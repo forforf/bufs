@@ -48,13 +48,12 @@ describe UserDB, "Initialization" do
     @user2_id = "User002"
     @user1_db = UserDB.new(CouchDB, @user1_id)
     @user2_db = UserDB.new(CouchDB2, @user2_id)
-   
   end
 
   it "should initialize user docs properly" do
     #test
-    user1_doc = @user1_db.docClass.new({:user1_doc => "user1_data"})
-    user2_doc = @user2_db.docClass.new({:user2_doc => "user2_data"})
+    user1_doc = @user1_db.docClass.new({:my_category => "user1_data"})
+    user2_doc = @user2_db.docClass.new({:my_category => "user2_data"})
 
     #check results
     #users should be registered in UserDB
@@ -73,21 +72,9 @@ describe UserDB, "Basic database operations" do
     #TODO This only works if the db entry also exists in UserDB
     #Need to query each user database (how do we know the names?)
     # => need to enforce database naming convention.
-    #query for couchrest-type that matches /UserDB::UserDoc*/
+    #query for type that matches /UserDB::UserDoc*/
     UserDB.docClasses.each do |docClass|
-      all_user_docs = docClass.all
-      all_user_docs.each do |user_doc|
-        puts "WARNING: this doc has '_id' of nil" unless user_doc["_id"] #{user_
-        #puts "ID: #{user_doc["_id"].inspect}"
-        #puts "Rev: #{user_doc["_rev"].inspect}"
-        #user_doc.destroy unless user_doc["_id"]
-        #if user_doc["_id"]
-         # p user_doc["_id"]
-          #p user_doc["_id"].nil?
-          #user_doc.destroy
-        #end
-        user_doc.destroy
-      end
+      docClass.destroy_all
     end
 
     @user1_id = "User001"
@@ -118,19 +105,28 @@ describe UserDB, "Basic database operations" do
     end
   end
 
-
-
   it "should perform basic collection operations properly" do
     user1_doc = @user1_db.docClass.new({:my_category => "user1_data"})
     user2_doc = @user2_db.docClass.new({:my_category => "user2_data"})
+    puts "Checking if env is set correctly for save"
+    puts "User1"
+    p @user1_db.docClass
+    p @user1_db.docClass.db
+    puts "User2"
+    p @user2_db.docClass
+    p @user2_db.docClass.db
     user1_doc.save
     user2_doc.save
-    #p UserDB.user_to_docClass
-    #TODO: Fix the database state so that these tests are valid
+    puts "User Doc Classes: #{ UserDB.user_to_docClass.inspect}"
+    #TODO: Fix the database state so that these tests are valid (fixed?)
+    UserDB.user_to_docClass[@user1_id].should == @user1_db.docClass
+    UserDB.user_to_docClass[@user2_id].should == @user2_db.docClass
+    p UserDB.user_to_docClass[@user1_id].all
     UserDB.user_to_docClass[@user1_id].all.first[:my_category].should == "user1_data"  #dangerous test, depends on db state
     UserDB.user_to_docClass[@user2_id].all.first[:my_category].should == "user2_data"  #dangerous test dependos on db state
   end
-
+end
+=begin
   it "should not save if required fields don't exist" do
     #set initial condition
     orig_db_size = {}
@@ -882,3 +878,4 @@ describe UserDB, "Document Operations with Links" do
     end
   end
 end
+=end
