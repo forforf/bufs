@@ -65,8 +65,6 @@ class UserDB
     @docClass = UserDB.const_get(@user_doc_class_name)
     @attachClass = UserDB.const_get(@user_attach_class_name)
     @linkClass = UserDB.const_get(@user_link_class_name)
-    puts "Setting Environment for #{@user_id}"
-    puts "Class: #{@docClass.to_s}  Env: #{@user_environment.inspect}"
     @docClass.set_environment(@user_environment)
     @docClass.user_attachClass = @attachClass
     @docClass.user_linkClass = @linkClass

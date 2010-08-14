@@ -138,7 +138,9 @@ end
 #This is the abstract class used.  Each user would get a unique
 #class derived from this one.  In other words, a class context
 #is specific to a user.  [User being used loosely to indicate a client-like relationship]
-class BufsInfoDoc #< CouchRest::ExtendedDocument
+class BufsInfoDoc 
+#TODO Figure out a way to distinguish method calls from dynamically set data
+# that were assigned as instance variables
   include BufsInfoDocEnvMethods
   AttachmentBaseID = "_attachments"
   LinkBaseID = "_links"
@@ -176,20 +178,6 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     return @namespace 
   end
 
-  ##Class Accessors
-  #TODO: move to accessor style 
-  def self.collection_namespace
-    @collection_namespace
-  end
-
-  def self.namespace
-    @namespace
-  end
-
-  def self.db
-    @db 
-  end
-
   ##Associated Classes (e.g., for attachments)
   #This should be defined in the dynamic class definition
   #The default value here is for teting basic functionality
@@ -208,18 +196,10 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
   #an instance of this class for each record.  Each record is provided
   #in its native form.
   def self.all_native_records
-    puts "In self.all Design_doc: #{self.design_doc.name}"
-    puts "Query: #{self.query_all}"
-    
     #query db
     raw_res = self.design_doc.view self.query_all
-    puts "Raw Response"
-    p raw_res
     raw_data = raw_res["rows"]
     records = raw_data.map {|d| d['value']}#puts "raw_datum: #{d.inspect}"}
-    puts "Records"
-    records
-    #nodes = node_ids.map{|id| self.db.get(id)}
   end
 
   #convert collection of CouchRest::Document into a
@@ -230,23 +210,31 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
   end
 
   ## CouchDB View Creation
-  #Magically uses a couple of class methods, but I'm not sure how to get around that yet
+  #View as it is referred to here is a query to the underlying model
+  #and structures the way the result is returned from the model.
+  #The view here magically uses a couple of class methods, but I'm not sure how to get around that yet
   #FIXME: This binds the model and the data, and I can't figure out a way to unbind it
   #Thus its cluttering up the class. The bindings of dynamic data to the map/reduce creation
   #make it problematic to decouple and abstract
   def self.call_view(param, match_keys)
+     #the type of view depends on the paramter type
+     #note also that the type of model (CouchDB in this case)
+     #dictates the structure of the view query
      case param
      when :my_category
        self.by_my_category(self.collection_namespace, match_keys)
      when :parent_categories
        self.by_parent_categories(self.collection_namespace, match_keys)
      else
+       #TODO: Think of a more elegant way to handle an unknown view
        raise "Unknown design view called for: #{param}"
      end
   end
 
   ## CouchDB View Definitions
-  #
+  #CouchDB uses a map/reduce structure using javascript
+  #map is essentially a query and reduce is a way of aggregating
+  #the query into summary type of information (example: summing records)
   def self.by_my_category(namespace, match_keys)
     match_keys = [match_keys].flatten
     match_str = "&& ("
@@ -273,8 +261,7 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     match_keys.each do |k|
       match_str += "cat == '#{k}' || "
     end
-    #TODO Fix up the match string to exclude the last ||, or use it for a feature (like wildcard)
-    match_str += "*"
+    match_str.gsub!(/\|\|\s$/, "") #removes the extra stuff at the end from the iterator
     map_str = "function(doc) {
                   if (doc['bufs_namespace'] == '#{namespace}' && doc.parent_categories) {
                      doc.parent_categories.forEach(function(cat){
@@ -287,8 +274,6 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     map_fn = { :map => map_str }
     BufsInfoDocEnvMethods.set_view(self.db, self.design_doc, :parent_categories, map_fn)
     raw_res = self.design_doc.view :by_parent_categories, map_fn
-    #puts "By Parent Category Response:"
-    puts "Raw #{ raw_res.inspect}"
     rows = raw_res["rows"]
     #TODO Move the uniq funtion to a reduce function in CouchDB
     records = rows.map{|r| r["value"]}.uniq
@@ -298,12 +283,6 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
   def self.get(id)
     #maybe put in some validations to ensure its from the proper collection namespace?
     rtn = begin
-      p self
-      #p self.db_user_id
-      p @db
-      p BufsInfoDoc.db
-      p self.db
-      #STOP
       data = self.db.get(id)
       self.new(data)
     rescue RestClient::ResourceNotFound => e
@@ -321,16 +300,10 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     all_records.each do |record|
       self.db.delete_doc(record)
     end
-    ##This might work if 'couchrest-type' is used
+    ##The below  might work if 'couchrest-type' is used
     #all_docs.each {|doc| doc.destroy} 
     nil
   end
-
-  #obsolete
-  #def self.call_view(param, match_keys)
-  #  records = BufsInfoDocEnvMethods.call_view(param, match_keys)
-  #  docs = records.map {|r| self.new(r)}
-  #end
 
   #I can't figure out how to abstract the queries on collections
   #to be either model independent or parameter independent.
@@ -338,39 +311,7 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
   #data structures need to be mapped in different ways.
   
 
-=begin  
-  #Find documents with matching parent categories
-  view_by :parent_categories,
-    :map =>
-    "function(doc) {
-        if (doc['couchrest-type'] == 'BufsInfoDoc' && doc.parent_categories) {
-          doc.parent_categories.forEach(function(cat){
-            emit(cat, 1);
-          });
-        }
-      }",
-    :reduce =>
-    "function(keys, values, rereduce) {
-        return sum(values);
-      }"
-
-  #Find documents that have attachments. Important future feature!!
-  view_by :attachment,
-    :map =>
-    "function(doc) {
-         if (doc._attachments) {
-             emit(null, doc._attachments);
-         }
-      }"
-
-
-  #Define document parameters
-  property :file_metadata
-  property :attachment_doc_id
-  property :links_doc_id
-
-=end
-
+  ##Class methods 
   #Create the document in the BUFS node format from an existing node.  A BUFS node is an object that has the following properties:
   #  my_category
   #  parent_categories
@@ -381,6 +322,8 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
   #have a common way of providing the collection of parameters
   #rather than this hard coded version.
   def self.create_from_file_node(node_obj)
+    #TODO Update this to support the new dynamic architecture once
+    #file node is updated to the new architecture
     init_params = {}
     init_params['my_category'] = node_obj.my_category
     init_params['description'] = node_obj.description if (node_obj.respond_to?(:description) && node_obj.description)
@@ -399,6 +342,7 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     return new_bid.class.get(new_bid['_id'])
   end
 
+   #TODO move these to accessor style
   #Returns the id that will be appended to the document ID to uniquely
   #identify attachment documents associated with the main document
   def self.attachment_base_id
@@ -420,7 +364,6 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     raise ArgumentError, "Requires a category to be assigned to the instance" unless init_params[:my_category]
     #CouchDB metadata
     node_id = self.class.db_id(init_params[:my_category])
-    #rev = init_params[:_rev]
     #TODO Find a way to genericize this across models
     @model_metadata = { '_id' => node_id, 'bufs_namespace' => "#{self.class.collection_namespace}"} #'_rev' => rev}
     if init_params[:_rev]
@@ -454,7 +397,7 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
          #puts method_name
 
          wrapped_op = method_wrapper(param, op_proc)
-         self.class.send(:define_method, method_name, wrapped_op)
+         self.class.__send__(:define_method, method_name, wrapped_op)
        end
   end  
 
@@ -466,29 +409,54 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     #and this method wraps the obj.links so that the links_add method doesn't have to
     #include itself as a paramter to the predefined operation
     #lambda {|other| @node_data_hash[param] = unbound_op.call(@node_data_hash[param], other)}
-    lambda {|other| orig = self.send("#{param}".to_sym)
-                    new = self.send("#{param}=".to_sym, unbound_op.call(self.send("#{param}".to_sym), other))
+    lambda {|other| orig = self.__send__("#{param}".to_sym)
+                    new = self.__send__("#{param}=".to_sym, unbound_op.call(self.__send__("#{param}".to_sym), other))
                     self.save unless (@saved_to_model && orig == new)
            }
+  end
+
+  #Save the object to the CouchDB database
+  def save
+    #puts "Saving"
+    raise ArgumentError, "Requires my_category to be set before saving" unless self.my_category
+    existing_doc = self.class.get(self.db_id)
+    begin
+      res = self.class.db.save_doc(inject_node_db_metadata)
+    rescue RestClient::RequestFailed => e
+      if e.http_code == 409
+        raise "Document Conflict in the Database, most likely. Error Code was 409, however my handling routine needs to be updated to new architecture"
+        puts "Found existing doc (id: #{self.db_id} while trying to save ... using it instead"
+        existing_doc.parent_categories = (existing_doc.parent_categories + self.parent_categories).uniq
+        existing_doc.description = self.description if self.description
+        #TODO: Update the below to the new class scheme
+        existing_doc['_attachments'] = existing_doc['attachments'].merge(self['_attachments']) if self['_attachments']
+        existing_doc['file_metadata'] = existing_doc['file_metadata'].merge(self['file_metadata']) if self['file_metadata']
+        existing_doc.save
+        return existing_doc
+      else
+        raise e
+      end
+    end
+      rev_data = {"_rev" => res['rev']}
+      update_self(rev_data)
+      #self.model_metadata.merge!(rev_data)
+    return self
   end
 
   def create_view(param)
     BufsInfoDocEnvMethods.set_view(self.class.db, self.class.design_doc, param)
   end
 
-  def destroy
-    puts "Destroy Method Size: #{BufsInfoDoc.all.size}"
-  end
+  #TODO: This is not being tested and currently it doesn't do anything
+  #def destroy
+  #  puts "Destroy Method Size: #{BufsInfoDoc.all.size}"
+  #end
 
   #Adds parent categories, it can accept a single category or an array of categories
   #aliased for backwards compatibility, this method is dynamically defined and generated
   def add_parent_categories(new_cats)
     puts "Warning:: add_parent_categories is being deprecated, use <param_name>_add instead ex: parent_categories_add(cats_to_add) "
     parent_categories_add(new_cats)
-  #  if current_cats.size > orig_cats.size
-  #    self.parent_categories = current_cats
-  #    self.save
-  #  end
   end
 
   #Can accept a single category or an array of categories
@@ -496,15 +464,10 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
   def remove_parent_categories(cats_to_remove)
     puts "Warning:: remove_parent_categories is being deprecated, use <param_name>_subtract instead ex: parent_categories_subtract(cats_to_remove)"
     parent_categories_subtract(cats_to_remove)
-    #cats_to_remove = [cats_to_remove].flatten
-    #cats_to_remove.each do |remove_cat|
-    #  self['parent_categories'].delete(remove_cat)
-    #end
-    #self.save(:deletions)
-    #raise "temp error due to no parent categories existing" if self.parent_categories.empty?
   end  
 
   #Returns the attachment id associated with this document.  Note that this does not depend upon there being an attachment.
+  #TODO: 
   def my_attachment_doc_id
     if self['_id']
       return self['_id'] + self.class.attachment_base_id
@@ -651,42 +614,6 @@ class BufsInfoDoc #< CouchRest::ExtendedDocument
     node_data.merge(@model_metadata)
     #node_data.delete('_rev')
     #node_data
-  end
-
-  #Save the object to the CouchDB database
-  def save
-    #puts "Saving"
-    raise ArgumentError, "Requires my_category to be set before saving" unless self.my_category
-    puts "From save: #{self.inspect}"
-    existing_doc = self.class.get(self.db_id)
-    begin
-      res = self.class.db.save_doc(inject_node_db_metadata)
-    rescue RestClient::RequestFailed => e
-      if e.http_code == 409
-        raise "Document Conflict in the Database, most likely. Error Code was 409, however my handling routine needs to be updated to new architecture"
-        puts "Found existing doc (id: #{self.db_id} while trying to save ... using it instead"
-	#case save_type
-	#when :additions
-          existing_doc.parent_categories = (existing_doc.parent_categories + self.parent_categories).uniq
-	#when :deletions
-	#  existing_doc.parent_categories = self.parent_categories
-	#else
-	#  raise "save type parameter of #{save_type} not understood"
-	#end
-        existing_doc.description = self.description if self.description
-        #TODO: Update the below to the new class scheme 
-        existing_doc['_attachments'] = existing_doc['attachments'].merge(self['_attachments']) if self['_attachments']
-        existing_doc['file_metadata'] = existing_doc['file_metadata'].merge(self['file_metadata']) if self['file_metadata']
-        existing_doc.save
-        return existing_doc
-      else
-        raise e
-      end
-    end
-      rev_data = {"_rev" => res['rev']}
-      update_self(rev_data)
-      #self.model_metadata.merge!(rev_data)
-    return self
   end
 
   def update_self(rev_data)

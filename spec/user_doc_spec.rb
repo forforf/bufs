@@ -108,16 +108,16 @@ describe UserDB, "Basic database operations" do
   it "should perform basic collection operations properly" do
     user1_doc = @user1_db.docClass.new({:my_category => "user1_data"})
     user2_doc = @user2_db.docClass.new({:my_category => "user2_data"})
-    puts "Checking if env is set correctly for save"
-    puts "User1"
-    p @user1_db.docClass
-    p @user1_db.docClass.db
-    puts "User2"
-    p @user2_db.docClass
-    p @user2_db.docClass.db
+    #puts "Checking if env is set correctly for save"
+    #puts "User1"
+    #p @user1_db.docClass
+    #p @user1_db.docClass.db
+    #puts "User2"
+    #p @user2_db.docClass
+    #p @user2_db.docClass.db
     user1_doc.save
     user2_doc.save
-    puts "User Doc Classes: #{ UserDB.user_to_docClass.inspect}"
+    #puts "User Doc Classes: #{ UserDB.user_to_docClass.inspect}"
     #TODO: Fix the database state so that these tests are valid (fixed?)
     UserDB.user_to_docClass[@user1_id].should == @user1_db.docClass
     UserDB.user_to_docClass[@user2_id].should == @user2_db.docClass
