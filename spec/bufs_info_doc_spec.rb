@@ -256,11 +256,8 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     expected_size.should == doc_uniq_parent_cat.parent_categories.size
     CouchDB.get(doc_uniq_parent_cat.model_metadata['_id'])['parent_categories'].sort.should == doc_uniq_parent_cat.parent_categories.sort
     #"can't query on :my_category".should == "test should have way to query based on :my_category"
-    records = BufsInfoDoc.call_view(:my_category ,:key => doc_uniq_parent_cat.my_category)
-    records.each do |r|
-      puts "----"
-      p r
-    end
-    #records.size.should == 1
+    records = BufsInfoDoc.call_view(:my_category , doc_uniq_parent_cat.my_category)
+    records = [records].flatten
+    records.size.should == 1
   end
 end

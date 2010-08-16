@@ -361,12 +361,12 @@ describe UserDB, "Basic database operations" do
       doc_id = doc_uniq_parent_cats[user_id].model_metadata['_id']
       db_doc = docClass.get(doc_id)
       db_doc.node_data_hash[:parent_categories].sort.should == doc_uniq_parent_cats[user_id].parent_categories.sort
-      records[user_id] = docClass.call_view(:parent_categories, doc_uniq_parent_cats[user_id].parent_categories)
+      records[user_id] = docClass.call_view(:parent_categories, 'dup cat2')
       records[user_id].size.should == 1
+      records[user_id].first["parent_categories"].should include 'dup cat2'
     end
   end
 end
-
 =begin
 describe UserDB, "Document Operations with Attachments" do
   include UserDocSpecHelpers
@@ -387,12 +387,7 @@ describe UserDB, "Document Operations with Attachments" do
       all_attach_docs.each do |attach_doc|
         attach_doc.destroy
       end
-      all_user_docs = docClass.all
-      all_user_docs.each do |user_doc|
-        # p user_doc.database
-        puts "WARNING: this doc has '_id' of nil" unless user_doc["_id"] #{user_doc.inspect}" #ID:#{user_doc["_id"].inspect} - Rev: #{user_doc["_rev"].inspect}"
-        user_doc.destroy #unless user_doc["_id"]
-      end
+      docClass.destroy_all
     end
 
     @user1_id = "User001"
@@ -423,14 +418,25 @@ describe UserDB, "Document Operations with Attachments" do
       basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
       basic_docs[user_id].save #doc must be saved before we can attach
     end
+
     #check initial conditions
     UserDB.user_to_docClass.each do |user_id, docClass|
-      docClass.get(basic_docs[user_id]['_id']['attachment_doc_id']).should == nil
+      doc_id = basic_docs[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      db_doc.model_metadata['attachment_doc_id'].should == nil
+      #(docClass.get(basic_docs[user_id].model_metadata['_id'])['attachment_doc_id']).should == nil
     end
     #test
+    #using just the filename
+    file_data = {:src_filename => test_filename}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      basic_docs[user_id].add_data_file(test_filename)
+      basic_docs[user_id].__add_files(file_data)
     end
+
+end
+end
+=begin
+
     #check results
     att_doc_ids = {}
     att_docs = {}

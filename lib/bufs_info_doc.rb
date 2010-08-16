@@ -2,6 +2,7 @@
 require 'couchrest'
 require 'monitor'
 
+
 #bufs libraries
 require File.dirname(__FILE__) + '/bufs_info_attachment'
 require File.dirname(__FILE__) + '/bufs_info_link'
@@ -80,6 +81,7 @@ module BufsInfoDocEnvMethods
       rescue RestClient::ResourceNotFound
         design_doc.save
       end
+      #ok raise design_doc.inspect
       #self.set_view_all(db, design_doc)
       design_doc
     }
@@ -96,6 +98,7 @@ module BufsInfoDocEnvMethods
                  }"
       map_fn = { :map => map_str } #returned from synced block
       self.set_view(db, design_doc, view_name, map_fn)
+      #raise "set_view_all: #{design_doc.inspect
     }
   end
 
@@ -109,36 +112,194 @@ module BufsInfoDocEnvMethods
   end
 
   def self.set_view(db, design_doc, view_name, opts={})
+      #ok raise design_doc.inspect
       #raise view_name if view_name == :parent_categories
     @@monitor.synchronize {
       #raise view_name if view_name == :parent_categories
       #TODO: Add options for custom maps, etc
+      #creating view in design_doc
       design_doc.view_by view_name.to_sym, opts
       #design_doc['_rev'] = nil 
-      #raise "View Name: #{view_name} \n Des Doc: #{design_doc.inspect}" unless (view_name == "all_bufs" || view_name.to_s == "my_category")
-      #db_view_name = "by_#{view_name}"
-      #unless design_doc['views'].keys.include? db_view_name
-      #  design_doc['_rev'] = nil
-      #end
+      #ok raise "View Name: #{view_name} \n Des Doc: #{design_doc.inspect}" unless (view_name == "all_bufs" || view_name.to_s == "my_category")
+      db_view_name = "by_#{view_name}"
+      views = design_doc['views'] || {}
+      view_keys = views.keys || []
+      unless view_keys.include? db_view_name
+        design_doc['_rev'] = nil
+      end
+      #ok raise "DesDoc: #{design_doc.inspect}  view: #{db_view_name}"
       begin
         view_rev_in_db = db.get(design_doc['_id'])['_rev']
         res = design_doc.save unless design_doc['rev'] == view_rev_in_db
       rescue RestClient::RequestFailed
-        puts "Warning:: Request Failed, assuming because the design doc was already saved"
+        puts "Warning: Request Failed, assuming because the design doc was already saved?"
         puts "doc_rev: #{design_doc['_rev'].inspect}"
         puts "db_rev: #{view_rev_in_db}"
       end
+      #ok raise design_doc.inspect
     }  
   end
 
 end
 
-
-#TODO: Move out the generic aspects into a seperate module
+#TODO: Move out the model specific  aspects into a seperate module
+#TODO: Use as a generic class for all models
 #This is the abstract class used.  Each user would get a unique
 #class derived from this one.  In other words, a class context
 #is specific to a user.  [User being used loosely to indicate a client-like relationship]
-class BufsInfoDoc 
+class BufsInfoDoc
+
+  #TODO Move Mgr Classes to a model specific module  
+
+  #The file handling is bound to the model, and can't be abstracted away. This means files can't be handled
+  #via the dynamic methods used for other data structures.
+  #models that will handle data files (whether filesystem files or attachments)
+  #must provide a method called files_mgr that provides an object that can add from a file, add from raw data
+  #and subtract (i.e.) delete the file from the model. These functions must be implemented
+  #by the following named methods.
+      # .add_file(add_file_hashes)      -> adds file data from a file on the local file system (to this program)
+      # .add_raw_data(raw_data_hashes)  -> creates a file in the model from the raw data provided
+      # .subtract(filename_keys)        -> removes the file and metadata associated with the model_filename matching filename keys
+      # .list_files
+      # .get_file(filename_key)
+
+      # add_file_hash = { :model_filename => filename stored in model, (defaults to src_filename's basename)
+      #                   :src_filename => source filename,  (either src_filename or raw_data must be provided)
+      #                   :content_type => :mime content type for the file (derived from file extension defaults to TBD if no extension}
+      #                 }
+
+      # raw_data_hash = { :model_filename => filename stored in model, (required)
+      #                   :src_data => source data, (the data to be stored in the file,
+      #                   :content_type => :mime content type for the file (required)
+      #                 }
+      #
+      # filename_key = model_filenames to delete
+
+  #TODO Make thread safe
+  class FilesMgr
+    #class << self; attr_accessor :model_mgrClass; end
+    #@model_mgrClass = nil  #FIXME: Not needed for every model?  How to abstract then?
+
+    attr_accessor :model_actor, :record_ref
+
+    def initialize(model_actor) #provides the model actor that can manage files
+      @model_actor = model_actor
+      @record_ref = nil #id for files container
+    end
+
+    def add_files(node, file_datas)
+      bia_class = @model_actor[:attachment_actor_class]
+      attachment_package = {}
+      file_datas = [file_datas].flatten
+      file_datas.each do |file_data|
+        #get file data
+        src_filename = file_data[:src_filename]
+        src_basename = File.basename(src_filename)
+        raise "File data must include the source filename when adding a file to the model" unless src_filename
+        model_basename = file_data[:model_basename] || src_basename
+        model_basename.gsub!('+', ' ')  #plus signs are problematic
+        #TODO: Consider creating BufsEscape.unescape method
+        model_basename = CGI.unescape(model_basename)
+        content_type = file_data[:content_type] || MimeNew.for_ofc_x(model_basename)
+        modified_time = file_data[:modified_time] || File.mtime(src_filename).to_s
+        #create attachment class data structure
+        file_metadata = {}
+        file_metadata['content_type'] = content_type
+        file_metadata['file_modified'] = modified_time
+        #read in file
+        #TODO: reading the file in this way is memory intensive for large files, chunking it up woudl be better
+        file_data = File.open(src_filename, "rb") {|f| f.read}
+        attachment_package[model_basename] = {'data' => file_data, 'md' => file_metadata}
+      end
+      #attachment package has now been created
+      #create the attachment record
+      #TODO: What if the attachment already exists?
+      user_id = node.class.db_user_id
+      node_id = node.model_metadata['_id']
+      record = bia_class.add_attachment_package(node, attachment_package)
+      @record_ref = record['_id']
+    end
+
+    def add_raw_data(raw_datas)
+    end
+
+    def subtract(model_filenames)
+    end
+  end
+
+  #TODO Make thread safe
+  class ViewsMgr
+    attr_accessor :model_actor
+
+
+    def initialize(model_actor)
+      @model_actor = model_actor #provides the model actor that can provide views
+      puts "INIT: #{model_actor.inspect}"
+    end
+
+    ## CouchDB View Definitions
+    #CouchDB uses a map/reduce structure using javascript
+    #map is essentially a query and reduce is a way of aggregating
+    #the query into summary type of information (example: summing records)
+
+    #Note this couples the model (CouchDB) and the parameter (my_category).  In other words
+    #this presupposes my_category should exist in the model, rather than inferring how to construct
+    #the view from the fact that my_category was used (I don't think the latter is possible for views)
+    def by_my_category(collection_namespace, match_key)
+
+      #TODO
+      #TODO My views are screwed up, the match_keys are part of the query, not the view
+      #TODO Further more to match multiple keys requires a modified view, see http://books.couchdb.org/relax/design-documents/views
+      #TODO the couchdb book
+      #TODO
+      #match_keys = [match_keys].flatten
+      #match_str = "&& ("
+      #match_keys.each do |k|
+      #  match_str += "doc.my_category == '#{k}' || "
+      #end
+      #match_str += "null)"
+      map_str = "function(doc) {
+                     if (doc.bufs_namespace =='#{collection_namespace}' && doc.my_category ){
+                       emit(doc.my_category, doc);
+                    }
+                 }"
+      map_fn = { :map => map_str }
+      BufsInfoDocEnvMethods.set_view(@model_actor[:db], @model_actor[:design_doc], :my_category, map_fn)
+      puts "Match Key: #{match_key}"
+      raw_res = @model_actor[:design_doc].view :by_my_category, :key => match_key
+      #puts "By My Category Response:"
+      rows = raw_res["rows"]
+      records = rows.map{|r| r["value"]}
+    end
+
+
+  def by_parent_categories(collection_namespace, match_keys)
+    #match_keys = [match_keys].flatten
+    #match_str = ""
+    #match_keys.each do |k|
+    #  match_str += "cat == '#{k}' || "
+    #end
+    #match_str.gsub!(/\|\|\s$/, "") #removes the extra stuff at the end from the iterator
+
+    
+    map_str = "function(doc) {
+                  if (doc.bufs_namespace == '#{collection_namespace}' && doc.parent_categories) {
+                         emit(doc.parent_categories, doc);
+                      };
+                  };"
+            #   }"
+    map_fn = { :map => map_str }
+    
+    BufsInfoDocEnvMethods.set_view(@model_actor[:db], @model_actor[:design_doc], :parent_categories, map_fn)
+    raw_res = @model_actor[:design_doc].view :by_parent_categories
+    rows = raw_res["rows"]
+    p rows
+    records = rows.map{|r| r["value"] if r["value"]["parent_categories"].include? match_keys}
+    #raise "Keys #{match_keys.inspect} Records: #{records.inspect}"
+  end
+
+  end 
+ 
 #TODO Figure out a way to distinguish method calls from dynamically set data
 # that were assigned as instance variables
   include BufsInfoDocEnvMethods
@@ -146,13 +307,15 @@ class BufsInfoDoc
   LinkBaseID = "_links"
 
   ##Class Accessors
-  class << self; attr_accessor :db_uder_id,
+  class << self; attr_accessor :db_user_id,
                                :db,
                                :collection_namespace,
                                :design_doc,
                                :query_all,
                                :db_metadata_keys,
-                               :namespace
+                               :namespace,
+                               :files_mgr,
+                               :views_mgr
   end
 
   ##Instance Accessors
@@ -175,7 +338,14 @@ class BufsInfoDoc
     @db_metadata_keys = BufsInfoDocEnvMethods.set_db_metadata_keys #(@collection_namespace)
     @namespace = BufsInfoDocEnvMethods.set_namespace(@db, db_user_id)
     BufsInfoDocEnvMethods.set_view_all(@db, @design_doc, @collection_namespace)
+    @files_mgr = FilesMgr.new(:attachment_actor_class => BufsInfoAttachment)
+    @views_mgr = ViewsMgr.new(:db => @db, :design_doc => @design_doc)
     return @namespace 
+  end
+
+  
+  def self.files_mgr
+    @files_mgr
   end
 
   ##Associated Classes (e.g., for attachments)
@@ -212,73 +382,20 @@ class BufsInfoDoc
   ## CouchDB View Creation
   #View as it is referred to here is a query to the underlying model
   #and structures the way the result is returned from the model.
-  #The view here magically uses a couple of class methods, but I'm not sure how to get around that yet
-  #FIXME: This binds the model and the data, and I can't figure out a way to unbind it
-  #Thus its cluttering up the class. The bindings of dynamic data to the map/reduce creation
-  #make it problematic to decouple and abstract
+  #The view her
   def self.call_view(param, match_keys)
-     #the type of view depends on the paramter type
-     #note also that the type of model (CouchDB in this case)
-     #dictates the structure of the view query
-     case param
-     when :my_category
-       self.by_my_category(self.collection_namespace, match_keys)
-     when :parent_categories
-       self.by_parent_categories(self.collection_namespace, match_keys)
+     view_method_name = "by_#{param}".to_sym #using CouchDB style for now
+     #If the views_mgr object has a view for this parameter then use it
+     rtn = if self.views_mgr.respond_to? view_method_name
+       #TODO Make distinction clearer between namespace and collection_namespace
+       self.views_mgr.__send__(view_method_name, self.collection_namespace, match_keys)
+       #puts "NAMESPACE: #{self.namespace}"
      else
        #TODO: Think of a more elegant way to handle an unknown view
-       raise "Unknown design view called for: #{param}"
+       raise "Unknown design view #{view_method_name} called for: #{param}"
      end
-  end
 
-  ## CouchDB View Definitions
-  #CouchDB uses a map/reduce structure using javascript
-  #map is essentially a query and reduce is a way of aggregating
-  #the query into summary type of information (example: summing records)
-  def self.by_my_category(namespace, match_keys)
-    match_keys = [match_keys].flatten
-    match_str = "&& ("
-    match_keys.each do |k|
-      match_str += "doc.my_category == '#{k}' || "
-    end
-    match_str += "null)"
-    map_str = "function(doc) {
-                  if (doc['bufs_namespace']=='#{namespace}' && doc.my_category #{match_str}) {
-                    emit(doc['_id'], doc);
-                  }
-               }"
-    map_fn = { :map => map_str }
-    BufsInfoDocEnvMethods.set_view(self.db, self.design_doc, :my_category, map_fn)
-    raw_res = self.design_doc.view :by_my_category, map_fn
-    #puts "By My Category Response:"
-    rows = raw_res["rows"]
-    records = rows.map{|r| r["value"]}
   end
-  #
-  def self.by_parent_categories(namespace, match_keys)
-    match_keys = [match_keys].flatten
-    match_str = ""
-    match_keys.each do |k|
-      match_str += "cat == '#{k}' || "
-    end
-    match_str.gsub!(/\|\|\s$/, "") #removes the extra stuff at the end from the iterator
-    map_str = "function(doc) {
-                  if (doc['bufs_namespace'] == '#{namespace}' && doc.parent_categories) {
-                     doc.parent_categories.forEach(function(cat){
-                        if (#{match_str}) {
-                            emit(doc['_id'], doc);
-                        }
-                      });
-                  };
-               }"
-    map_fn = { :map => map_str }
-    BufsInfoDocEnvMethods.set_view(self.db, self.design_doc, :parent_categories, map_fn)
-    raw_res = self.design_doc.view :by_parent_categories, map_fn
-    rows = raw_res["rows"]
-    #TODO Move the uniq funtion to a reduce function in CouchDB
-    records = rows.map{|r| r["value"]}.uniq
-  end
-
 
   def self.get(id)
     #maybe put in some validations to ensure its from the proper collection namespace?
@@ -387,8 +504,6 @@ class BufsInfoDoc
     #dynamic method acting like an instance variable setter
     self.class.__send__(:define_method, "#{attr_var}=".to_sym,
        lambda {|new_val| @node_data_hash[attr_var] = new_val} )
-    #create view not quite working as I want yet
-    #create_view(attr_var)
   end
      
   def add_op_method(param, ops)
@@ -414,6 +529,15 @@ class BufsInfoDoc
                     self.save unless (@saved_to_model && orig == new)
            }
   end
+
+  #some object convenience methods for accessing class methods
+  def files_mgr
+    self.class.files_mgr
+  end
+
+  #def links_mgr
+  #  self.class.links_mg
+  #end
 
   #Save the object to the CouchDB database
   def save
@@ -469,8 +593,8 @@ class BufsInfoDoc
   #Returns the attachment id associated with this document.  Note that this does not depend upon there being an attachment.
   #TODO: 
   def my_attachment_doc_id
-    if self['_id']
-      return self['_id'] + self.class.attachment_base_id
+    if self.model_metadata['_id']
+      return self.model_metadata['_id'] + self.class.attachment_base_id
     else
       raise "Can't attach to a document that has not first been saved to the db"
     end
@@ -508,6 +632,10 @@ class BufsInfoDoc
     current_node_attach.save
   end
 
+  def __add_files(file_data)
+    self.class.files_mgr.add_files(self, file_data)
+  end
+
   #Add an attachment to the BufsInfoDoc object from a file
   def add_data_file(attachment_filenames)
     #TODO: Ok to do silent returns here?
@@ -530,6 +658,7 @@ class BufsInfoDoc
     end
     #getting attachment doc id
     attachment_record = self.class.user_attachClass.get(my_attachment_doc_id)
+    #TODO: the create vs update should be handled in files_mgr
     if attachment_record
       #puts "Updating Attachment"
       attachment_record.update_attachment_package(self, attachment_package)
@@ -656,17 +785,21 @@ class BufsInfoDoc
 
   #Deletes the object and its CouchDB entry
   def destroy_node
-    att_doc = self.class.get(self.attachment_doc_id)
+    att_doc = self.class.get(self.files_mgr.record_ref) if self.files_mgr.record_ref
     att_doc.destroy if att_doc
-    link_doc = self.class.get(self.links_doc_id)
-    link_doc.destroy if link_doc
+    #link_doc = self.class.get(self.links_doc_id)
+    #link_doc.destroy if link_doc
     begin
       self.destroy
     rescue ArgumentError => e
       puts "Rescued Error: #{e} while trying to destroy #{self.my_category} node"
-      me = self.class.get(self['_id'])
+      me = self.class.get(self.model_metadata['_id'])
       me.destroy
     end
+  end
+
+  def destroy
+    self.class.db.delete_doc('_id' => self.model_metadata['_id'], '_rev' => self.model_metadata['_rev'])
   end
 end
 

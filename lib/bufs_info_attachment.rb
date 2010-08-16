@@ -123,18 +123,35 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
 
   #create the attachment document id to be used
   def self.uniq_att_doc_id(bufs_info_doc)
-    uniq_id = bufs_info_doc['_id'] + bufs_info_doc.class.attachment_base_id 
+    uniq_id = bufs_info_doc.model_metadata['_id'] + bufs_info_doc.class.attachment_base_id 
+  end
+
+  def self.add_attachment_package(bufs_info_doc, attachments)
+    raise "No document provided for attachments" unless bufs_info_doc
+    raise "No id found for the document" unless bufs_info_doc.model_metadata['_id']
+    raise "No attachments provided for attaching" unless attachments
+    att_doc_id = self.uniq_att_doc_id(bufs_info_doc)
+    att_doc = bufs_info_doc.class.user_attachClass.get(att_doc_id)
+    rtn = if att_doc
+      #TODO: This call should be able to be simplified in the new architecture
+      bufs_doc.class.user_attachClass.update_attachment_package(att_doc, attachments)
+    else
+      #TOD: simplify call
+      bufs_info_doc.class.user_attachClass.create_attachment_package(att_doc_id, bufs_info_doc, attachments)
+    end
+    return rtn
   end
 
   #Create an attachment for a particular BUFS document
-  def self.create_attachment_package(bufs_info_doc, attachments)
-    raise "No document provided for attachments" unless bufs_info_doc
-    raise "No id found for the document" unless bufs_info_doc['_id']
-    raise "No attachments provided for attaching" unless attachments
+  #TODO: See if bufs_info_doc can be factored out of this method call
+  def self.create_attachment_package(att_doc_id, bufs_info_doc, attachments)
+    #raise "No document provided for attachments" unless bufs_info_doc
+    #raise "No id found for the document" unless bufs_info_doc.model_metadata['_id']
+    #raise "No attachments provided for attaching" unless attachments
     #separate attachment data from custom attachment metadata
     #this is necessary since couchdb can't put custom metadata with its attachments
     sorted_attachments = BufsInfoAttachmentHelpers.sort_attachment_data(attachments)
-    att_doc_id  = self.uniq_att_doc_id(bufs_info_doc)
+    #att_doc_id  = self.uniq_att_doc_id(bufs_info_doc)
     custom_metadata_doc_params = {'_id' => att_doc_id, 'md_attachments' => sorted_attachments['cust_md_by_name']}
     att_doc = bufs_info_doc.class.user_attachClass.get(att_doc_id)
     raise IndexError, "Can't create new attachment document for #{self}. Document already exists in Database" if att_doc
