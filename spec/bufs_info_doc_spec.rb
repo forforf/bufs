@@ -226,11 +226,11 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     #continue with initial conditions
     new_cats = ['new_cat1', 'new cat2', 'orig_cat2']
     #test
-    doc_rev0 = doc_existing_new_parent_cat.model_metadata['_rev']
+    #doc_rev0 = doc_existing_new_parent_cat.model_metadata['_rev']
     doc_existing_new_parent_cat.add_parent_categories(new_cats)
-    doc_existing_new_parent_cat.save
-    doc_rev1 = doc_existing_new_parent_cat.model_metadata['_rev']
-    doc_rev0.should_not == doc_rev1
+    #doc_existing_new_parent_cat.save
+    #doc_rev1 = doc_existing_new_parent_cat.model_metadata['_rev']
+    #doc_rev0.should_not == doc_rev1
     #check results
     #puts "Adding PCats: #{doc_existing_new_parent_cat.parent_categories.inspect}"
     #check doc in memory
