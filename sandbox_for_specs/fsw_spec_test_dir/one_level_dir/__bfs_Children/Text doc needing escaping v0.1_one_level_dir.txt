@@ -1,0 +1,1 @@
+/media-ec2/ec2a/projects/bufs/sandbox_for_specs/fsw_spec_test_dir/one_level_dir/Text doc needing escaping v0.1.txt
