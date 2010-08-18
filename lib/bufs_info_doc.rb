@@ -4,6 +4,7 @@ require 'monitor'
 
 
 #bufs libraries
+require File.dirname(__FILE__) + '/bufs_base_model'
 require File.dirname(__FILE__) + '/bufs_info_attachment'
 require File.dirname(__FILE__) + '/bufs_info_link'
 require File.dirname(__FILE__) + '/bufs_escape'
@@ -11,58 +12,6 @@ require File.dirname(__FILE__) + '/node_element_operations'
 
 
 
-#TODO: Move this module to a more centralized place since it will
-#      be used by any of the node based classes
-=begin
-module NodeElementOperations
-  #TODO the hash inside the proc is confusing (the curly braces) update to better readability
-  MyCategoryAddOp = lambda {|this,other|   Hash[:update_this => this]  } #my cat is not allowed to change
-  MyCategorySubtractOp = lambda{ |this, other| Hash[:update_this => this] } #TODO use this to delete a node?
-  MyCategoryOps = {:add => MyCategoryAddOp, :subtract => MyCategorySubtractOp}
-  ParentCategoryAddOp = lambda {|this,other| 
-                           this = this + [other].flatten
-                           this.uniq!; this.compact!
-                           Hash[:update_this => this]
-                         }
-  ParentCategorySubtractOp = lambda {|this,other| this -= [other].flatten!; this.uniq!; this.compact!; Hash[:update_this => this] }
-  ParentCategoryOps = {:add => ParentCategoryAddOp, :subtract => ParentCategorySubtractOp}
-  LinkAddOp = lambda {|this, other|
-                                 this = this || {}  #investigate why its passed as nil (probably hasn't been built yet
-                                 srcs = other.keys
-                                 srcs.each {|s| if this[s]
-                                            this[s] = [ other[s] ].flatten
-                                           else
-                                            this[s] = [ other[s] ].flatten
-                                           end
-                                           this[s].uniq!
-                                           this[s].compact!
-                                  }
-                           { :update_this => this }
-                         }
-  #if link_name is used besides other, then all link_names would need to be unique, so we use other
-  LinkSubtractOp = lambda {|this, other| srcs = other.keys
-                                         srcs.each { |s| this[s].delete(other[s]) 
-                                                    this.delete(s) if this[s].empty?
-                                              }
-                                         { :update_this => this }
-                           }
-  #think if this is what you want, returning a single uri if only one exists, while an array if more than one?
-  #I think so since it's *almost* an error case if more than one url exists for a name, but I'm not sure this is the best approach
-  LinkGetOp = lambda {|this, link_name| 
-                                       this_ary = this.to_a
-                                       puts "From LinkGetOp: this_ary: #{this_ary.inspect}"
-                                       return {:return_value => nil, :update_this => this} unless this_ary.flatten.include? link_name
-                                       srcs = []
-                                       this_ary.each { |s, ls| srcs << s if ls.include? link_name }
-                                       return {:return_value => srcs } if srcs.size > 1
-                                       return {:return_value => srcs.first} if srcs.size i== 1
-                     }
-
-  LinkOps = {:add => LinkAddOp, :subtract => LinkSubtractOp, :get => LinkGetOp}
-                          
-  Ops = {:my_category => MyCategoryOps, :parent_categories => ParentCategoryOps, :link => LinkOps}
-end
-=end
 
 module BufsInfoDocEnvMethods
   ##Uncomment all mutexs and monitors for thread safety for this module (untested)
@@ -188,6 +137,10 @@ end
 #class derived from this one.  In other words, a class context
 #is specific to a user.  [User being used loosely to indicate a client-like relationship]
 class BufsInfoDoc
+  include BufsBaseModel
+
+  #specific to class, instructs which node elements operations are to be used
+  Ops = NodeElementOperations::Ops  #sets :my_category, :parent_categories, and :description
 
   #TODO Move Mgr Classes to a model specific module  
 
@@ -330,6 +283,7 @@ class BufsInfoDoc
 
   #TODO Make thread safe
   class ViewsMgr
+    #Dependency on BufsInfoDocEnvMethods
     attr_accessor :model_actor
 
 
@@ -346,18 +300,6 @@ class BufsInfoDoc
     #this presupposes my_category should exist in the model, rather than inferring how to construct
     #the view from the fact that my_category was used (I don't think the latter is possible for views)
     def by_my_category(collection_namespace, match_key)
-
-      #TODO
-      #TODO My views are screwed up, the match_keys are part of the query, not the view
-      #TODO Further more to match multiple keys requires a modified view, see http://books.couchdb.org/relax/design-documents/views
-      #TODO the couchdb book update I think most is cleaned up, but figure out where constructor goes for nodes
-      #TODO
-      #match_keys = [match_keys].flatten
-      #match_str = "&& ("
-      #match_keys.each do |k|
-      #  match_str += "doc.my_category == '#{k}' || "
-      #end
-      #match_str += "null)"
       map_str = "function(doc) {
                      if (doc.bufs_namespace =='#{collection_namespace}' && doc.my_category ){
                        emit(doc.my_category, doc);
@@ -401,7 +343,7 @@ class BufsInfoDoc
  
 #TODO Figure out a way to distinguish method calls from dynamically set data
 # that were assigned as instance variables
-  include BufsInfoDocEnvMethods
+  include BufsInfoDocEnvMethods 
   AttachmentBaseID = "_attachments"
   LinkBaseID = "_links"
 
@@ -525,7 +467,6 @@ class BufsInfoDoc
   #to be either model independent or parameter independent.
   #Each model has different ways of querying collections, and different paramter
   #data structures need to be mapped in different ways.
-  
 
   ##Class methods 
   #Create the document in the BUFS node format from an existing node.  A BUFS node is an object that has the following properties:
@@ -534,9 +475,6 @@ class BufsInfoDoc
   #  description
   #  attachments in the form of data files
   #
-  #TODO If this is handled in the base models then each base model should
-  #have a common way of providing the collection of parameters
-  #rather than this hard coded version.
   def self.create_from_file_node(node_obj)
     #TODO Update this to support the new dynamic architecture once
     #file node is updated to the new architecture
@@ -558,7 +496,6 @@ class BufsInfoDoc
     return new_bid.class.get(new_bid['_id'])
   end
 
-   #TODO move these to accessor style
   #Returns the id that will be appended to the document ID to uniquely
   #identify attachment documents associated with the main document
   def self.attachment_base_id
@@ -578,9 +515,9 @@ class BufsInfoDoc
 
     raise "No namespace has been set for #{self}" unless self.class.namespace
     raise ArgumentError, "Requires a category to be assigned to the instance" unless init_params[:my_category]
-    #CouchDB metadata
     node_id = self.class.db_id(init_params[:my_category])
     #TODO Find a way to genericize this across models
+    #CouchDB model metadata
     @model_metadata = { '_id' => node_id, 'bufs_namespace' => "#{self.class.collection_namespace}"} #'_rev' => rev}
     if init_params[:_rev]
       @saved_to_model = init_params[:_rev]
@@ -592,11 +529,17 @@ class BufsInfoDoc
     end
   end
 
+  #This will take a key-value pair and create an instance variable (actually it's a method)
+  # using key as the method name, and sets the return value to the value associated with that key
+  # changes to the key's value are reflected in subsequent method calls, and the value can be 
+  # updated by using method_name = some value.  Additionally, any custom operations that have been
+  # defined for that key name will be loaded in and assigned methods in the form methodname_operation
   def iv_set(attr_var, attr_value)
-    ops = NodeElementOperations::Ops
+    ops = Ops
     add_op_method(attr_var, ops[attr_var]) if ops[attr_var] #incorporates predefined methods
     @node_data_hash[attr_var] = attr_value unless self.class.db_metadata_keys.include? attr_var.to_s
-    #manually setting instance variable, so @node_data_hash can be updated
+    #manually setting instance variable (rather than using instance_variable_set),
+    # so @node_data_hash can be updated
     #dynamic method acting like an instance variable getter
     self.class.__send__(:define_method, "#{attr_var}".to_sym,
        lambda {@node_data_hash[attr_var]} )
@@ -608,13 +551,18 @@ class BufsInfoDoc
   def add_op_method(param, ops)
        ops.each do |op_name, op_proc|
          method_name = "#{param.to_s}_#{op_name.to_s}".to_sym
-         #puts method_name
-
          wrapped_op = method_wrapper(param, op_proc)
          self.class.__send__(:define_method, method_name, wrapped_op)
        end
   end  
 
+  #The method operations are completely decoupled from the object that they are bound to.
+  #This creates a problem when operations act on themselves (for example adding x to
+  #the current value requires the adder to determine the current value of x). To get
+  #around this self-referential problem while maintaining the decoupling this wrapper is used.
+  #Essentially it takes the unbound two parameter (this, other) and binds the current value
+  #to (this).  This allows a more natural form of calling these operations.  In other words
+  # description_add(new_string) can be used, rather than description_add(current_string, new_string).
   def method_wrapper(param, unbound_op)
     #What I want is to call obj.param_op(other)   example: obj.links_add(new_link)
     #which would then add new_link to obj.links
@@ -624,15 +572,13 @@ class BufsInfoDoc
     #include itself as a paramter to the predefined operation
     #lambda {|other| @node_data_hash[param] = unbound_op.call(@node_data_hash[param], other)}
     lambda {|other| this = self.__send__("#{param}".to_sym) #original value
-                    #orig = self.__send__("#{param}".to_sym)
-                    #rtn_data = self.__send__("#{param}=".to_sym, unbound_op.call(this, other))
                     rtn_data = unbound_op.call(this, other)
                     new_this = rtn_data[:update_this]
                     self.__send__("#{param}=".to_sym, new_this)
-                    save = true
-                    save = false if (this == new_this)
-                    #self.save unless (@saved_to_model && save) #don't save if the value hasn't changed
-                    self.save #FIXME: 
+                    it_changed = true
+                    it_changed = false if (this == new_this) || !(rtn_data.has_key?(:update_this)) 
+                    not_in_model = !@saved_to_model
+                    self.save if (not_in_model || it_changed)#unless (@saved_to_model && save) #don't save if the value hasn't changed
                     rtn = rtn_data[:return_value] || rtn_data[:update_this]
                     puts "from wrapper: #{rtn.inspect} Saved: #{save.inspect}"
                     rtn
