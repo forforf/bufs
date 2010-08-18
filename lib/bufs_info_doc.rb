@@ -7,22 +7,62 @@ require 'monitor'
 require File.dirname(__FILE__) + '/bufs_info_attachment'
 require File.dirname(__FILE__) + '/bufs_info_link'
 require File.dirname(__FILE__) + '/bufs_escape'
+require File.dirname(__FILE__) + '/node_element_operations'
+
+
 
 #TODO: Move this module to a more centralized place since it will
 #      be used by any of the node based classes
+=begin
 module NodeElementOperations
-  MyCategoryAddOp = lambda {|this,other| this} #my cat is not allowed to change
-  MyCategorySubtractOp = lambda{ |this, other| this} #TODO use this to delete a node?
+  #TODO the hash inside the proc is confusing (the curly braces) update to better readability
+  MyCategoryAddOp = lambda {|this,other|   Hash[:update_this => this]  } #my cat is not allowed to change
+  MyCategorySubtractOp = lambda{ |this, other| Hash[:update_this => this] } #TODO use this to delete a node?
   MyCategoryOps = {:add => MyCategoryAddOp, :subtract => MyCategorySubtractOp}
   ParentCategoryAddOp = lambda {|this,other| 
                            this = this + [other].flatten
                            this.uniq!; this.compact!
-                           this
+                           Hash[:update_this => this]
                          }
-  ParentCategorySubtractOp = lambda {|this,other| this -= [other].flatten!; this.uniq!; this}
+  ParentCategorySubtractOp = lambda {|this,other| this -= [other].flatten!; this.uniq!; this.compact!; Hash[:update_this => this] }
   ParentCategoryOps = {:add => ParentCategoryAddOp, :subtract => ParentCategorySubtractOp}
-  Ops = {:my_category => MyCategoryOps, :parent_categories => ParentCategoryOps}
+  LinkAddOp = lambda {|this, other|
+                                 this = this || {}  #investigate why its passed as nil (probably hasn't been built yet
+                                 srcs = other.keys
+                                 srcs.each {|s| if this[s]
+                                            this[s] = [ other[s] ].flatten
+                                           else
+                                            this[s] = [ other[s] ].flatten
+                                           end
+                                           this[s].uniq!
+                                           this[s].compact!
+                                  }
+                           { :update_this => this }
+                         }
+  #if link_name is used besides other, then all link_names would need to be unique, so we use other
+  LinkSubtractOp = lambda {|this, other| srcs = other.keys
+                                         srcs.each { |s| this[s].delete(other[s]) 
+                                                    this.delete(s) if this[s].empty?
+                                              }
+                                         { :update_this => this }
+                           }
+  #think if this is what you want, returning a single uri if only one exists, while an array if more than one?
+  #I think so since it's *almost* an error case if more than one url exists for a name, but I'm not sure this is the best approach
+  LinkGetOp = lambda {|this, link_name| 
+                                       this_ary = this.to_a
+                                       puts "From LinkGetOp: this_ary: #{this_ary.inspect}"
+                                       return {:return_value => nil, :update_this => this} unless this_ary.flatten.include? link_name
+                                       srcs = []
+                                       this_ary.each { |s, ls| srcs << s if ls.include? link_name }
+                                       return {:return_value => srcs } if srcs.size > 1
+                                       return {:return_value => srcs.first} if srcs.size i== 1
+                     }
+
+  LinkOps = {:add => LinkAddOp, :subtract => LinkSubtractOp, :get => LinkGetOp}
+                          
+  Ops = {:my_category => MyCategoryOps, :parent_categories => ParentCategoryOps, :link => LinkOps}
 end
+=end
 
 module BufsInfoDocEnvMethods
   ##Uncomment all mutexs and monitors for thread safety for this module (untested)
@@ -181,7 +221,7 @@ class BufsInfoDoc
     #@model_mgrClass = nil  #FIXME: Not needed for every model?  How to abstract then?
 
     attr_accessor :model_actor, :record_ref
-
+    #TODO: after class is functionally complete, evaluate if model_actor is needed
     def initialize(model_actor) #provides the model actor that can manage files
       @model_actor = model_actor
       @record_ref = nil #id for files container
@@ -220,10 +260,71 @@ class BufsInfoDoc
       @record_ref = record['_id']
     end
 
-    def add_raw_data(raw_datas)
+    def add_raw_data(node, attach_name, content_type, raw_data, file_modified_at = nil)
+      bia_class = @model_actor[:attachment_actor_class]
+      file_metadata = {}
+      if file_modified_at
+        file_metadata['file_modified'] = file_modified_at
+      else
+        file_metadata['file_modified'] = Time.now.to_s
+      end
+      file_metadata['content_type'] = content_type #TODO: is unknown content handled gracefully?
+      attachment_package = {}
+      unesc_attach_name = BufsEscape.unescape(attach_name)
+      attachment_package[unesc_attach_name] = {'data' => raw_data, 'md' => file_metadata}
+      bia = bia_class.get(node.my_attachment_doc_id)
+      record = bia_class.add_attachment_package(node, attachment_package)
+      @record_ref = record['_id']
     end
 
-    def subtract(model_filenames)
+    #TODO  Document the :all shortcut somewhere
+    def subtract_files(node, model_basenames)
+      bia_class = @model_actor[:attachment_actor_class]
+      if model_basenames == :all
+        subtract_all(node, bia_class)
+      else
+        subtract_some(node, model_basenames, bia_class)
+      end
+    end
+
+    def list_files(node)
+      return nil unless node.attachment_doc_id
+      bia_class = @model_actor[:attachment_actor_class]
+      rtn = if node.attachment_doc_id
+        bia_doc = bia_class.get(node.attachment_doc_id)
+        bia_doc.get_attachments
+      end
+      rtn
+    end
+
+    def list_file_keys(node)
+       return nil unless node.attachment_doc_id
+       atts = list_files(node)
+       p atts
+       rtn = atts.keys
+    end
+    #TODO: make private
+    def subtract_some(node, model_basenames, bia_class)
+      if node.attachment_doc_id
+        bia_doc = bia_class.get(node.attachment_doc_id)
+        bia_doc.remove_attachment(model_basenames)
+        rem_atts = bia_doc.get_attachments
+        subtract_all(node, bia_class) if rem_atts.empty?
+      end
+    end
+    #TODO: make private
+    def subtract_all(node, bia_class)
+      #delete the attachment record
+      doc_db = node.class.db
+      if node.attachment_doc_id
+        attach_doc = doc_db.get(node.attachment_doc_id)
+        doc_db.delete_doc(attach_doc)
+        node.iv_unset(:attachment_doc_id)
+        node.save
+      else
+        puts "Warning: Attempted to delete attachments when none existed"
+      end
+      node
     end
   end
 
@@ -234,7 +335,6 @@ class BufsInfoDoc
 
     def initialize(model_actor)
       @model_actor = model_actor #provides the model actor that can provide views
-      puts "INIT: #{model_actor.inspect}"
     end
 
     ## CouchDB View Definitions
@@ -250,7 +350,7 @@ class BufsInfoDoc
       #TODO
       #TODO My views are screwed up, the match_keys are part of the query, not the view
       #TODO Further more to match multiple keys requires a modified view, see http://books.couchdb.org/relax/design-documents/views
-      #TODO the couchdb book
+      #TODO the couchdb book update I think most is cleaned up, but figure out where constructor goes for nodes
       #TODO
       #match_keys = [match_keys].flatten
       #match_str = "&& ("
@@ -293,7 +393,6 @@ class BufsInfoDoc
     BufsInfoDocEnvMethods.set_view(@model_actor[:db], @model_actor[:design_doc], :parent_categories, map_fn)
     raw_res = @model_actor[:design_doc].view :by_parent_categories
     rows = raw_res["rows"]
-    p rows
     records = rows.map{|r| r["value"] if r["value"]["parent_categories"].include? match_keys}
     #raise "Keys #{match_keys.inspect} Records: #{records.inspect}"
   end
@@ -338,7 +437,7 @@ class BufsInfoDoc
     @db_metadata_keys = BufsInfoDocEnvMethods.set_db_metadata_keys #(@collection_namespace)
     @namespace = BufsInfoDocEnvMethods.set_namespace(@db, db_user_id)
     BufsInfoDocEnvMethods.set_view_all(@db, @design_doc, @collection_namespace)
-    @files_mgr = FilesMgr.new(:attachment_actor_class => BufsInfoAttachment)
+    @files_mgr = FilesMgr.new(:attachment_actor_class => self.user_attachClass)
     @views_mgr = ViewsMgr.new(:db => @db, :design_doc => @design_doc)
     return @namespace 
   end
@@ -386,7 +485,7 @@ class BufsInfoDoc
   def self.call_view(param, match_keys)
      view_method_name = "by_#{param}".to_sym #using CouchDB style for now
      #If the views_mgr object has a view for this parameter then use it
-     rtn = if self.views_mgr.respond_to? view_method_name
+     records = if self.views_mgr.respond_to? view_method_name
        #TODO Make distinction clearer between namespace and collection_namespace
        self.views_mgr.__send__(view_method_name, self.collection_namespace, match_keys)
        #puts "NAMESPACE: #{self.namespace}"
@@ -394,7 +493,7 @@ class BufsInfoDoc
        #TODO: Think of a more elegant way to handle an unknown view
        raise "Unknown design view #{view_method_name} called for: #{param}"
      end
-
+     nodes = records.map{|r| self.new(r)}
   end
 
   def self.get(id)
@@ -524,10 +623,25 @@ class BufsInfoDoc
     #and this method wraps the obj.links so that the links_add method doesn't have to
     #include itself as a paramter to the predefined operation
     #lambda {|other| @node_data_hash[param] = unbound_op.call(@node_data_hash[param], other)}
-    lambda {|other| orig = self.__send__("#{param}".to_sym)
-                    new = self.__send__("#{param}=".to_sym, unbound_op.call(self.__send__("#{param}".to_sym), other))
-                    self.save unless (@saved_to_model && orig == new)
+    lambda {|other| this = self.__send__("#{param}".to_sym) #original value
+                    #orig = self.__send__("#{param}".to_sym)
+                    #rtn_data = self.__send__("#{param}=".to_sym, unbound_op.call(this, other))
+                    rtn_data = unbound_op.call(this, other)
+                    new_this = rtn_data[:update_this]
+                    self.__send__("#{param}=".to_sym, new_this)
+                    save = true
+                    save = false if (this == new_this)
+                    #self.save unless (@saved_to_model && save) #don't save if the value hasn't changed
+                    self.save #FIXME: 
+                    rtn = rtn_data[:return_value] || rtn_data[:update_this]
+                    puts "from wrapper: #{rtn.inspect} Saved: #{save.inspect}"
+                    rtn
            }
+  end
+
+  def iv_unset(param)
+    self.class.__send__(:remove_method, param.to_sym)
+    @node_data_hash.delete(param)
   end
 
   #some object convenience methods for accessing class methods
@@ -601,96 +715,25 @@ class BufsInfoDoc
   end
 
   def get_attachment_names
-    att_doc_id = self.class.get(self['_id']).attachment_doc_id
-    att_doc = self.class.get(att_doc_id)||{}
-    attachments = att_doc['_attachments']||{}
-    att_names = attachments.keys
+    self.class.files_mgr.list_file_keys(self)
   end
 
   #Get attachment content.  Note that the data is read in as a complete block, this may be something that needs optimized.
+  #TODO: add_raw_data parameters to a hash?
   def add_raw_data(attach_name, content_type, raw_data, file_modified_at = nil)
-    file_metadata = {}
-    if file_modified_at
-      file_metadata['file_modified'] = file_modified_at
-    else
-      file_metadata['file_modified'] = Time.now.to_s
-    end
-    file_metadata['content_type'] = content_type #TODO: is unknown content handled gracefully?
-    attachment_package = {}
-    unesc_attach_name = BufsEscape.unescape(attach_name)
-    attachment_package[unesc_attach_name] = {'data' => raw_data, 'md' => file_metadata}
-    bia = self.class.user_attachClass.get(self.my_attachment_doc_id)
-    if bia
-      bia.update_attachment_package(self, attachment_package)
-    else
-      bia = self.class.user_attachClass.create_attachment_package(self, attachment_package)
-    end
-
-    current_node_doc = self.class.get(self['_id'])
-    current_node_doc.attachment_doc_id = bia['_id']
-    current_node_attach = self.class.user_attachClass.get(current_node_doc.attachment_doc_id)
-    current_node_attach.save
+    self.class.files_mgr.add_raw_data(self, attach_name, content_type, raw_data, file_modified_at = nil)
   end
 
-  def __add_files(file_data)
-    self.class.files_mgr.add_files(self, file_data)
+  def files_add(file_data)
+    attach_id = self.class.files_mgr.add_files(self, file_data)
+    self.iv_set(:attachment_doc_id, attach_id)
+    self.save
   end
 
-  #Add an attachment to the BufsInfoDoc object from a file
-  def add_data_file(attachment_filenames)
-    #TODO: Ok to do silent returns here?
-    return if attachment_filenames.nil?
-    return if attachment_filenames.empty?
-    attachment_package = {}
-    attachment_filenames = [attachment_filenames].flatten
-    attachment_filenames.each do |at_f|
-      at_basename = File.basename(at_f)
-      #basename can't contain '+', replace with space
-      at_basename.gsub!('+', ' ')
-      file_metadata = {}
-      file_metadata['file_modified'] = File.mtime(at_f).to_s
-      file_metadata['content_type'] = MimeNew.for_ofc_x(at_basename)
-      file_data = File.open(at_f, "rb"){|f| f.read}
-      ##{at_basename => {:file_modified => File.mtime(at_f)}}
-      #Unescaping '+' to space  because CouchDB will escape it leading to space -> + -> %2b
-      unesc_at_basename = BufsEscape.unescape(at_basename)
-      attachment_package[unesc_at_basename] = {'data' => file_data, 'md' => file_metadata}
-    end
-    #getting attachment doc id
-    attachment_record = self.class.user_attachClass.get(my_attachment_doc_id)
-    #TODO: the create vs update should be handled in files_mgr
-    if attachment_record
-      #puts "Updating Attachment"
-      attachment_record.update_attachment_package(self, attachment_package)
-    else
-      #puts "Creating new Attachment"
-      attachment_record = self.class.user_attachClass.create_attachment_package(self, attachment_package)
-    end
-
-    current_node_doc = self.class.get(self['_id'])
-    current_node_doc.attachment_doc_id = attachment_record['_id']
-    current_node_doc.save
-    current_node_attach = self.class.user_attachClass.get(current_node_doc.attachment_doc_id)
-    current_node_attach.save
+  def files_subtract(file_basenames)
+    self.class.files_mgr.subtract_files(self, file_basenames)
   end
 
-  def remove_attachments  #Spec is in user_doc_spec
-    current_node_doc = self.class.get(self['_id'])
-    att_doc_id = current_node_doc.delete('attachment_doc_id')
-    current_node_doc.save
-    current_node_attach = self.class.user_attachClass.get(att_doc_id)
-    current_node_attach.destroy
-  end
-
-
-  def remove_attachment(attachment_name)
-    current_node_doc = self.class.get(self['_id'])
-    att_doc_id = current_node_doc['attachment_doc_id']
-    current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
-    current_node_attachment_doc['md_attachments'].delete(attachment_name)
-    current_node_attachment_doc.delete_attachment(attachment_name)
-    current_node_attachment_doc.save
-  end
 
 #TODO: Add to spec (currently not used)
   def attachment_url(attachment_name)
@@ -749,7 +792,7 @@ class BufsInfoDoc
     self.model_metadata.merge!(rev_data)
     @saved_to_model = rev_data["_rev"]
   end
-
+=begin
   def my_link_doc_id
     return self['_id'] + self.class.link_base_id
   end
@@ -782,10 +825,11 @@ class BufsInfoDoc
   end
 
   alias_method(:list_links, :get_link_names) #TODO: synchronize with bufs_file_system
-
+=end
   #Deletes the object and its CouchDB entry
   def destroy_node
-    att_doc = self.class.get(self.files_mgr.record_ref) if self.files_mgr.record_ref
+    #att_doc = self.class.get(self.files_mgr.record_ref) if self.files_mgr.record_ref
+    att_doc = self.class.user_attachClass.get(self.attachment_doc_id) if self.attachment_doc_id
     att_doc.destroy if att_doc
     #link_doc = self.class.get(self.links_doc_id)
     #link_doc.destroy if link_doc

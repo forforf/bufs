@@ -301,4 +301,37 @@ describe BufsInfoAttachment do
     data[BufsEscape.escape(test_file1_basename)]['file_modified'].should == test_file1_modified_time.to_s
     data[BufsEscape.escape(test_file1_basename)]['content_type'].should == MimeNew.for_ofc_x(test_file1)
   end
+
+  it "should delete attachments" do
+    #set initial conditions
+    test_file1 = @test_files['binary_data2_docx']
+    test_file2 = @test_files['simple_text_file']
+    test_file1_basename = File.basename(test_file1)
+    test_file2_basename = File.basename(test_file2)
+    test_file1_modified_time = File.mtime(test_file1)
+    test_file2_modified_time = File.mtime(test_file2)
+    md_params1 = {}
+    md_params2 = {}
+    md_params1['content_type'] = MimeNew.for_ofc_x(test_file1)
+    md_params2['content_type'] = MimeNew.for_ofc_x(test_file2)
+    md_params1['file_modified'] = test_file1_modified_time.to_s
+    md_params2['file_modified'] =  test_file2_modified_time.to_s
+    data1 = File.open(test_file1, 'rb') {|f| f.read}
+    data2 = File.open(test_file2, 'rb') {|f| f.read}
+    attachs = {test_file1_basename => {'data' => data1, 'md' => md_params1},
+               test_file2_basename => {'data' => data2, 'md' => md_params2}
+              }
+    test_doc = @test_doc
+    test_doc_id = test_doc.model_metadata['_id']
+    test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
+    test_attachment = BufsInfoAttachment.get(test_attachment_id)
+    bia = BufsInfoAttachment.add_attachment_package(test_doc, attachs)
+    #test
+    bia.remove_attachment(test_file1_basename)
+    #verify
+    new_atts = bia.get_attachments
+    new_atts.keys.size.should == 1
+    new_atts.keys.first.should == BufsEscape.escape(test_file2_basename)
+
+  end
 end

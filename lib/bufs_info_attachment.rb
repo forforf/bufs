@@ -134,15 +134,15 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
     att_doc = bufs_info_doc.class.user_attachClass.get(att_doc_id)
     rtn = if att_doc
       #TODO: This call should be able to be simplified in the new architecture
-      bufs_doc.class.user_attachClass.update_attachment_package(att_doc, attachments)
+      bufs_info_doc.class.user_attachClass.update_attachment_package(att_doc, attachments)
     else
-      #TOD: simplify call
+      #TODO: simplify call
       bufs_info_doc.class.user_attachClass.create_attachment_package(att_doc_id, bufs_info_doc, attachments)
     end
     return rtn
   end
 
-  #Create an attachment for a particular BUFS document
+   #Create an attachment for a particular BUFS document
   #TODO: See if bufs_info_doc can be factored out of this method call
   def self.create_attachment_package(att_doc_id, bufs_info_doc, attachments)
     #raise "No document provided for attachments" unless bufs_info_doc
@@ -237,6 +237,17 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
     self.class.get_attachments(self) #BufsInfoAttachment.get_attachments(self)
   end
 
+  def remove_attachment(attachment_names)
+    attachment_names = [attachment_names].flatten
+    attachment_names.each do |att_name|
+      att_name = BufsEscape.escape(att_name)    
+      self.delete_attachment(att_name)
+      self['md_attachments'].delete(att_name)
+    end
+    resp = self.save
+    raise "Remove Attachment Operation Failed with response: #{resp.inspect}" unless resp == true
+    self
+  end
 
   private
 
@@ -265,4 +276,6 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
     most_recent_attachment_data
   end
 
+  def delete_attachments(attachment_name)
+  end
 end

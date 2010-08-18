@@ -35,7 +35,9 @@ module UserDocSpecHelpers
     raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
     new_doc = make_doc_no_attachment(user_id, override_defaults)
     new_doc.save #doc must be saved before we can attach
-    new_doc.add_data_file(test_filename)
+    file_data = {:src_filename => test_filename}
+    new_doc.files_add(file_data)
+    #new_doc.add_data_file(test_filename)
     return new_doc 
   end
 end
@@ -64,6 +66,7 @@ describe UserDB, "Initialization" do
   end
 end
 
+#FIXME uncomment me out
 describe UserDB, "Basic database operations" do
   include UserDocSpecHelpers
 
@@ -186,6 +189,7 @@ describe UserDB, "Basic database operations" do
     end 
   end
 
+
 #adding categories
   it  "should add a single category (and add the property :parent_categories) for an initial category setting for a new doc" do
     #set initial conditions
@@ -224,6 +228,35 @@ describe UserDB, "Basic database operations" do
     end
   end
 
+#this test doesn't do anything, it can be deleted (or fixed)
+=begin
+  it "should have a dynamic methods set up for user data" do
+    #set initial conditions
+    orig_parent_cats = {}
+    doc_params = {}
+    doc_existing_new_parent_cats = {}
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      orig_parent_cats[user_id] = ["#{user_id}-orig_cat1", "#{user_id}-orig_cat2"]
+      doc_params[user_id] = get_default_params.merge({:my_category => "#{user_id}-cat_test2",
+                                                      :parent_categories => orig_parent_cats[user_id]})
+      doc_existing_new_parent_cats[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
+      doc_existing_new_parent_cats[user_id].save
+    end
+    #verify initial conditions
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      doc_params[user_id].keys.each do |param|
+        doc_id = doc_existing_new_parent_cats[user_id].model_metadata['_id']
+        db_doc = docClass.get(doc_id)
+        #raise db_doc.model_metadata.inspect
+        db_param = db_doc.node_data_hash[param]
+        doc_existing_new_parent_cats[user_id].node_data_hash[param].should == db_param
+        #test accessor method
+        doc_existing_new_parent_cats[user_id].__send__(param).should == db_param
+      end
+    end
+  end
+=end
+
   it "should add categories to existing categories and existing doc" do
     #set initial conditions
     orig_parent_cats = {}
@@ -231,7 +264,8 @@ describe UserDB, "Basic database operations" do
     doc_existing_new_parent_cats = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
       orig_parent_cats[user_id] = ["#{user_id}-orig_cat1", "#{user_id}-orig_cat2"]
-      doc_params[user_id] = get_default_params.merge({:my_category => "#{user_id}-cat_test2", :parent_categories => orig_parent_cats[user_id]})
+      doc_params[user_id] = get_default_params.merge({:my_category => "#{user_id}-cat_test2",
+                                                      :parent_categories => orig_parent_cats[user_id]})
       doc_existing_new_parent_cats[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
       doc_existing_new_parent_cats[user_id].save
     end
@@ -363,11 +397,11 @@ describe UserDB, "Basic database operations" do
       db_doc.node_data_hash[:parent_categories].sort.should == doc_uniq_parent_cats[user_id].parent_categories.sort
       records[user_id] = docClass.call_view(:parent_categories, 'dup cat2')
       records[user_id].size.should == 1
-      records[user_id].first["parent_categories"].should include 'dup cat2'
+      records[user_id].first.parent_categories.should include 'dup cat2'
     end
   end
 end
-=begin
+
 describe UserDB, "Document Operations with Attachments" do
   include UserDocSpecHelpers
 
@@ -430,22 +464,20 @@ describe UserDB, "Document Operations with Attachments" do
     #using just the filename
     file_data = {:src_filename => test_filename}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      basic_docs[user_id].__add_files(file_data)
+      basic_docs[user_id].files_add(file_data)
     end
 
-end
-end
-=begin
 
     #check results
     att_doc_ids = {}
     att_docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
+      att_doc_ids[user_id] = docClass.get(basic_docs[user_id].model_metadata['_id']).attachment_doc_id
+      att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
       #puts "Attachment Doc: #{att_docs[user_id].inspect}"
-      #p att_docs[user_id]['_attachments'].keys
-      docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
+      doc_id = basic_docs[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      db_doc.attachment_doc_id.should == att_docs[user_id]['_id']
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_basename)
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
      
@@ -469,25 +501,32 @@ end
     att_docs = {}
     test_basename = File.basename(test_filename)
     UserDB.user_to_docClass.each do |user_id, docClass|
-      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
-      docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
+      doc_id = basic_docs[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      #raise db_doc.attachment_doc_id.inspect
+      att_doc_ids[user_id] = db_doc.attachment_doc_id
+      att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
+      docClass.get(doc_id).attachment_doc_id.should == att_docs[user_id]['_id']
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_base
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
     end
     #test
     attachment_name = test_basename
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc = docClass.get(basic_docs[user_id]['_id'])
-      doc.remove_attachments
+      doc = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc.files_subtract(:all)
     end
     #check results
     UserDB.user_to_docClass.each do |user_id, docClass|
-      docClass.get(basic_docs[user_id]['_id']).attachment_doc_id.should == nil   #reference to attachment doc from user doc
+      doc_id = basic_docs[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      #lambda {db_doc.attachment_doc_id}.should raise_error NameError   #reference to attachment doc from user doc
+      db_doc.attachment_doc_id.should == nil
       att_docs[user_id] = docClass.get(att_doc_ids[user_id])  #attachment doc
       att_docs[user_id].should == nil
     end
   end
+
 
   it "should cleanly remove a single  attachment" do
     #initial conditions
@@ -501,7 +540,7 @@ end
       parent_cats[user_id] = ['docs with attachments']
       doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_att2', :parent_categories => parent_cats[user_id]})
       basic_docs[user_id] = make_doc_w_attach_from_file(user_id, test_filename1, doc_params[user_id])
-      basic_docs[user_id].add_data_file(test_filename2)
+      basic_docs[user_id].files_add(:src_filename => test_filename2)
 
     end
     #verify initial conditions
@@ -510,9 +549,12 @@ end
     test_basename1 = File.basename(test_filename1)
     test_basename2 = File.basename(test_filename2)
     UserDB.user_to_docClass.each do |user_id, docClass|
-      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
-      docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
+      doc_id = basic_docs[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      att_doc_ids[user_id] = db_doc.attachment_doc_id
+      db = db_doc.class.db
+      att_docs[user_id] = db.get(att_doc_ids[user_id])
+      docClass.get(doc_id).attachment_doc_id.should == att_docs[user_id]['_id']
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename1)
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename2) 
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename1)]['file_modified'].should == File.mtime(test_filename1).to_s
@@ -522,18 +564,34 @@ end
     attachment_name1 = BufsEscape.escape(test_basename1)
     attachment_name2 = BufsEscape.escape(test_basename2)
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc = docClass.get(basic_docs[user_id]['_id'])
-      doc.remove_attachment(attachment_name1)
+      doc = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc.files_subtract(attachment_name1)
     end
     #check results
     UserDB.user_to_docClass.each do |user_id, docClass|
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
-      docClass.get(basic_docs[user_id]['_id']).attachment_doc_id.should == att_docs[user_id]['_id']   #reference to attachment doc from user doc
+      att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
+      doc_id = basic_docs[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      db_doc.attachment_doc_id.should == att_docs[user_id]['_id']   #reference to attachment doc from user doc
       att_docs[user_id]['_attachments'].keys.size.should == 1
       att_docs[user_id]['_attachments'].keys.first.should == BufsEscape.escape(attachment_name2)
     end
-  end
+    #delete again so that all attachments are deleted
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      doc = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc.files_subtract(attachment_name2)
+    end
+    #check results
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      doc_id = basic_docs[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      #lambda {db_doc.attachment_doc_id}.should raise_error NameError   #reference to attachment doc from user doc
+      db_doc.attachment_doc_id.should == nil
+      att_docs[user_id] = docClass.get(att_doc_ids[user_id])  #attachment doc
+      att_docs[user_id].should == nil
+    end
 
+  end
 
   it "should list attachment list" do
     #initial conditions
@@ -553,17 +611,20 @@ end
     att_docs = {}
     test_basename = File.basename(test_filename)
     UserDB.user_to_docClass.each do |user_id, docClass|
-      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
-      docClass.get(basic_docs[user_id]['_id'])['attachment_doc_id'].should == att_docs[user_id]['_id']
+      doc_id = basic_docs[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      att_doc_ids[user_id] = db_doc.attachment_doc_id
+      att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
+      docClass.get(doc_id).attachment_doc_id.should == att_docs[user_id]['_id']
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
     end
     #test
     attachment_names = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc = docClass.get(basic_docs[user_id]['_id'])
-      attachment_names[user_id] = doc.get_attachment_names
+      doc_id = basic_docs[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      attachment_names[user_id] = db_doc.get_attachment_names
     end
     #check results
     UserDB.user_to_docClass.each do |user_id, docClass|
@@ -571,6 +632,7 @@ end
       attachment_names[user_id].first.should == BufsEscape.escape(test_basename)
     end
   end
+
 
   it "should avoid creating hellish names when escaping and unescaping" do
     #initial conditions (attachment file)
@@ -590,15 +652,17 @@ end
     end
     #test
     UserDB.user_to_docClass.each do |user_id, docClass|
-      basic_docs[user_id].add_data_file(test_filename)
+      basic_docs[user_id].files_add(:src_filename => test_filename)
     end
     #check results
     att_doc_ids = {}
     att_docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).attachment_doc_id
+      doc_id = basic_docs[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      att_doc_ids[user_id] = db_doc.attachment_doc_id
       #puts "Attachment Doc ID: #{att_doc_id}"
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
+      att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
       #puts "Attachment Doc: #{att_doc.inspect}"
       #p att_doc['_attachments'].keys
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_basename)
@@ -630,8 +694,10 @@ end
       #metadata[user_id].should == ["should be the metadata for that user"]
       basic_docs[user_id].add_raw_data(attach_name, binary_data_content_type, binary_data)
       #verify results
-      att_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_attachment_doc_id
-      att_docs[user_id] = docClass.get(att_doc_ids[user_id])
+      doc_id = basic_docs[user_id].model_metadata['_id']
+      db_doc = docClass.get(doc_id)
+      att_doc_ids[user_id] = db_doc.my_attachment_doc_id
+      att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
       esc_att_name = BufsEscape.escape(attach_name)
       att_docs[user_id].should_not == nil
       att_docs[user_id]['_attachments'].keys.should include esc_att_name
@@ -641,6 +707,7 @@ end
     end
   end
 
+=begin
 #creating a db doc from a directory entry
   it "should create a full doc from a node object without files" do
     NodeMock = Struct.new(:my_category, :parent_categories, :description, :list_attached_files)
@@ -682,8 +749,8 @@ end
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
     end
   end
+=end
 
-  #more of a test of couchrest
   it "should be able to return documents by its category" do
     parent_cats = {}
     doc_params = {}
@@ -702,7 +769,7 @@ end
     test_nodes = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
       find_cat = 'my_cat1'
-      test_nodes[user_id] = docClass.by_my_category(:key => find_cat)
+      test_nodes[user_id] = docClass.call_view(:my_category, find_cat)
       test_nodes[user_id].each do |node|
         node.my_category.should == find_cat
       end
@@ -714,7 +781,7 @@ end
     UserDB.user_to_docClass.each do |user_id, docClass|
       all_nodes[user_id] = docClass.all
       all_nodes[user_id].each do |doc|
-        docClass.by_my_category(:key => doc.my_category).size.should == 1
+        docClass.call_view(:my_category, doc.my_category).size.should == 1
       end
     end
   end
@@ -731,30 +798,30 @@ end
       basic_docs[user_id].save
       test_filename = @test_files['strange_characters_in_file_name']
       test_basename = File.basename(test_filename)
-      basic_docs[user_id].add_data_file(test_filename)
+      basic_docs[user_id].files_add(:src_filename => test_filename)
     end
     #verify initial conditions
     docs = {}
     doc_att_ids = {}
     doc_atts = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      docs[user_id] = docClass.by_my_category(:key => 'delete_test1')
+      docs[user_id] = docClass.call_view(:my_category, 'delete_test1')
       docs[user_id].size.should == 1
       doc = docs[user_id].first
-      doc_att_ids[user_id] = docClass.get(doc['_id']).attachment_doc_id
-      doc_atts[user_id] = docClass.get(doc_att_ids[user_id])
+      doc_att_ids[user_id] = docClass.get(doc.model_metadata['_id']).attachment_doc_id
+      doc_atts[user_id] = docClass.user_attachClass.get(doc_att_ids[user_id])
       doc_atts[user_id].should_not == nil
     end
     #test
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_latest = docClass.get(basic_docs[user_id]['_id'])
+      doc_latest = docClass.get(basic_docs[user_id].model_metadata['_id'])
       doc_latest.destroy_node
     end
     #verify results
     UserDB.user_to_docClass.each do |user_id, docClass|
       doc = docs[user_id].first
       doc.my_category.should == 'delete_test1'
-      docClass.by_my_category(:key => doc.my_category).size.should == 0
+      docClass.call_view(:my_category, doc.my_category).size.should == 0
       doc_att_ids[user_id].should_not == nil
       puts "doc_att_doc_id: #{doc_att_ids[user_id]}"
       doc_atts[user_id] = docClass.user_attachClass.get(doc_att_ids[user_id])
@@ -762,15 +829,12 @@ end
       doc_atts[user_id].should == nil
     end
   end
+end
 
-  #FIXME: Test for links being destroyed
+  #FIXME: Test for links being destroyed  obsolete?
   #it "should return all model data when queried by the model's category name (my_category)" do
   #  ScoutInfoDoc.node_by_title('test_spec1.pptx').should == ScoutInfoDoc.by_title('test_spec1.pptx')
   #end
-
-
-end
-
 describe UserDB, "Document Operations with Links" do
   include UserDocSpecHelpers
 
@@ -781,15 +845,15 @@ describe UserDB, "Document Operations with Links" do
     # => need to enforce database naming convention.
     #query for couchrest-type that matches /UserDB::UserDoc*/
     UserDB.docClasses.each do |docClass|
-      linkClass = docClass.user_linkClass
-      all_link_docs = linkClass.all
-      all_link_docs.each do |link_doc|
-        link_doc.destroy
-      end
+      #linkClass = docClass.user_linkClass
+      #all_link_docs = linkClass.all
+      #all_link_docs.each do |link_doc|
+      #  link_doc.destroy
+      #end
       all_user_docs = docClass.all
       all_user_docs.each do |user_doc|
-        puts "WARNING: this doc has '_id' of nil" unless user_doc["_id"] #{user_
-        puts "WARNING this doc has valid '_id' but nil '_rev" if (user_doc["_id"] && user_doc["_rev"].nil?)
+        puts "WARNING: this doc has '_id' of nil" unless user_doc.model_metadata["_id"] #{user_
+        puts "WARNING this doc has valid '_id' but nil '_rev" if (user_doc.model_metadata["_id"] && user_doc.model_metadata["_rev"].nil?)
         user_doc.destroy #unless user_doc["_id"]
         #user_#doc.destroy
       end
@@ -801,9 +865,27 @@ describe UserDB, "Document Operations with Links" do
     @user2_db = UserDB.new(CouchDB2, @user2_id)
   end
 
-  it "has an attachment class associated with it" do
+  it "has a link parameter" do
+    parent_cats = {}
+    doc_params = {}
+    basic_docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      docClass.user_linkClass.name.should == "UserDB::UserLink#{user_id}"
+      parent_cats[user_id] = ['docs with links']
+      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_links', :parent_categories => parent_cats[user_id]})
+      basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params)
+      basic_docs[user_id].respond_to?(:links).should == false
+      basic_docs[user_id].iv_set(:links, {})
+      #test - it should now have the link instance variable
+      basic_docs[user_id].respond_to?(:links).should == true
+      #it should also have the dynamically generated methods for add, subtracting and getting links
+      dyn_methods = [:links_add, :links_subtract, :links_get]
+      basic_docs[user_id].respond_to?(:links_add).should == true
+      dyn_methods.each do |meth|
+        basic_docs[user_id].respond_to?(meth).should == true
+      end
+      basic_docs[user_id].save
+      doc_latest = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc_latest.links.should == {}
     end
   end
 
@@ -821,28 +903,68 @@ describe UserDB, "Document Operations with Links" do
       basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
       basic_docs[user_id].save #doc must be saved before we can add links
     end
-    #check initial conditions
     UserDB.user_to_docClass.each do |user_id, docClass|
-      docClass.get(basic_docs[user_id]['_id']['links_doc_id']).should == nil
+      doc_latest = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc_latest.links.should == nil
     end
     #test
     UserDB.user_to_docClass.each do |user_id, docClass|
-      basic_docs[user_id].add_links(test_links)
+      basic_docs[user_id].links_add(test_links)
     end
     #check results
-    link_doc_ids = {}
-    link_docs = {}
+    #link_doc_ids = {}
+    #link_docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      link_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_link_doc_id
-      link_docs[user_id] = docClass.get(link_doc_ids[user_id])
-      user_doc_from_db = docClass.get(basic_docs[user_id]['_id'])
+      #link_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_link_doc_id
+      #link_docs[user_id] = docClass.get(link_doc_ids[user_id])
+      user_doc_from_db = docClass.get(basic_docs[user_id].model_metadata['_id'])
       #docClass.get(basic_docs[user_id]['_id'])['links_doc_id'].should == link_docs[user_id]['_id']
-      user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
-      links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
-      links_in_user_doc.uris.should == test_links
+      #user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
+      #links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
+      #links_in_user_doc.uris.should == test_links
+      user_doc_from_db.links.should == test_links
     end
   end
 
+  it "should get links" do
+
+    #initial conditions (attachment file)
+    #TODO: vary filename by user
+    test_links= {"http://www.google.com" => ["Google"], "http://www.bing.com" => ["Bing"]}
+    #intial conditions (doc)
+    parent_cats = {}
+    doc_params = {}
+    basic_docs = {}
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      parent_cats[user_id] = ['docs with links']
+      doc_params[user_id] = get_default_params.merge({:my_category => 'doc_w_link1', :parent_categories => parent_cats[user_id]})
+      basic_docs[user_id] = make_doc_no_attachment(user_id, doc_params[user_id])
+      basic_docs[user_id].save #doc must be saved before we can add links
+    end
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      doc_latest = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc_latest.links.should == nil
+    end
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      basic_docs[user_id].links_add(test_links)
+    end
+    #verify initial conditions
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      user_doc_from_db = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      user_doc_from_db.links.should == test_links
+    end
+    #test
+    link_to_get = "Google"
+    UserDB.user_to_docClass.each do |user_id, docClass|
+      user_doc_from_db = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      user_doc_from_db.links_get(link_to_get).should == "http://www.google.com"
+    end
+
+  end
+end
+
+
+=begin
   it "should remove links do" do
     #initial conditions 
     test_links= { "http://www.google.com" => ["Googs"], "http://www.bing.com" => ["Bings"]}
@@ -859,27 +981,29 @@ describe UserDB, "Document Operations with Links" do
     end
     #check initial conditions
     UserDB.user_to_docClass.each do |user_id, docClass|
-      docClass.get(basic_docs[user_id]['_id']['links_doc_id']).should == nil
+      #docClass.get(basic_docs[user_id]['_id']['links_doc_id']).should == nil
+      doc_latest = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc_latest.link.should == nil
     end
     #add links
     UserDB.user_to_docClass.each do |user_id, docClass|
-      basic_docs[user_id].add_links(test_links)
+      basic_docs[user_id].link_add(test_links)
     end
    #check initial conditions
-    link_doc_ids = {}
-    link_docs = {}
+    #link_doc_ids = {}
+    #link_docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      link_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_link_doc_id
-      link_docs[user_id] = docClass.get(link_doc_ids[user_id])
+      #link_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_link_doc_id
+      #link_docs[user_id] = docClass.get(link_doc_ids[user_id])
       user_doc_from_db = docClass.get(basic_docs[user_id]['_id'])
       #docClass.get(basic_docs[user_id]['_id'])['links_doc_id'].should == link_docs[user_id]['_id']
-      user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
-      links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
-      links_in_user_doc.uris.should == test_links
+      #user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
+      #links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
+      user_doc_from_db.link.should == test_links
     end
     #test
     UserDB.user_to_docClass.each do |user_id, docClass|
-      basic_docs[user_id].remove_links(remove_link)
+      basic_docs[user_id].link_subtract(remove_link)
     end
     #verify
     UserDB.user_to_docClass.each do |user_id, docClass|

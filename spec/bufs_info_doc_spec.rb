@@ -61,12 +61,30 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     BufsInfoDoc.all.size.should == 0
     #test
     default_bid = BufsInfoDoc.new(get_default_params)
-    #check results
+    #check results (instance variables were dynamically generated from data)
+    my_params = [:my_category, :parent_categories, :description]
+    my_params.each do |my_param|
+      default_bid.__send__(my_param).should == get_default_params[my_param]
+      default_bid.node_data_hash[my_param].should == get_default_params[my_param]
+    end
+    #we haven't saved it to the database yet
+    BufsInfoDoc.all.size.should == 0
+  end
+
+  it "should be able to remove dynamically generated data" do
+    #check initial conditions
+    BufsInfoDoc.all.size.should == 0
+    default_bid = BufsInfoDoc.new(get_default_params)
     default_bid.my_category.should == get_default_params[:my_category]
     default_bid.parent_categories.should == get_default_params[:parent_categories]
     default_bid.description.should == get_default_params[:description]
-    #we haven't saved it to the database yet
-    BufsInfoDoc.all.size.should == 0
+    #test
+    default_bid.iv_unset(:description)
+    #verify results
+    default_bid.my_category.should == get_default_params[:my_category]
+    default_bid.parent_categories.should == get_default_params[:parent_categories]
+    lambda {default_bid.description}.should raise_error(NameError)
+    default_bid.node_data_hash[:description].should == nil
   end
 
   it "should not save if required fields don't exist" do
@@ -124,6 +142,23 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     doc.my_category_subtract('dont_subtract_this')#.should == my_cat
     doc.my_category.should == my_cat
   end
+=begin
+ it "dynamic operations shouldn add new parent categories" do
+    #set initial conditions
+    my_cat = 'cat_test1'
+    parent_cats = ['parent cat']
+    doc_params = get_default_params.merge({:my_category => my_cat, :parent_categories => parent_cats})
+    doc = make_doc_no_attachment(doc_params)
+    doc.parent_categories.should == parent_cats
+    #test
+    new_parent_cat = "new_parent_cat"
+    doc.parent_categories_add(new_parent_cat)
+    doc.parent_categories.should == parent_cats + [new_parent_cat]
+    #doc.my_category_subtract('dont_subtract_this')#.should == my_cat
+    #doc.my_category.should == my_cat
+
+ end
+=end
 
   it  "should add a single category (and add the property :parent_categories) for an initial category setting for a new doc" do
     #set initial conditions
@@ -191,14 +226,25 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     #continue with initial conditions
     new_cats = ['new_cat1', 'new cat2', 'orig_cat2']
     #test
+    doc_rev0 = doc_existing_new_parent_cat.model_metadata['_rev']
     doc_existing_new_parent_cat.add_parent_categories(new_cats)
+    doc_existing_new_parent_cat.save
+    doc_rev1 = doc_existing_new_parent_cat.model_metadata['_rev']
+    doc_rev0.should_not == doc_rev1
     #check results
+    #puts "Adding PCats: #{doc_existing_new_parent_cat.parent_categories.inspect}"
     #check doc in memory
     new_cats.each do |new_cat|
+      #puts "Specing it: #{doc_existing_new_parent_cat.parent_categories.inspect}"
+      existing_cats = doc_existing_new_parent_cat.parent_categories
       doc_existing_new_parent_cat.parent_categories.should include new_cat
+      #ex_cats = existing_cats
+      #ex_cats.should include new_cat
     end
     #check database
     parent_cats = CouchDB.get(doc_existing_new_parent_cat.model_metadata['_id'])[:parent_categories]
+    puts "---"
+    p parent_cats
     new_cats.each do |cat|
       parent_cats.should include cat
     end
