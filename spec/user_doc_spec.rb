@@ -520,8 +520,8 @@ describe UserDB, "Document Operations with Attachments" do
     UserDB.user_to_docClass.each do |user_id, docClass|
       doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
-      #lambda {db_doc.attachment_doc_id}.should raise_error NameError   #reference to attachment doc from user doc
-      db_doc.attachment_doc_id.should == nil
+      lambda {db_doc.attachment_doc_id}.should raise_error NoMethodError   #reference to attachment doc from user doc
+      #db_doc.attachment_doc_id.should == nil
       att_docs[user_id] = docClass.get(att_doc_ids[user_id])  #attachment doc
       att_docs[user_id].should == nil
     end
@@ -585,8 +585,8 @@ describe UserDB, "Document Operations with Attachments" do
     UserDB.user_to_docClass.each do |user_id, docClass|
       doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
-      #lambda {db_doc.attachment_doc_id}.should raise_error NameError   #reference to attachment doc from user doc
-      db_doc.attachment_doc_id.should == nil
+      lambda {db_doc.attachment_doc_id}.should raise_error NoMethodError   #reference to attachment doc from user doc
+      #db_doc.attachment_doc_id.should == nil
       att_docs[user_id] = docClass.get(att_doc_ids[user_id])  #attachment doc
       att_docs[user_id].should == nil
     end
@@ -854,7 +854,7 @@ describe UserDB, "Document Operations with Links" do
       all_user_docs.each do |user_doc|
         puts "WARNING: this doc has :_id of nil" unless user_doc.model_metadata[:_id] #{user_
         puts "WARNING this doc has valid :_id but nil '_rev" if (user_doc.model_metadata[:_id] && user_doc.model_metadata["_rev"].nil?)
-        user_doc.destroy #unless user_doc["_id"]
+        user_doc.destroy_node #unless user_doc["_id"]
         #user_#doc.destroy
       end
     end

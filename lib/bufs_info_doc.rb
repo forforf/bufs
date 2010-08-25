@@ -10,7 +10,49 @@ require File.dirname(__FILE__) + '/bufs_info_link'
 require File.dirname(__FILE__) + '/bufs_escape'
 require File.dirname(__FILE__) + '/node_element_operations'
 
+module DataStoreModels
+  module CouchRest
+    ModelKey = :_id
+    VersionKey = :_rev
+    NamespaceKey = :bufs_namespace
+    MetadataKeys = [ModelKey, VersionKey, NamespaceKey]
+    
+    #collection_namespace corresponds to the namespace that is used to distinguish between unique
+    #data sets (i.e., users) within the model
+    def self.generate_model_key(collection_namespace, node_key)
+      "#{collection_namespace}::#{node_key}"
+    end  
 
+    def self.destroy_node(node)
+      #att_doc = self.class.get(self.files_mgr.record_ref) if self.files_mgr.record_ref
+      att_doc = node.class.user_attachClass.get(node.attachment_doc_id) if node.attachment_doc_id
+      att_doc.destroy if att_doc
+      #link_doc = self.class.get(self.links_doc_id)
+      #link_doc.destroy if link_doc
+      begin
+        self.destroy(node)
+      rescue ArgumentError => e
+        puts "Rescued Error: #{e} while trying to destroy #{node.my_category} node"
+        node = node.class.get(node.model_metadata['_id'])
+        self.destroy(node)
+      end
+    end
+
+    def self.destroy(node)
+      node.class.db.delete_doc('_id' => node.model_metadata[ModelKey], '_rev' => node.model_metadata[VersionKey])
+    end
+
+  end
+end
+
+module DataStructureModels
+  module Bufs
+    #Required Keys on instantiation
+    RequiredKeys = [:my_category]
+    NodeKey = :my_category #TODO look at supporting multiple node keys
+    
+  end
+end
 
 
 module BufsInfoDocEnvMethods
@@ -344,6 +386,7 @@ class BufsInfoDoc
  
 #TODO Figure out a way to distinguish method calls from dynamically set data
 # that were assigned as instance variables
+#TODO Dynamic Class definition should include the data store, structure and evironmental models
   include BufsInfoDocEnvMethods 
   AttachmentBaseID = "_attachments"
   LinkBaseID = "_links"
@@ -518,7 +561,7 @@ class BufsInfoDoc
   def initialize(init_params = {})
     ##temporary holding area, these need to move somewhere else
     ##
-    @saved_to_model = nil
+    @saved_to_model = nil  #TODO rename to sychronized_to_model
     #make sure keys are symbols
     init_params = init_params.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
     @user_data, @model_metadata = filter_user_from_model_data(init_params)
@@ -532,8 +575,7 @@ class BufsInfoDoc
   end
 
   def filter_user_from_model_data(init_params)
-    #FIXME: model_metadata keys to come from model/data structure
-    model_metadata_keys = [:_id, :_rev, :bufs_namespace]
+    model_metadata_keys = DataStoreModels::CouchRest::MetadataKeys 
     model_metadata = {}
     model_metadata_keys.each do |k|
       model_metadata[k] = init_params.delete(k) #delete returns deleted value
@@ -542,41 +584,48 @@ class BufsInfoDoc
   end
 
   def data_validations(user_data)
-    #FIXME: data validations to come from user generated not hard coded like this
-    raise ArgumentError, "Requires a category to be assigned to the instance" unless user_data[:my_category]
+    #Check for Required Keys
+    required_keys = DataStructureModels::Bufs::RequiredKeys
+    required_keys.each do |rk|
+      raise ArgumentError, "Requires a value to be assigned to the key #{rk} for instantiation" unless user_data[rk]
+    end
   end
 
   def get_user_data_id(user_data)
     #FIXME User Node Key from user generated, not hard coded
-    user_node_key = :my_category
+    user_node_key = DataStructureModels::Bufs::NodeKey
     user_data[user_node_key]
   end
 
   def update_model_metadata(metadata, node_key)
     #updates @saved_to_model (make a method instead)?
-    id = metadata[:_id]  #FIXME use model generated data
-    namespace = metadata[:bufs_namespace] #FIXME use model generated data
-    rev = metadata[:_rev] #FIXME use model generated data
-    id = self.class.db_id(node_key) unless id
+    model_key = DataStoreModels::CouchRest::ModelKey
+    version_key = DataStoreModels::CouchRest::VersionKey
+    namespace_key = DataStoreModels::CouchRest::NamespaceKey
+    id = metadata[model_key] 
+    namespace = metadata[namespace_key] 
+    rev = metadata[version_key]
+    #id = self.class.db_id(node_key) unless id
     namespace = self.class.collection_namespace unless namespace
-    updated_key_metadata = {:_id => id, :bufs_namespace => namespace}
-    updated_key_metadata.delete(:_rev) unless rev
+    id = DataStoreModels::CouchRest.generate_model_key(namespace, node_key) unless id  #faster without the conditional?
+    updated_key_metadata = {model_key => id, namespace_key => namespace}
+    updated_key_metadata.delete(version_key) unless rev  #TODO Is this too model specific?
     puts "Updated Metadata: #{updated_key_metadata}"
     metadata.merge!(updated_key_metadata)
     if rev 
       @saved_to_model = rev 
-      metadata.merge!({:_rev => rev}) 
+      metadata.merge!({version_key => rev}) 
     else
-      metadata.delete(:_rev)
+      metadata.delete(version_key)  #TODO  Is this too model specific?
     end
     metadata
   end
 
   #TODO There should be a better way that combines assign user node key
-  def get_model_key
-    #FIXME: Should come from model data, not hard coded
-    '_id'
-  end
+  #def get_model_key
+  #  #FIXME: Should come from model data, not hard coded
+  #  '_id'
+  #end
 
   #This will take a key-value pair and create an instance variable (actually it's a method)
   # using key as the method name, and sets the return value to the value associated with that key
@@ -650,13 +699,18 @@ class BufsInfoDoc
 
   #Save the object to the CouchDB database
   def save
-    puts "Saving"
+    #puts "Saving"
+    #TODO Generic Save Validations (DataStructureModel)
     raise ArgumentError, "Requires my_category to be set before saving" unless self.my_category
-    existing_doc = self.class.get(self.db_id)
+    node_key = DataStructureModels::Bufs::NodeKey
+    node_id = self.model_metadata[node_key]
+    existing_doc = DataStoreModels::CouchRest.generate_model_key(@collection_namespace, node_id)
+    #existing_doc = self.class.get(self.db_id)
     begin
+      #TODO: Genericize this
       data = inject_node_db_metadata.inject({}){|memo,(k,v)| memo["#{k}"] = v; memo}
-      puts "Injected Data: #{data}"
-      puts "DB: #{self.class.db.inspect}"   
+      #puts "Injected Data: #{data}"
+      #puts "DB: #{self.class.db.inspect}"   
       res = self.class.db.save_doc(data)
     rescue RestClient::RequestFailed => e
       if e.http_code == 409
@@ -673,9 +727,10 @@ class BufsInfoDoc
         raise "Request Failed -- Response: #{res.inspect} Error:#{e}"
       end
     end
-      puts "Save Success"
-      p res
-      rev_data = {"_rev" => res['rev']}
+      #puts "Save Success"
+      #p res
+      version_key = DataStoreModels::CouchRest::VersionKey
+      rev_data = {version_key => res['rev']}
       update_self(rev_data)
       #self.model_metadata.merge!(rev_data)
     return self
@@ -735,7 +790,7 @@ class BufsInfoDoc
   end
 
 
-#TODO: Add to spec (currently not used)
+#TODO: Add to spec (currently not used)  I think used by web server, need to genericize (use FilesMgr?)
   def attachment_url(attachment_name)
     current_node_doc = self.class.get(self['_id'])
     att_doc_id = current_node_doc['attachment_doc_id']
@@ -756,13 +811,22 @@ class BufsInfoDoc
     current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
   end
 
-  #TODO: move to class method section
+  #TODO: Genericize for all models
   def self.db_id(node_id)
-    @collection_namespace + '::' + node_id
+    puts "Warning:: method db_id has been deprecated use DataStoreModels::<data store model>.generate_model_key(coll_ns, node_id) instead"
+    #@collection_namespace + '::' + node_id
+    DataStoreModels::CouchRest.generate_model_key(@collection_namespace, node_id)
   end
 
   def db_id
+    puts "Warning:: instance method db_id has been deprecated use instance method model_key instead"
     self.class.db_id(self.my_category)
+  end
+
+  def model_key
+    node_key = DataStructureModels::Bufs::NodeKey 
+    node_id = self.user_data[node_key]
+    DataStoreModels::CouchRest.generate_model_key(@collection_namespace, node_id)
   end
   
   #meta_data should not be in node data so this shouldn't be necessary
@@ -790,60 +854,13 @@ class BufsInfoDoc
 
   def update_self(rev_data)
     self.model_metadata.merge!(rev_data)
-    @saved_to_model = rev_data["_rev"]
-  end
-=begin
-  def my_link_doc_id
-    return self['_id'] + self.class.link_base_id
+    version_key = DataStoreModels::CouchRest::VersionKey
+    @saved_to_model = rev_data[version_key]
   end
 
-
-  def add_links(links)
-    self.links_doc_id = self.my_link_doc_id  
-    self.save
-    self.class.user_linkClass.add_links(self, links)
-  end
-
-  def remove_links(links_to_remove)
-    self.links_doc_id = self.my_link_doc_id
-    self.save
-    self.class.user_linkClass.remove_links(self, links_to_remove)
-  end
-
-  def get_link_names
-    link_doc_id = self.class.get(self['_id']).links_doc_id
-    link_doc = self.class.get(link_doc_id)||{}
-    links = link_doc['uris']||{}
-    #new_links = {} 
-    #if links.class != Hash  #TODO: fix db to get rid of back compat hack
-    #  links.each {|lnk| new_links[lnk] = nil}
-    #else
-    #  new_links = links
-    #end
-    #raise links.inspect
-    link_names = links #new_links
-  end
-
-  alias_method(:list_links, :get_link_names) #TODO: synchronize with bufs_file_system
-=end
   #Deletes the object and its CouchDB entry
   def destroy_node
-    #att_doc = self.class.get(self.files_mgr.record_ref) if self.files_mgr.record_ref
-    att_doc = self.class.user_attachClass.get(self.attachment_doc_id) if self.attachment_doc_id
-    att_doc.destroy if att_doc
-    #link_doc = self.class.get(self.links_doc_id)
-    #link_doc.destroy if link_doc
-    begin
-      self.destroy
-    rescue ArgumentError => e
-      puts "Rescued Error: #{e} while trying to destroy #{self.my_category} node"
-      me = self.class.get(self.model_metadata[:_id])
-      me.destroy
-    end
-  end
-
-  def destroy
-    self.class.db.delete_doc('_id' => self.model_metadata[:_id], '_rev' => self.model_metadata[:_rev])
+    DataStoreModels::CouchRest::destroy_node(self)
   end
 end
 
