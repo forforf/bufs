@@ -119,6 +119,7 @@ module BufsInfoDocEnvMethods
       #ok raise "DesDoc: #{design_doc.inspect}  view: #{db_view_name}"
       begin
         view_rev_in_db = db.get(design_doc['_id'])['_rev']
+        puts "Saving: #{design_doc.inspect}"
         res = design_doc.save unless design_doc['rev'] == view_rev_in_db
       rescue RestClient::RequestFailed
         puts "Warning: Request Failed, assuming because the design doc was already saved?"
@@ -208,9 +209,9 @@ class BufsInfoDoc
       #create the attachment record
       #TODO: What if the attachment already exists?
       user_id = node.class.db_user_id
-      node_id = node.model_metadata['_id']
+      node_id = node.model_metadata[:_id]
       record = bia_class.add_attachment_package(node, attachment_package)
-      @record_ref = record['_id']
+      @record_ref = record[:_id]
     end
 
     def add_raw_data(node, attach_name, content_type, raw_data, file_modified_at = nil)
@@ -360,7 +361,7 @@ class BufsInfoDoc
   end
 
   ##Instance Accessors
-  attr_accessor :node_data_hash, :model_metadata, :saved_to_model
+  attr_accessor :user_data, :model_metadata, :saved_to_model
 
   ###Class Methods
   ##Class Environment
@@ -508,25 +509,73 @@ class BufsInfoDoc
     LinkBaseID 
   end
 
+  #Normal instantiation can take two forms that differ only in the source
+  #for the initial parameters.  The constructor could be called by the user
+  #and passed only user data, or the constructor could be called by a class
+  #collection method and the initial parameters would come from a datastore.
+  #In the latter case, some of the parameters will include information about
+  #the datastore (model metadata).
   def initialize(init_params = {})
+    ##temporary holding area, these need to move somewhere else
+    ##
     @saved_to_model = nil
     #make sure keys are symbols
     init_params = init_params.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
-
-    raise "No namespace has been set for #{self}" unless self.class.namespace
-    raise ArgumentError, "Requires a category to be assigned to the instance" unless init_params[:my_category]
-    node_id = self.class.db_id(init_params[:my_category])
-    #TODO Find a way to genericize this across models
-    #CouchDB model metadata
-    @model_metadata = { '_id' => node_id, 'bufs_namespace' => "#{self.class.collection_namespace}"} #'_rev' => rev}
-    if init_params[:_rev]
-      @saved_to_model = init_params[:_rev]
-      @model_metadata.merge!({'_rev' => init_params[:_rev]})
-    end
-    @node_data_hash = {}
+    @user_data, @model_metadata = filter_user_from_model_data(init_params)
+    data_validations(@user_data)
+    node_key = get_user_data_id(@user_data)
+    @model_metadata = update_model_metadata(@model_metadata,node_key)
+    
     init_params.each do |attr_name, attr_value|
       iv_set(attr_name.to_sym, attr_value) 
     end
+  end
+
+  def filter_user_from_model_data(init_params)
+    #FIXME: model_metadata keys to come from model/data structure
+    model_metadata_keys = [:_id, :_rev, :bufs_namespace]
+    model_metadata = {}
+    model_metadata_keys.each do |k|
+      model_metadata[k] = init_params.delete(k) #delete returns deleted value
+    end
+    [init_params, model_metadata]
+  end
+
+  def data_validations(user_data)
+    #FIXME: data validations to come from user generated not hard coded like this
+    raise ArgumentError, "Requires a category to be assigned to the instance" unless user_data[:my_category]
+  end
+
+  def get_user_data_id(user_data)
+    #FIXME User Node Key from user generated, not hard coded
+    user_node_key = :my_category
+    user_data[user_node_key]
+  end
+
+  def update_model_metadata(metadata, node_key)
+    #updates @saved_to_model (make a method instead)?
+    id = metadata[:_id]  #FIXME use model generated data
+    namespace = metadata[:bufs_namespace] #FIXME use model generated data
+    rev = metadata[:_rev] #FIXME use model generated data
+    id = self.class.db_id(node_key) unless id
+    namespace = self.class.collection_namespace unless namespace
+    updated_key_metadata = {:_id => id, :bufs_namespace => namespace}
+    updated_key_metadata.delete(:_rev) unless rev
+    puts "Updated Metadata: #{updated_key_metadata}"
+    metadata.merge!(updated_key_metadata)
+    if rev 
+      @saved_to_model = rev 
+      metadata.merge!({:_rev => rev}) 
+    else
+      metadata.delete(:_rev)
+    end
+    metadata
+  end
+
+  #TODO There should be a better way that combines assign user node key
+  def get_model_key
+    #FIXME: Should come from model data, not hard coded
+    '_id'
   end
 
   #This will take a key-value pair and create an instance variable (actually it's a method)
@@ -537,15 +586,15 @@ class BufsInfoDoc
   def iv_set(attr_var, attr_value)
     ops = Ops
     add_op_method(attr_var, ops[attr_var]) if ops[attr_var] #incorporates predefined methods
-    @node_data_hash[attr_var] = attr_value unless self.class.db_metadata_keys.include? attr_var.to_s
+    @user_data[attr_var] = attr_value unless self.class.db_metadata_keys.include? attr_var.to_s
     #manually setting instance variable (rather than using instance_variable_set),
     # so @node_data_hash can be updated
     #dynamic method acting like an instance variable getter
     self.class.__send__(:define_method, "#{attr_var}".to_sym,
-       lambda {@node_data_hash[attr_var]} )
+       lambda {@user_data[attr_var]} )
     #dynamic method acting like an instance variable setter
     self.class.__send__(:define_method, "#{attr_var}=".to_sym,
-       lambda {|new_val| @node_data_hash[attr_var] = new_val} )
+       lambda {|new_val| @user_data[attr_var] = new_val} )
   end
      
   def add_op_method(param, ops)
@@ -587,7 +636,7 @@ class BufsInfoDoc
 
   def iv_unset(param)
     self.class.__send__(:remove_method, param.to_sym)
-    @node_data_hash.delete(param)
+    @user_data.delete(param)
   end
 
   #some object convenience methods for accessing class methods
@@ -601,11 +650,14 @@ class BufsInfoDoc
 
   #Save the object to the CouchDB database
   def save
-    #puts "Saving"
+    puts "Saving"
     raise ArgumentError, "Requires my_category to be set before saving" unless self.my_category
     existing_doc = self.class.get(self.db_id)
     begin
-      res = self.class.db.save_doc(inject_node_db_metadata)
+      data = inject_node_db_metadata.inject({}){|memo,(k,v)| memo["#{k}"] = v; memo}
+      puts "Injected Data: #{data}"
+      puts "DB: #{self.class.db.inspect}"   
+      res = self.class.db.save_doc(data)
     rescue RestClient::RequestFailed => e
       if e.http_code == 409
         raise "Document Conflict in the Database, most likely. Error Code was 409, however my handling routine needs to be updated to new architecture"
@@ -618,9 +670,11 @@ class BufsInfoDoc
         existing_doc.save
         return existing_doc
       else
-        raise e
+        raise "Request Failed -- Response: #{res.inspect} Error:#{e}"
       end
     end
+      puts "Save Success"
+      p res
       rev_data = {"_rev" => res['rev']}
       update_self(rev_data)
       #self.model_metadata.merge!(rev_data)
@@ -653,8 +707,8 @@ class BufsInfoDoc
   #Returns the attachment id associated with this document.  Note that this does not depend upon there being an attachment.
   #TODO: 
   def my_attachment_doc_id
-    if self.model_metadata['_id']
-      return self.model_metadata['_id'] + self.class.attachment_base_id
+    if self.model_metadata[:_id]
+      return self.model_metadata[:_id] + self.class.attachment_base_id
     else
       raise "Can't attach to a document that has not first been saved to the db"
     end
@@ -725,7 +779,7 @@ class BufsInfoDoc
   #end
 
   def inject_node_db_metadata
-    inject_db_metadata(@node_data_hash)
+    inject_db_metadata(@user_data)
   end
 
   def inject_db_metadata(node_data)
@@ -783,13 +837,13 @@ class BufsInfoDoc
       self.destroy
     rescue ArgumentError => e
       puts "Rescued Error: #{e} while trying to destroy #{self.my_category} node"
-      me = self.class.get(self.model_metadata['_id'])
+      me = self.class.get(self.model_metadata[:_id])
       me.destroy
     end
   end
 
   def destroy
-    self.class.db.delete_doc('_id' => self.model_metadata['_id'], '_rev' => self.model_metadata['_rev'])
+    self.class.db.delete_doc('_id' => self.model_metadata[:_id], '_rev' => self.model_metadata[:_rev])
   end
 end
 

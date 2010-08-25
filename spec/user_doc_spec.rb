@@ -176,10 +176,10 @@ describe UserDB, "Basic database operations" do
     #check results
     UserDB.user_to_docClass.each do |user_id, docClass|
       docs_params[user_id].keys.each do |param|
-        doc_id = docs_to_save[user_id].model_metadata['_id']
+        doc_id = docs_to_save[user_id].model_metadata[:_id]
         doc_from_db = docClass.db.get(doc_id)
         db_param = doc_from_db[param]
-        docs_to_save[user_id].node_data_hash[param].should == db_param
+        docs_to_save[user_id].user_data[param].should == db_param
         #test accessor method
         docs_to_save[user_id].__send__(param).should == db_param
       end
@@ -220,8 +220,8 @@ describe UserDB, "Basic database operations" do
       docs_with_new_parent_cat[user_id].parent_categories.should include new_cat
       #check database
       doc_params[user_id].keys.each do |param|
-        db_param = docClass.db.get(docs_with_new_parent_cat[user_id].model_metadata['_id'])[param]
-        docs_with_new_parent_cat[user_id].node_data_hash[param].should == db_param
+        db_param = docClass.db.get(docs_with_new_parent_cat[user_id].model_metadata[:_id])[param]
+        docs_with_new_parent_cat[user_id].user_data[param].should == db_param
         #test accessor method
         docs_with_new_parent_cat[user_id].__send__(param).should == db_param
       end
@@ -272,11 +272,11 @@ describe UserDB, "Basic database operations" do
     #verify initial conditions
     UserDB.user_to_docClass.each do |user_id, docClass|
       doc_params[user_id].keys.each do |param|
-        doc_id = doc_existing_new_parent_cats[user_id].model_metadata['_id']
+        doc_id = doc_existing_new_parent_cats[user_id].model_metadata[:_id]
         db_doc = docClass.get(doc_id)
         #raise db_doc.model_metadata.inspect
-        db_param = db_doc.node_data_hash[param]
-        doc_existing_new_parent_cats[user_id].node_data_hash[param].should == db_param
+        db_param = db_doc.user_data[param]
+        doc_existing_new_parent_cats[user_id].user_data[param].should == db_param
         #test accessor method
         doc_existing_new_parent_cats[user_id].__send__(param).should == db_param
       end
@@ -297,7 +297,7 @@ describe UserDB, "Basic database operations" do
     #check database
     parent_cats = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      parent_cats[user_id] = docClass.get(doc_existing_new_parent_cats[user_id].model_metadata['_id']).parent_categories
+      parent_cats[user_id] = docClass.get(doc_existing_new_parent_cats[user_id].model_metadata[:_id]).parent_categories
       new_cats.each do |cat|
         parent_cats[user_id].should include cat
       end
@@ -322,8 +322,8 @@ describe UserDB, "Basic database operations" do
     #verify initial conditions
     UserDB.user_to_docClass.each do |user_id, docClass|
       doc_params[user_id].keys.each do |param|
-        db_param = docClass.get(doc_remove_parent_cats[user_id].model_metadata['_id']).node_data_hash[param]
-        doc_remove_parent_cats[user_id].node_data_hash[param].should == db_param
+        db_param = docClass.get(doc_remove_parent_cats[user_id].model_metadata[:_id]).user_data[param]
+        doc_remove_parent_cats[user_id].user_data[param].should == db_param
         #test accessor method
         doc_remove_parent_cats[user_id].__send__(param).should == db_param
       end
@@ -351,9 +351,9 @@ describe UserDB, "Basic database operations" do
 
     cats_in_db = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_id = doc_remove_parent_cats[user_id].model_metadata['_id']
+      doc_id = doc_remove_parent_cats[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
-      cats_in_db[user_id] = db_doc.node_data_hash[:parent_categories].inspect
+      cats_in_db[user_id] = db_doc.user_data[:parent_categories].inspect
       remove_multi_cats[user_id].each do |removed_cat|
         cats_in_db[user_id].should_not include removed_cat
       end
@@ -392,9 +392,9 @@ describe UserDB, "Basic database operations" do
     records = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
       expected_sizes[user_id].should == doc_uniq_parent_cats[user_id].parent_categories.size
-      doc_id = doc_uniq_parent_cats[user_id].model_metadata['_id']
+      doc_id = doc_uniq_parent_cats[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
-      db_doc.node_data_hash[:parent_categories].sort.should == doc_uniq_parent_cats[user_id].parent_categories.sort
+      db_doc.user_data[:parent_categories].sort.should == doc_uniq_parent_cats[user_id].parent_categories.sort
       records[user_id] = docClass.call_view(:parent_categories, 'dup cat2')
       records[user_id].size.should == 1
       records[user_id].first.parent_categories.should include 'dup cat2'
@@ -455,7 +455,7 @@ describe UserDB, "Document Operations with Attachments" do
 
     #check initial conditions
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_id = basic_docs[user_id].model_metadata['_id']
+      doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
       db_doc.model_metadata['attachment_doc_id'].should == nil
       #(docClass.get(basic_docs[user_id].model_metadata['_id'])['attachment_doc_id']).should == nil
@@ -472,12 +472,12 @@ describe UserDB, "Document Operations with Attachments" do
     att_doc_ids = {}
     att_docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      att_doc_ids[user_id] = docClass.get(basic_docs[user_id].model_metadata['_id']).attachment_doc_id
+      att_doc_ids[user_id] = docClass.get(basic_docs[user_id].model_metadata[:_id]).attachment_doc_id
       att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
       #puts "Attachment Doc: #{att_docs[user_id].inspect}"
-      doc_id = basic_docs[user_id].model_metadata['_id']
+      doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
-      db_doc.attachment_doc_id.should == att_docs[user_id]['_id']
+      db_doc.attachment_doc_id.should == att_docs[user_id][:_id]
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_basename)
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
      
@@ -501,24 +501,24 @@ describe UserDB, "Document Operations with Attachments" do
     att_docs = {}
     test_basename = File.basename(test_filename)
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_id = basic_docs[user_id].model_metadata['_id']
+      doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
       #raise db_doc.attachment_doc_id.inspect
       att_doc_ids[user_id] = db_doc.attachment_doc_id
       att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
-      docClass.get(doc_id).attachment_doc_id.should == att_docs[user_id]['_id']
+      docClass.get(doc_id).attachment_doc_id.should == att_docs[user_id][:_id]
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_base
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
     end
     #test
     attachment_name = test_basename
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc = docClass.get(basic_docs[user_id].model_metadata[:_id])
       doc.files_subtract(:all)
     end
     #check results
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_id = basic_docs[user_id].model_metadata['_id']
+      doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
       #lambda {db_doc.attachment_doc_id}.should raise_error NameError   #reference to attachment doc from user doc
       db_doc.attachment_doc_id.should == nil
@@ -549,12 +549,12 @@ describe UserDB, "Document Operations with Attachments" do
     test_basename1 = File.basename(test_filename1)
     test_basename2 = File.basename(test_filename2)
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_id = basic_docs[user_id].model_metadata['_id']
+      doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
       att_doc_ids[user_id] = db_doc.attachment_doc_id
       db = db_doc.class.db
       att_docs[user_id] = db.get(att_doc_ids[user_id])
-      docClass.get(doc_id).attachment_doc_id.should == att_docs[user_id]['_id']
+      docClass.get(doc_id).attachment_doc_id.should == att_docs[user_id][:_id]
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename1)
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename2) 
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename1)]['file_modified'].should == File.mtime(test_filename1).to_s
@@ -564,26 +564,26 @@ describe UserDB, "Document Operations with Attachments" do
     attachment_name1 = BufsEscape.escape(test_basename1)
     attachment_name2 = BufsEscape.escape(test_basename2)
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc = docClass.get(basic_docs[user_id].model_metadata[:_id])
       doc.files_subtract(attachment_name1)
     end
     #check results
     UserDB.user_to_docClass.each do |user_id, docClass|
       att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
-      doc_id = basic_docs[user_id].model_metadata['_id']
+      doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
-      db_doc.attachment_doc_id.should == att_docs[user_id]['_id']   #reference to attachment doc from user doc
+      db_doc.attachment_doc_id.should == att_docs[user_id][:_id]   #reference to attachment doc from user doc
       att_docs[user_id]['_attachments'].keys.size.should == 1
       att_docs[user_id]['_attachments'].keys.first.should == BufsEscape.escape(attachment_name2)
     end
     #delete again so that all attachments are deleted
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc = docClass.get(basic_docs[user_id].model_metadata[:_id])
       doc.files_subtract(attachment_name2)
     end
     #check results
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_id = basic_docs[user_id].model_metadata['_id']
+      doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
       #lambda {db_doc.attachment_doc_id}.should raise_error NameError   #reference to attachment doc from user doc
       db_doc.attachment_doc_id.should == nil
@@ -611,18 +611,18 @@ describe UserDB, "Document Operations with Attachments" do
     att_docs = {}
     test_basename = File.basename(test_filename)
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_id = basic_docs[user_id].model_metadata['_id']
+      doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
       att_doc_ids[user_id] = db_doc.attachment_doc_id
       att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
-      docClass.get(doc_id).attachment_doc_id.should == att_docs[user_id]['_id']
+      docClass.get(doc_id).attachment_doc_id.should == att_docs[user_id][:_id]
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
     end
     #test
     attachment_names = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_id = basic_docs[user_id].model_metadata['_id']
+      doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
       attachment_names[user_id] = db_doc.get_attachment_names
     end
@@ -658,7 +658,7 @@ describe UserDB, "Document Operations with Attachments" do
     att_doc_ids = {}
     att_docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_id = basic_docs[user_id].model_metadata['_id']
+      doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
       att_doc_ids[user_id] = db_doc.attachment_doc_id
       #puts "Attachment Doc ID: #{att_doc_id}"
@@ -694,7 +694,7 @@ describe UserDB, "Document Operations with Attachments" do
       #metadata[user_id].should == ["should be the metadata for that user"]
       basic_docs[user_id].add_raw_data(attach_name, binary_data_content_type, binary_data)
       #verify results
-      doc_id = basic_docs[user_id].model_metadata['_id']
+      doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
       att_doc_ids[user_id] = db_doc.my_attachment_doc_id
       att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
@@ -808,13 +808,13 @@ describe UserDB, "Document Operations with Attachments" do
       docs[user_id] = docClass.call_view(:my_category, 'delete_test1')
       docs[user_id].size.should == 1
       doc = docs[user_id].first
-      doc_att_ids[user_id] = docClass.get(doc.model_metadata['_id']).attachment_doc_id
+      doc_att_ids[user_id] = docClass.get(doc.model_metadata[:_id]).attachment_doc_id
       doc_atts[user_id] = docClass.user_attachClass.get(doc_att_ids[user_id])
       doc_atts[user_id].should_not == nil
     end
     #test
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_latest = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc_latest = docClass.get(basic_docs[user_id].model_metadata[:_id])
       doc_latest.destroy_node
     end
     #verify results
@@ -852,8 +852,8 @@ describe UserDB, "Document Operations with Links" do
       #end
       all_user_docs = docClass.all
       all_user_docs.each do |user_doc|
-        puts "WARNING: this doc has '_id' of nil" unless user_doc.model_metadata["_id"] #{user_
-        puts "WARNING this doc has valid '_id' but nil '_rev" if (user_doc.model_metadata["_id"] && user_doc.model_metadata["_rev"].nil?)
+        puts "WARNING: this doc has :_id of nil" unless user_doc.model_metadata[:_id] #{user_
+        puts "WARNING this doc has valid :_id but nil '_rev" if (user_doc.model_metadata[:_id] && user_doc.model_metadata["_rev"].nil?)
         user_doc.destroy #unless user_doc["_id"]
         #user_#doc.destroy
       end
@@ -884,7 +884,7 @@ describe UserDB, "Document Operations with Links" do
         basic_docs[user_id].respond_to?(meth).should == true
       end
       basic_docs[user_id].save
-      doc_latest = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc_latest = docClass.get(basic_docs[user_id].model_metadata[:_id])
       doc_latest.links.should == {}
     end
   end
@@ -904,7 +904,7 @@ describe UserDB, "Document Operations with Links" do
       basic_docs[user_id].save #doc must be saved before we can add links
     end
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_latest = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc_latest = docClass.get(basic_docs[user_id].model_metadata[:_id])
       doc_latest.links.should == nil
     end
     #test
@@ -917,7 +917,7 @@ describe UserDB, "Document Operations with Links" do
     UserDB.user_to_docClass.each do |user_id, docClass|
       #link_doc_ids[user_id] = docClass.get(basic_docs[user_id]['_id']).my_link_doc_id
       #link_docs[user_id] = docClass.get(link_doc_ids[user_id])
-      user_doc_from_db = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      user_doc_from_db = docClass.get(basic_docs[user_id].model_metadata[:_id])
       #docClass.get(basic_docs[user_id]['_id'])['links_doc_id'].should == link_docs[user_id]['_id']
       #user_doc_from_db.links_doc_id.should == link_docs[user_id]['_id']
       #links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
@@ -942,7 +942,7 @@ describe UserDB, "Document Operations with Links" do
       basic_docs[user_id].save #doc must be saved before we can add links
     end
     UserDB.user_to_docClass.each do |user_id, docClass|
-      doc_latest = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      doc_latest = docClass.get(basic_docs[user_id].model_metadata[:_id])
       doc_latest.links.should == nil
     end
     UserDB.user_to_docClass.each do |user_id, docClass|
@@ -950,13 +950,13 @@ describe UserDB, "Document Operations with Links" do
     end
     #verify initial conditions
     UserDB.user_to_docClass.each do |user_id, docClass|
-      user_doc_from_db = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      user_doc_from_db = docClass.get(basic_docs[user_id].model_metadata[:_id])
       user_doc_from_db.links.should == test_links
     end
     #test
     link_to_get = "Google"
     UserDB.user_to_docClass.each do |user_id, docClass|
-      user_doc_from_db = docClass.get(basic_docs[user_id].model_metadata['_id'])
+      user_doc_from_db = docClass.get(basic_docs[user_id].model_metadata[:_id])
       user_doc_from_db.links_get(link_to_get).should == "http://www.google.com"
     end
 

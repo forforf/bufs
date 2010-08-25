@@ -123,12 +123,12 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
 
   #create the attachment document id to be used
   def self.uniq_att_doc_id(bufs_info_doc)
-    uniq_id = bufs_info_doc.model_metadata['_id'] + bufs_info_doc.class.attachment_base_id 
+    uniq_id = bufs_info_doc.model_metadata[:_id] + bufs_info_doc.class.attachment_base_id 
   end
 
   def self.add_attachment_package(bufs_info_doc, attachments)
     raise "No document provided for attachments" unless bufs_info_doc
-    raise "No id found for the document" unless bufs_info_doc.model_metadata['_id']
+    raise "No id found for the document" unless bufs_info_doc.model_metadata[:_id]
     raise "No attachments provided for attaching" unless attachments
     att_doc_id = self.uniq_att_doc_id(bufs_info_doc)
     att_doc = bufs_info_doc.class.user_attachClass.get(att_doc_id)
@@ -146,7 +146,7 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
   #TODO: See if bufs_info_doc can be factored out of this method call
   def self.create_attachment_package(att_doc_id, bufs_info_doc, attachments)
     #raise "No document provided for attachments" unless bufs_info_doc
-    #raise "No id found for the document" unless bufs_info_doc.model_metadata['_id']
+    #raise "No id found for the document" unless bufs_info_doc.model_metadata[:_id]
     #raise "No attachments provided for attaching" unless attachments
     #separate attachment data from custom attachment metadata
     #this is necessary since couchdb can't put custom metadata with its attachments

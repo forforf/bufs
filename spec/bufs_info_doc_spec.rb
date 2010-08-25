@@ -65,7 +65,7 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     my_params = [:my_category, :parent_categories, :description]
     my_params.each do |my_param|
       default_bid.__send__(my_param).should == get_default_params[my_param]
-      default_bid.node_data_hash[my_param].should == get_default_params[my_param]
+      default_bid.user_data[my_param].should == get_default_params[my_param]
     end
     #we haven't saved it to the database yet
     BufsInfoDoc.all.size.should == 0
@@ -84,7 +84,7 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     default_bid.my_category.should == get_default_params[:my_category]
     default_bid.parent_categories.should == get_default_params[:parent_categories]
     lambda {default_bid.description}.should raise_error(NameError)
-    default_bid.node_data_hash[:description].should == nil
+    default_bid.user_data[:description].should == nil
   end
 
   it "should not save if required fields don't exist" do
@@ -118,12 +118,18 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     doc_to_save = make_doc_no_attachment(doc_params.dup)
 
     #test
+    puts "Saving Doc: #{doc_to_save.model_metadata[:_id]}"
     doc_to_save.save
+    puts "Saved Doc: #{doc_to_save.model_metadata[:_id]}"
+    puts "DB saved to: #{doc_to_save.class.db.inspect}"
     
     #check results
     doc_params.keys.each do |param|
+      puts "Param: #{param.inspect}"
+      puts "Id for doc: #{doc_to_save.db_id}"
       db_param = CouchDB.get(doc_to_save.db_id)[param]
-      doc_to_save.node_data_hash[param].should == db_param
+      puts "Param returnd from db: #{db_param.inspect}"
+      doc_to_save.user_data[param].should == db_param
       #test accessor method
       doc_to_save.__send__(param).should == db_param
     end
@@ -175,7 +181,9 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     doc_with_new_parent_cat.parent_categories.should include new_cat
     #check database
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_with_new_parent_cat.model_metadata['_id'])[param]
+      puts "Param: #{param.inspect}"
+      puts "Doc w new Parent: #{doc_with_new_parent_cat.inspect}"
+      db_param = CouchDB.get(doc_with_new_parent_cat.model_metadata[:_id])[param]
       #doc_with_new_parent_cat[param].should == db_param
       #test accessor method
       doc_with_new_parent_cat.__send__(param).should == db_param
@@ -201,7 +209,7 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     doc_with_new_parent_cat.parent_categories.should include new_cat
     #check database
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_with_new_parent_cat.model_metadata['_id'])[param]
+      db_param = CouchDB.get(doc_with_new_parent_cat.model_metadata[:_id])[param]
       #doc_with_new_parent_cat[param].should == db_param
       #test accessor method
       doc_with_new_parent_cat.__send__(param).should == db_param
@@ -218,7 +226,7 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     doc_existing_new_parent_cat.save
     #verify initial conditions
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_existing_new_parent_cat.model_metadata['_id'])[param]
+      db_param = CouchDB.get(doc_existing_new_parent_cat.model_metadata[:_id])[param]
       #doc_existing_new_parent_cat[param].should == db_param
       #test accessor method
       doc_existing_new_parent_cat.__send__(param).should == db_param
@@ -242,7 +250,7 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
       #ex_cats.should include new_cat
     end
     #check database
-    parent_cats = CouchDB.get(doc_existing_new_parent_cat.model_metadata['_id'])[:parent_categories]
+    parent_cats = CouchDB.get(doc_existing_new_parent_cat.model_metadata[:_id])[:parent_categories]
     puts "---"
     p parent_cats
     new_cats.each do |cat|
@@ -261,7 +269,7 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     doc_remove_parent_cat.save
     #verify initial conditions
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_remove_parent_cat.model_metadata['_id'])[param]
+      db_param = CouchDB.get(doc_remove_parent_cat.model_metadata[:_id])[param]
       #doc_remove_parent_cat[param].should == db_param
       #test accessor method
       doc_remove_parent_cat.__send__(param).should == db_param
@@ -279,7 +287,7 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     remove_multi_cats.each do |cat|
       doc_remove_parent_cat.parent_categories.should_not include cat
     end
-    cats_in_db = CouchDB.get(doc_remove_parent_cat.model_metadata['_id'])['parent_categories']
+    cats_in_db = CouchDB.get(doc_remove_parent_cat.model_metadata[:_id])['parent_categories']
     remove_multi_cats.each do |removed_cat|
       cats_in_db.should_not include removed_cat
     end
@@ -300,7 +308,7 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     doc_uniq_parent_cat.add_parent_categories(new_cats)
     #verify results
     expected_size.should == doc_uniq_parent_cat.parent_categories.size
-    CouchDB.get(doc_uniq_parent_cat.model_metadata['_id'])['parent_categories'].sort.should == doc_uniq_parent_cat.parent_categories.sort
+    CouchDB.get(doc_uniq_parent_cat.model_metadata[:_id])['parent_categories'].sort.should == doc_uniq_parent_cat.parent_categories.sort
     #"can't query on :my_category".should == "test should have way to query based on :my_category"
     records = BufsInfoDoc.call_view(:my_category , doc_uniq_parent_cat.my_category)
     records = [records].flatten
