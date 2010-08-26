@@ -47,13 +47,13 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
   end
 
   it "should have its namespace set up correctly" do
-    BufsInfoDoc.namespace.should == "#{CouchDB.to_s}::#{DummyUserID}"
+    BufsInfoDoc.class_env.namespace.should == "#{CouchDB.to_s}::#{DummyUserID}"
 
     db_name_path = CouchDB.uri
     lose_leading_slash = db_name_path.split("/")
     lose_leading_slash.shift
     db_name = lose_leading_slash.join("")
-    BufsInfoDoc.collection_namespace.should == "#{db_name}_#{DummyUserID}"
+    BufsInfoDoc.class_env.collection_namespace.should == "#{db_name}_#{DummyUserID}"
   end
 
   it "should initialize correctly" do
@@ -121,7 +121,7 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     puts "Saving Doc: #{doc_to_save.model_metadata[:_id]}"
     doc_to_save.save
     puts "Saved Doc: #{doc_to_save.model_metadata[:_id]}"
-    puts "DB saved to: #{doc_to_save.class.db.inspect}"
+    puts "DB saved to: #{doc_to_save.class.class_env.db.inspect}"
     
     #check results
     doc_params.keys.each do |param|

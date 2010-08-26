@@ -65,10 +65,10 @@ class UserDB
     @docClass = UserDB.const_get(@user_doc_class_name)
     @attachClass = UserDB.const_get(@user_attach_class_name)
     @linkClass = UserDB.const_get(@user_link_class_name)
-    @docClass.set_environment(@user_environment)
+    #@docClass.set_environment(@user_environment)
     @docClass.user_attachClass = @attachClass
     @docClass.user_linkClass = @linkClass
-
+    @docClass.set_environment(@user_environment)
     #Perform user <=> CouchDB Document bindings
     #Add to List of docClasses
     UserDB.docClasses << @docClass

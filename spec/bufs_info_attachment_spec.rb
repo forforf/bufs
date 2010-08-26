@@ -35,11 +35,15 @@ describe BufsInfoAttachment do
     @test_doc = BufsInfoDoc.new(:my_category => "attach_test_doc",
                                 :parent_categories => ["atd_dad", "atd_mom"])
     @test_doc.save
-    @test_doc_id = @test_doc.model_metadata['_id']
+    @test_doc_id = @test_doc.model_metadata[:_id]
   end
 
   after(:all) do
     @test_doc.destroy_node
+    bias = BufsInfoAttachment.all
+    bias.each do |bia|
+      bia.destroy
+    end
   end
 
   before(:each) do
@@ -72,6 +76,7 @@ describe BufsInfoAttachment do
     #check results
     test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
     bia['_id'].should == test_attachment_id
+    #test_doc.attachment_doc_id.should == test_attachment_id
     #p bia
     #Note the lack of escaping on the file name, this only works
     #because the original file name did not need escaping
@@ -292,7 +297,7 @@ describe BufsInfoAttachment do
                test_file2_basename => {'data' => data2, 'md' => md_params2}
               }
     test_doc = @test_doc
-    test_doc_id = test_doc.model_metadata['_id']
+    test_doc_id = test_doc.model_metadata[:_id]
     test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
     test_attachment = BufsInfoAttachment.get(test_attachment_id)
     bia = BufsInfoAttachment.add_attachment_package(test_doc, attachs)
@@ -322,7 +327,7 @@ describe BufsInfoAttachment do
                test_file2_basename => {'data' => data2, 'md' => md_params2}
               }
     test_doc = @test_doc
-    test_doc_id = test_doc.model_metadata['_id']
+    test_doc_id = test_doc.model_metadata[:_id]
     test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
     test_attachment = BufsInfoAttachment.get(test_attachment_id)
     bia = BufsInfoAttachment.add_attachment_package(test_doc, attachs)
