@@ -172,10 +172,10 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     doc_params = get_default_params.merge({:my_category => 'cat_test1', :parent_categories => orig_parent_cats})
     doc_with_new_parent_cat = make_doc_no_attachment(doc_params)
     new_cat = 'new parent cat'
-    initial_rev = doc_with_new_parent_cat.model_metadata['_rev']
+    initial_rev = doc_with_new_parent_cat.model_metadata[:_rev]
     #test
     doc_with_new_parent_cat.parent_categories_add(new_cat)
-    after_save_rev = doc_with_new_parent_cat.model_metadata['_rev']
+    after_save_rev = doc_with_new_parent_cat.model_metadata[:_rev]
     #check results
     #check doc in memory
     doc_with_new_parent_cat.parent_categories.should include new_cat
@@ -200,10 +200,10 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     doc_with_new_parent_cat = make_doc_no_attachment(doc_params)
     new_cat = 'old parent cat'
     doc_with_new_parent_cat.save
-    initial_rev = doc_with_new_parent_cat.model_metadata['_rev']
+    initial_rev = doc_with_new_parent_cat.model_metadata[:_rev]
     #test
     doc_with_new_parent_cat.parent_categories_add(new_cat)
-    after_save_rev = doc_with_new_parent_cat.model_metadata['_rev']
+    after_save_rev = doc_with_new_parent_cat.model_metadata[:_rev]
     #check results
     #check doc in memory
     doc_with_new_parent_cat.parent_categories.should include new_cat

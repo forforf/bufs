@@ -23,6 +23,37 @@ module DataStoreModels
       "#{collection_namespace}::#{node_key}"
     end  
 
+    def self.save(model_save_params, data)
+      db = model_save_params[:db]
+      raise "No database found to save data" unless db
+      raise "No id found in data: #{data.inspect}" unless data[:_id]
+      model_data = data.inject({}){|memo,(k,v)| memo["#{k}"] = v; memo}
+      raise "No id found in model data: #{model_data.inspect}" unless model_data['_id']
+      #db.save_doc(model_data)
+      begin
+        #TODO: Genericize this
+        #data = inject_node_db_metadata.inject({}){|memo,(k,v)| memo["#{k}"] = v; memo}
+        #puts "Injected Data: #{data}"
+        #puts "DB: #{self.class.db.inspect}"
+        res = db.save_doc(model_data)
+      rescue RestClient::RequestFailed => e
+        #TODO Update specs to test for this
+        if e.http_code == 409
+          raise "Document Conflict in the Database, most likely this is duplication. Error Code was 409. Need to build handling routine"
+          #puts "Found existing doc (id: #{self.db_id} while trying to save ... using it instead"
+          #existing_doc.parent_categories = (existing_doc.parent_categories + self.parent_categories).uniq
+          #existing_doc.description = self.description if self.description
+          #TODO: Update the below to the new class scheme
+          #existing_doc['_attachments'] = existing_doc['attachments'].merge(self['_attachments']) if self['_attachments']
+          #existing_doc['file_metadata'] = existing_doc['file_metadata'].merge(self['file_metadata']) if self['file_metadata']
+          #existing_doc.save
+          #return existing_doc
+        else
+          raise "Request Failed -- Response: #{res.inspect} Error:#{e}"
+        end
+      end
+    end
+
     def self.destroy_node(node)
       #att_doc = self.class.get(self.files_mgr.record_ref) if self.files_mgr.record_ref
       att_doc = node.class.user_attachClass.get(node.attachment_doc_id) if node.attachment_doc_id
@@ -48,7 +79,8 @@ end
 module DataStructureModels
   module Bufs
     #Required Keys on instantiation
-    RequiredKeys = [:my_category]
+    RequiredInstanceKeys = [:my_category]
+    RequiredSaveKeys = [:my_category]  #duplicative?
     NodeKey = :my_category #TODO look at supporting multiple node keys
     
   end
@@ -67,7 +99,7 @@ module BufsInfoDocEnvMethods
   #The goal is to have the class environment completed abstracted from the
   #operations (i.e. methods) of the class. Perfect abstraction would yield
   #a model class that could be readily applied to differnt models, and perhaps 
-  #eliminate the need for an abstract class to encapsulate the modesl (the current approach) 
+  #elimivgnate the need for an abstract class to encapsulate the modesl (the current approach) 
   #The class variables should be able to be reused across all models (yet to be seen if this is possible)
   #The structure of the environment is a hash (which can contain multiple class environments)
   #           { env_name => env_options_for_that_particular_class }
@@ -400,7 +432,8 @@ class BufsInfoDoc
                                :db_metadata_keys,
                                :namespace,
                                :files_mgr,
-                               :views_mgr
+                               :views_mgr,
+                               :model_save_params
   end
 
   ##Instance Accessors
@@ -417,6 +450,7 @@ class BufsInfoDoc
     @db_user_id = db_user_id
     couch_db_location = BufsInfoDocEnvMethods.set_db_location(couch_db_host, db_name_path)
     @db = CouchRest.database!(couch_db_location)
+    @model_save_params = {:db => @db}
     @collection_namespace = BufsInfoDocEnvMethods.set_collection_namespace(db_name_path, db_user_id)
     @design_doc = BufsInfoDocEnvMethods.set_couch_design(@db)#, @collection_namespace)
     @query_all = BufsInfoDocEnvMethods.query_for_all_collection_records(@collection_namespace)
@@ -565,7 +599,7 @@ class BufsInfoDoc
     #make sure keys are symbols
     init_params = init_params.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
     @user_data, @model_metadata = filter_user_from_model_data(init_params)
-    data_validations(@user_data)
+    instance_data_validations(@user_data)
     node_key = get_user_data_id(@user_data)
     @model_metadata = update_model_metadata(@model_metadata,node_key)
     
@@ -583,11 +617,18 @@ class BufsInfoDoc
     [init_params, model_metadata]
   end
 
-  def data_validations(user_data)
+  def instance_data_validations(user_data)
     #Check for Required Keys
-    required_keys = DataStructureModels::Bufs::RequiredKeys
+    required_keys = DataStructureModels::Bufs::RequiredInstanceKeys
     required_keys.each do |rk|
       raise ArgumentError, "Requires a value to be assigned to the key #{rk} for instantiation" unless user_data[rk]
+    end
+  end
+
+  def save_data_validations(user_data)
+    required_keys = DataStructureModels::Bufs::RequiredSaveKeys
+    required_keys.each do |rk|
+      raise ArgumentError, "Requires a value to be assigned to the key #{rk} to be set before saving" unless user_data[rk]
     end
   end
 
@@ -700,39 +741,20 @@ class BufsInfoDoc
   #Save the object to the CouchDB database
   def save
     #puts "Saving"
-    #TODO Generic Save Validations (DataStructureModel)
-    raise ArgumentError, "Requires my_category to be set before saving" unless self.my_category
+    #raise ArgumentError, "Requires my_category to be set before saving" unless self.my_category
+    save_data_validations(self.user_data)
     node_key = DataStructureModels::Bufs::NodeKey
     node_id = self.model_metadata[node_key]
     existing_doc = DataStoreModels::CouchRest.generate_model_key(@collection_namespace, node_id)
     #existing_doc = self.class.get(self.db_id)
-    begin
-      #TODO: Genericize this
-      data = inject_node_db_metadata.inject({}){|memo,(k,v)| memo["#{k}"] = v; memo}
-      #puts "Injected Data: #{data}"
-      #puts "DB: #{self.class.db.inspect}"   
-      res = self.class.db.save_doc(data)
-    rescue RestClient::RequestFailed => e
-      if e.http_code == 409
-        raise "Document Conflict in the Database, most likely. Error Code was 409, however my handling routine needs to be updated to new architecture"
-        puts "Found existing doc (id: #{self.db_id} while trying to save ... using it instead"
-        existing_doc.parent_categories = (existing_doc.parent_categories + self.parent_categories).uniq
-        existing_doc.description = self.description if self.description
-        #TODO: Update the below to the new class scheme
-        existing_doc['_attachments'] = existing_doc['attachments'].merge(self['_attachments']) if self['_attachments']
-        existing_doc['file_metadata'] = existing_doc['file_metadata'].merge(self['file_metadata']) if self['file_metadata']
-        existing_doc.save
-        return existing_doc
-      else
-        raise "Request Failed -- Response: #{res.inspect} Error:#{e}"
-      end
-    end
+    model_data = inject_node_db_metadata
+    res = DataStoreModels::CouchRest.save(self.class.model_save_params, model_data)
       #puts "Save Success"
       #p res
-      version_key = DataStoreModels::CouchRest::VersionKey
-      rev_data = {version_key => res['rev']}
-      update_self(rev_data)
-      #self.model_metadata.merge!(rev_data)
+    version_key = DataStoreModels::CouchRest::VersionKey
+    rev_data = {version_key => res['rev']}
+    update_self(rev_data)
+    #self.model_metadata.merge!(rev_data)
     return self
   end
 
