@@ -111,16 +111,8 @@ describe UserDB, "Basic database operations" do
   it "should perform basic collection operations properly" do
     user1_doc = @user1_db.docClass.new({:my_category => "user1_data"})
     user2_doc = @user2_db.docClass.new({:my_category => "user2_data"})
-    #puts "Checking if env is set correctly for save"
-    #puts "User1"
-    #p @user1_db.docClass
-    #p @user1_db.docClass.db
-    #puts "User2"
-    #p @user2_db.docClass
-    #p @user2_db.docClass.db
     user1_doc.save
     user2_doc.save
-    #puts "User Doc Classes: #{ UserDB.user_to_docClass.inspect}"
     #TODO: Fix the database state so that these tests are valid (fixed?)
     UserDB.user_to_docClass[@user1_id].should == @user1_db.docClass
     UserDB.user_to_docClass[@user2_id].should == @user2_db.docClass
@@ -206,7 +198,6 @@ describe UserDB, "Basic database operations" do
     new_cat = 'new parent cat'
 
     UserDB.user_to_docClass.each do |user_id, docClass|
-      #p docs_with_new_parent_cat[user_id]
     end
 
     #test
@@ -473,15 +464,9 @@ describe UserDB, "Document Operations with Attachments" do
     att_docs = {}
     UserDB.user_to_docClass.each do |user_id, docClass|
       id_of_doc_w_att = basic_docs[user_id].model_metadata[:_id]
-      puts "ID of doc w att: #{id_of_doc_w_att}"
       doc_w_att = docClass.get(id_of_doc_w_att)
-      puts "doc w/ atts: #{doc_w_att.inspect}"
       att_doc_ids[user_id] = doc_w_att.attachment_doc_id
-      puts "Attachment Doc Ids: #{doc_w_att.attachment_doc_id}"
-      puts "Attachment Doc Ids: #{att_doc_ids[user_id].inspect}"
-      puts "Attach Class: #{docClass.user_attachClass.inspect}"
       att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
-      puts "Attachment Doc: #{att_docs[user_id].inspect}"
       doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
       db_doc.attachment_doc_id.should == att_docs[user_id][:_id]
@@ -668,10 +653,7 @@ describe UserDB, "Document Operations with Attachments" do
       doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
       att_doc_ids[user_id] = db_doc.attachment_doc_id
-      #puts "Attachment Doc ID: #{att_doc_id}"
       att_docs[user_id] = docClass.user_attachClass.get(att_doc_ids[user_id])
-      #puts "Attachment Doc: #{att_doc.inspect}"
-      #p att_doc['_attachments'].keys
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_basename)
       att_docs[user_id]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
     end
@@ -830,9 +812,7 @@ describe UserDB, "Document Operations with Attachments" do
       doc.my_category.should == 'delete_test1'
       docClass.call_view(:my_category, doc.my_category).size.should == 0
       doc_att_ids[user_id].should_not == nil
-      puts "doc_att_doc_id: #{doc_att_ids[user_id]}"
       doc_atts[user_id] = docClass.user_attachClass.get(doc_att_ids[user_id])
-      #p bia
       doc_atts[user_id].should == nil
     end
   end

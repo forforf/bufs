@@ -197,19 +197,17 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
             att_data = sorted_attachments['data_by_name'][esc_new_att_name]
             att_md =  sorted_attachments['att_md_by_name'][esc_new_att_name]
             working_doc.put_attachment(esc_new_att_name, att_data,att_md)
-            #puts "Database Version for that id(fnmame existed): #{BufsInfoAttachment.get(working_doc['_id']).inspect}"
           else
             #do anything here?
           end
         else #filename does not exist in attachment
-          puts "Attachment Name not found in Attachment Document, adding #{esc_new_att_name}"
+          #puts "Attachment Name not found in Attachment Document, adding #{esc_new_att_name}"
           sorted_attachments = BufsInfoAttachmentHelpers.sort_attachment_data(esc_new_att_name => new_data)
           #update doc
           working_doc['md_attachments'] = working_doc['md_attachments'].merge(sorted_attachments['cust_md_by_name'])
           #update attachments
           working_doc.save
           #Add Couch attachment data
-          puts "Updating Native Attachments in Database"
           att_data = sorted_attachments['data_by_name'][esc_new_att_name]
           att_md =  sorted_attachments['att_md_by_name'][esc_new_att_name]
           working_doc.put_attachment(esc_new_att_name, att_data,att_md)
@@ -252,27 +250,17 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
   private
 
   def self.find_most_recent_attachment(attachment_data1, attachment_data2)
-    #puts "Finding most recent attachment"
+    #"Finding most recent attachment"
     most_recent_attachment_data = nil
     if attachment_data1 && attachment_data2
-      #puts "attachments:"
-      #p attachment_data1['file_modified']
-      #p attachment_data2['file_modified']
-      #p attachment_data2['file_modified']
-      #p attachment_data2['file_modified']
-      #p Time.parse(attachment_data1['file_modifed'])
-      #p Time.parse(attachment_data2['file_modified'])
       if attachment_data1['file_modified'] >= attachment_data2['file_modified']
-        #puts "attachment1 is the most recent: #{attachment_data1['file_modified']}"
         most_recent_attachment_data = attachment_data1
       else
-        #puts "attachment2 is the most recent: #{attachment_data2['file_modified']}"
         most_recent_attachment_data = attachment_data2
       end
     else
       most_recent_attachment_data = attachment_data1 || attachment_data2
     end
-    #puts "Returning most recent attachment"
     most_recent_attachment_data
   end
 

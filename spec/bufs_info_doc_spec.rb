@@ -118,17 +118,11 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     doc_to_save = make_doc_no_attachment(doc_params.dup)
 
     #test
-    puts "Saving Doc: #{doc_to_save.model_metadata[:_id]}"
     doc_to_save.save
-    puts "Saved Doc: #{doc_to_save.model_metadata[:_id]}"
-    puts "DB saved to: #{doc_to_save.class.class_env.db.inspect}"
     
     #check results
     doc_params.keys.each do |param|
-      puts "Param: #{param.inspect}"
-      puts "Id for doc: #{doc_to_save.db_id}"
       db_param = CouchDB.get(doc_to_save.db_id)[param]
-      puts "Param returnd from db: #{db_param.inspect}"
       doc_to_save.user_data[param].should == db_param
       #test accessor method
       doc_to_save.__send__(param).should == db_param
@@ -181,8 +175,6 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     doc_with_new_parent_cat.parent_categories.should include new_cat
     #check database
     doc_params.keys.each do |param|
-      puts "Param: #{param.inspect}"
-      puts "Doc w new Parent: #{doc_with_new_parent_cat.inspect}"
       db_param = CouchDB.get(doc_with_new_parent_cat.model_metadata[:_id])[param]
       #doc_with_new_parent_cat[param].should == db_param
       #test accessor method
@@ -240,10 +232,8 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     #doc_rev1 = doc_existing_new_parent_cat.model_metadata['_rev']
     #doc_rev0.should_not == doc_rev1
     #check results
-    #puts "Adding PCats: #{doc_existing_new_parent_cat.parent_categories.inspect}"
     #check doc in memory
     new_cats.each do |new_cat|
-      #puts "Specing it: #{doc_existing_new_parent_cat.parent_categories.inspect}"
       existing_cats = doc_existing_new_parent_cat.parent_categories
       doc_existing_new_parent_cat.parent_categories.should include new_cat
       #ex_cats = existing_cats
@@ -251,8 +241,6 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     end
     #check database
     parent_cats = CouchDB.get(doc_existing_new_parent_cat.model_metadata[:_id])[:parent_categories]
-    puts "---"
-    p parent_cats
     new_cats.each do |cat|
       parent_cats.should include cat
     end
