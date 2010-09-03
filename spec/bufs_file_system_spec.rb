@@ -21,48 +21,63 @@ module BufsFileSystemSpecHelpers
     #                  :parent_categories => ['default_parent'],
     #	      :description => 'default description'}
     init_params = get_default_params.merge(override_defaults)
+    #raise "Init from spec: #{init_params.inspect}"
     return BufsFileSystem.new(init_params)
   end
 
 end
 
+#initialize Class TODO: add spec to test failure cases
+
+ModelDir = 'BufsFileSystem_DefaultModel'
+DummyUserID = 'StubID1'
+FSEnvironment = {:bufs_file_system_env => { :path => File.join(TestFSModelBaseDir,ModelDir),
+                                            :user_id => DummyUserID }
+
+                }
+
+BufsFileSystem.set_environment(FSEnvironment)
 
 describe BufsFileSystem, "Initial Class Operations" do
 
   #normally set in dynamic class definitiona
-  ModelDir = '/BufsFileSystem_DefaultModel'
-  BufsFileSystem.use_directory(TestFSModelBaseDir + ModelDir)
+  #ModelDir = '/BufsFileSystem_DefaultModel'
+  #BufsFileSystem.use_directory(TestFSModelBaseDir + ModelDir)
 
   it "should have a directory to operate in" do
     #test
-    BufsFileSystem.namespace.should == TestFSModelBaseDir + ModelDir
-    File.exist?(BufsFileSystem.namespace).should == true
+    collection_root = File.dirname(BufsFileSystem.class_env.namespace)
+    #BufsFileSystem.class_env.namespace.should == File.join(TestFSModelBaseDir, ModelDir)
+    collection_root.should == File.join(TestFSModelBaseDir, ModelDir)
+    File.exist?(collection_root).should == true
   end
 
-  it "should have class method to return all nodes" do
-    BufsFileSystem.all.class.should == Array
+  #TODO: make this more robust
+  it "should have class method to return all native files" do
+    BufsFileSystem.all_native_records.class.should == Array
   end
-  
 end
-
+  
 describe BufsFileSystem, "Basic Node Operations (no attachments)" do
   include BufsFileSystemSpecHelpers
 
-  ModelDir = '/BufsFileSystem_DefaultModel'
-  BufsFileSystem.use_directory(TestFSModelBaseDir + ModelDir)
+  #ModelDir = '/BufsFileSystem_DefaultModel'
+  #BufsFileSystem.use_directory(TestFSModelBaseDir + ModelDir)
 
   before(:each) do
-    all_nodes = BufsFileSystem.all
-    all_nodes.each do |node|
-       node.destroy
-    end
+    BufsFileSystem.destroy_all
+    #all_nodes = BufsFileSystem.all_native_records
+    #all_nodes.each do |node|
+    #   node.destroy
+    #end
   end
 
   after(:all) do
-    all_nodes = BufsFileSystem.all
-    all_nodes.each do |node|
-       node.destroy
-    end
+    BufsFileSystem.destroy_all
+    #all_nodes = BufsFileSystem.all_native_records
+    #all_nodes.each do |node|
+    #   node.destroy
+    #end
   end
 
 
@@ -71,8 +86,12 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     BufsFileSystem.all.size.should == 0
     #test
     default_node = BufsFileSystem.new(get_default_params)
-    #check results
-    default_node.my_category.should == get_default_params[:my_category]
+    #check results (instance variables were dynamically generated from data)
+    my_params = [:my_category, :parent_categories, :description]
+    my_params.each do |my_param|
+      default_node.__send__(my_param).should == get_default_params[my_param]
+    end
+    #default_node.my_category.should == get_default_params[:my_category]
     #we haven't saved anything yet
     BufsFileSystem.all.size.should == 0
   end
@@ -99,11 +118,12 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
   it "should not save if required fields don't exist" do
     #set initial conditions
     orig_nodes_size = BufsFileSystem.all.size
-    bad_fs_info_node1 = BufsFileSystem.new(:parent_categories => ['no_my_category'],
+    lambda {bad_fs_info_node1 = BufsFileSystem.new(:parent_categories => ['no_my_category'],
                                           :description => 'some description',
                                           :file_metadata => {})
+           }.should raise_error(ArgumentError)
    #test
-   lambda { bad_fs_info_node1.save }.should raise_error(ArgumentError)
+   #lambda { bad_fs_info_node1.save }.should raise_error(ArgumentError)
 
    #check results
    BufsFileSystem.all.size.should == orig_nodes_size
@@ -119,9 +139,14 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     node_to_save.save
 
     #check results 
-    file_node_path = node_to_save.path_to_node_data #node_to_save.class.namespace + '/' + node_to_save.my_category
+    save_params = BufsFileSystem.class_env.model_save_params
+    node_name = node_params[:my_category]
+    parent_path = save_params[:nodes_save_path]
+    file_name = save_params[:data_file]
+    file_node_path = File.join(parent_path, node_name)
+    #file_node_path = node_to_save.path_to_node_data #node_to_save.class.namespace + '/' + node_to_save.my_category
     File.exists?(file_node_path).should == true
-    data_file_path = file_node_path + '/' + BufsFileSystem.data_file_name
+    data_file_path = File.join(file_node_path, file_name) #file_node_path + '/' + BufsFileSystem.data_file_name
     #read node file data
     node_file_data = nil
     File.open(data_file_path, 'r'){|f| node_file_data = f.read}
@@ -131,6 +156,8 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     end
   end
 
+end
+=begin
   it "should have a class method for finding a node by its category" do
     #set initial conditions
     node_params = get_default_params.merge({:my_category => 'find_me'})
@@ -139,10 +166,10 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     #test
     found_node = BufsFileSystem.by_my_category('find_me').first
     #check results
-    node_to_save.node_data_hash.each do |parm_key, parm_val|
+    node_to_save.user_data.each do |parm_key, parm_val|
       puts "pk: #{parm_key.inspect}, pv: #{parm_val.inspect}"
-      puts "fnv: #{found_node.node_data_hash.inspect}"
-      parm_val.should == found_node.node_data_hash[parm_key]
+      puts "fnv: #{found_node.user_data.inspect}"
+      parm_val.should == found_node.user_data[parm_key]
     end
   end
 

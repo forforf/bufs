@@ -5,9 +5,7 @@ require 'time'
 require 'json'
 
 #bufs libraries
-require File.dirname(__FILE__) + '/helpers/hash_helpers'
 require File.dirname(__FILE__) + '/bufs_escape'   #need to insert this 
-require File.dirname(__FILE__) + '/bufs_file_libs_tmp'
 
 #File Node Helpers
 class Dir  #monkey patch  (duck punching?)
@@ -35,42 +33,12 @@ class BufsFileSystem
       #:description_file_basename, :win_dir, :linux_dir
   #end
 
-  include BufsFileEnvMethods 
-
-  ##Class Accessors
-  class << self; attr_accessor :class_env,
-                               :metadata_keys
-  end
-
-  def self.set_environment(env)
-    @class_env = ClassEnv.new(env)
-    @metadata_keys = DataStoreModels::FileStore::MetadataKeys
-  end
-
-  #put attachClass here
-
-  def self.all_native_records
-    @class_env.query_all
-  end
-
-  #call view goes here
-
-  #get(id) goes here
-
-  def self.destroy_all
-    all_records = self.all_native_records
-    #raise "BFS about to destroy: #{all_records.inspect}"
-    @class_env.destroy_bulk(all_records)
-    #all_records.each do |record|
-    #  @class_env.delete(record)
-    #end
-  end
  #bind to directory model
   #must be set before it can be used
   #child classes should set this in their
   #class definitions
  #---
-  def self.use_directory(bfs_dir)
+ def self.use_directory(bfs_dir)
     @bfs_dir = bfs_dir
     FileUtils.mkdir_p(File.expand_path(@bfs_dir))
   end
@@ -112,7 +80,7 @@ class BufsFileSystem
 
   #TODO: Determine if there's a way for file_metadata and filename to be added dynamically
   attr_accessor :file_metadata, :filename, 
-                :my_dir, :attached_files, :user_data, :model_metadata
+                :my_dir, :attached_files, :node_data_hash
 
   def self.model_dir
     "#{@base_dir}/#{self.class.namespace}"
@@ -146,35 +114,31 @@ class BufsFileSystem
     end
   end
 
-  #TODO: Harmonize this across models
   def self.all
-    entries = self.all_native_records
-    nodes = []
-    entries.each do |entry|
-      data_path = File.join(self.class_env.namespace, entry, self.class_env.data_file_name)
-      data = File.open(data_path, 'r'){|f| f.read}
-      nodes << self.new(data)
-    end
-    nodes
-=begin
-    top_dir = self.class_env.namespace
-    unless File.exists?(top_dir)
-      raise "Can't get all. The File System Directory to work from does not exist: #{top_dir}"
+    unless File.exists?(self.namespace)
+      raise "Can't get all. The File System Directory to work from does not exist: #{self.name_space}"
     end
     all_nodes = []
-    #my_dir = self.namespace + '/'
-    all_entries = Dir.working_entries(top_dir)
+    my_dir = self.namespace + '/'
+    all_entries = Dir.working_entries(my_dir)
     all_entries.each do |cat_entry|
-      wkg_dir = File.join(top_dir, cat_entry) #my_dir + cat_entry + '/'
+      wkg_dir = my_dir + cat_entry + '/'
       cat_name = cat_entry
-      #raise "set data file name"
-      data_fname = self.class_env.data_file_name
+      #parent_cat_fname = wkg_dir + BufsFileSystem.parent_categories_file_basename
+      #parent_cats = []
+      #if File.exists?(parent_cat_fname)
+      #  parent_cats = JSON.parse(File.open(wkg_dir + parent_cat_fname){|f| f.read})
+      #end
+      #desc = ""
+      #desc_fname = BufsFileSystem.description_file_basename
+      #if File.exists?(desc_fname)
+      #  desc = File.open(wkg_dir + BufsFileSystem.description_file_basename){|f| f.read}
+      #end
+      data_fname = self.data_file_name
       bfs = nil
-      data_path = File.join(wkg_dir, data_fname)
-      if File.exists?(data_path)
-       bfs_data = JSON.parse(File.open(data_path) {|f| f.read})
-       bfs_data = HashKeys.str_to_sym(bfs_data)
-        bfs = self.new(bfs_data) if bfs_data[:my_category]  #FIXME What to do when required cat doesn't exist?
+      if File.exists?(wkg_dir + data_fname)
+       bfs_data = JSON.parse(File.open(wkg_dir + data_fname) {|f| f.read})
+        bfs = self.new(bfs_data)
         files = Dir.file_data_entries(wkg_dir)
         files.each do |f|
           full_filename = wkg_dir + '/' + f
@@ -197,8 +161,7 @@ class BufsFileSystem
       all_nodes << bfs if bfs
 
     end
-    all_nodes 
-=end
+    all_nodes
   end
 
   def self.by_my_category(my_cat)
@@ -265,16 +228,9 @@ class BufsFileSystem
   end
 
   def initialize(init_params = {})
-    @saved_to_model = nil #TODO rename to sychronized_to_model
-    #make sure keys are symbols
-    init_params = HashKeys.str_to_sym(init_params) 
-    @user_data, @model_metadata = filter_user_from_model_data(init_params)
-    instance_data_validations(@user_data)
-    #raise "No parameters were passed to #{self.class} initialization" if (init_params.nil?||init_params.empty?)
-    #raise "No directory has been set for #{self}" unless self.class.namespace
-    node_key = get_user_data_id(@user_data)
-    @model_metadata = update_model_metadata(@model_metadata, node_key)
-    #@node_data_hash = {}
+    raise "No parameters were passed to #{self.class} initialization" if (init_params.nil?||init_params.empty?)
+    raise "No directory has been set for #{self}" unless self.class.namespace
+    @node_data_hash = {}
     init_params.each do |attr_name, attr_value|
       iv_set(attr_name.to_sym, attr_value)
     end
@@ -282,63 +238,11 @@ class BufsFileSystem
     #then there is no my_category method either
     #iv_set(:my_category, nil)
     #raise "NS: #{self.class.namespace.inspect} My Cat: #{self.my_category.inspect}"
-    #@my_dir = self.class.namespace + '/' + self.my_category + '/' if self.my_category
+    @my_dir = self.class.namespace + '/' + self.my_category + '/' if self.my_category
 
     @attached_files = []
   end
 
-  def filter_user_from_model_data(init_params)
-    model_metadata_keys = DataStoreModels::FileStore::MetadataKeys 
-    model_metadata = {}
-    model_metadata_keys.each do |k|
-      model_metadata[k] = init_params.delete(k) #delete returns deleted value
-    end
-    [init_params, model_metadata]
-  end
-
-  def instance_data_validations(user_data)
-    #raise user_data.inspect
-    #Check for Required Keys
-    required_keys = DataStructureModels::Bufs::RequiredInstanceKeys
-    required_keys.each do |rk|
-      raise ArgumentError, "Requires a value to be assigned to the key #{rk.inspect} for instantiation" unless user_data[rk]
-    end
-  end
-  
-  def save_data_validations(user_data)
-    required_keys = DataStructureModels::Bufs::RequiredSaveKeys
-    required_keys.each do |rk|
-      raise ArgumentError, "Requires a value to be assigned to the key #{rk} to be set before saving" unless user_data[rk]
-    end
-  end
-
-  def get_user_data_id(user_data)
-    #FIXME User Node Key from user generated, not hard coded
-    user_node_key = DataStructureModels::Bufs::NodeKey
-    user_data[user_node_key]
-  end
-
-  def update_model_metadata(metadata, node_key)
-    #updates @saved_to_model (make a method instead)?
-    model_key = DataStoreModels::FileStore::ModelKey
-    version_key = DataStoreModels::FileStore::VersionKey
-    namespace_key = DataStoreModels::FileStore::NamespaceKey
-    id = metadata[model_key] 
-    namespace = metadata[namespace_key] 
-    rev = metadata[version_key]
-    namespace = @bfs_dir unless namespace #self.class.class_env.collection_namespace unless namespace
-    #id = DataStoreModels::CouchRest.generate_model_key(namespace, node_key) unless id  #faster without the conditional?
-    updated_key_metadata = {model_key => id, namespace_key => namespace}
-    #updated_key_metadata.delete(version_key) unless rev  #TODO Is this too model specific?
-    metadata.merge!(updated_key_metadata)
-    #if rev 
-    #  @saved_to_model = rev 
-    #  metadata.merge!({version_key => rev}) 
-    #else
-    #  metadata.delete(version_key)  #TODO  Is this too model specific?
-    #end
-    metadata
-  end
 
   #this method is basically to make it sort of act like a hash and struct
   #FIXME: IMPORTANT: This breaks under some circumstances of dynamic classing
@@ -347,17 +251,15 @@ class BufsFileSystem
   #going on.  Need to isolate and test.  Work around is to use the hash to
   #access the data
   def iv_set(attr_var, attr_value)
-    ops = NodeElementOperations::Ops
-    add_op_method(attr_var, ops[attr_var]) if ops[attr_var] #incorporates predefined methods
     #update the data store
-    @user_data[attr_var] = attr_value
+    @node_data_hash[attr_var] = attr_value
     #instance_variable_set("@#{attr_var}", attr_value)
     #dynamic method acting like an instance variable getter
     self.class.__send__(:define_method, "#{attr_var}".to_sym,
-       lambda {@user_data[attr_var]} )
+       lambda {@node_data_hash[attr_var]} )
     #dynamic method acting like an instance variable setter
     self.class.__send__(:define_method, "#{attr_var}=".to_sym, 
-       lambda {|new_val| @user_data[attr_var] = new_val} )
+       lambda {|new_val| @node_data_hash[attr_var] = new_val} )
     #why not just use instance variables?
     #because instance variables don't have a callback method
     #that would allow me to update the data store (@node_data_hash)
@@ -365,46 +267,6 @@ class BufsFileSystem
     #the instance
   end
   
-  def add_op_method(param, ops)
-    ops.each do |op_name, op_proc|
-      method_name = "#{param.to_s}_#{op_name.to_s}".to_sym
-      wrapped_op = method_wrapper(param, op_proc)
-      self.class.__send__(:define_method, method_name, wrapped_op)
-    end
-  end 
-
-  #TODO: If a wrapper it is applied the data will be saved to the model
-  #      This creates a bit of inconsistent behavior between data w/o operations
-  #      and data with operations.  See if it can be made consistent.
-
-  #The method operations are completely decoupled from the object that they are bound to.
-  #This creates a problem when operations act on themselves (for example adding x to
-  #the current value requires the adder to determine the current value of x). To get
-  #around this self-referential problem while maintaining the decoupling this wrapper is used.
-  #Essentially it takes the unbound two parameter (this, other) and binds the current value
-  #to (this).  This allows a more natural form of calling these operations.  In other words
-  # description_add(new_string) can be used, rather than description_add(current_string, new_string).
-  def method_wrapper(param, unbound_op)
-    #What I want is to call obj.param_op(other)   example: obj.links_add(new_link)
-    #which would then add new_link to obj.links
-    #however, the predefined operation (add in the example) has no way of knowing
-    #about links, so the predefined operation takes two parameters (this, other)
-    #and this method wraps the obj.links so that the links_add method doesn't have to
-    #include itself as a paramter to the predefined operation
-    #lambda {|other| @user_data[param] = unbound_op.call(@user_data[param], other)}
-    lambda {|other| this = self.__send__("#{param}".to_sym) #original value
-                    rtn_data = unbound_op.call(this, other)
-                    new_this = rtn_data[:update_this]
-                    self.__send__("#{param}=".to_sym, new_this)
-                    it_changed = true
-                    it_changed = false if (this == new_this) || !(rtn_data.has_key?(:update_this)) 
-                    not_in_model = !@saved_to_model
-                    self.save if (not_in_model || it_changed)#unless (@saved_to_model && save) #don't save if the value hasn't changed
-                    rtn = rtn_data[:return_value] || rtn_data[:update_this]
-                    rtn
-           }
-  end
-
   #TODO: Add to spec
   def path_to_node_data
     raise "The category has not been set for #{self}" unless self.my_category
@@ -412,23 +274,14 @@ class BufsFileSystem
   end
 
   def to_hash
-    @user_data
+    @node_data_hash
   end
 
   def save
-    save_data_validations(self.user_data)
-    node_key = DataStructureModels::Bufs::NodeKey
-    node_id = self.model_metadata[node_key]
-    model_data = inject_node_metadata
-    #raise model_data.inspect
-    #TODO decide between explicit parameter passing vs keeping model stuff in model
-    res = DataStoreModels::FileStore.save(self.class.class_env.model_save_params, model_data)
-    version_key = DataStoreModels::FileStore::VersionKey
-    rev_data = {version_key => res['rev'].to_s}
-    update_self(rev_data)
-    #unless self.my_category
-    #  raise ArgumentError, "Requires my_category to be set before saving"
-    #end
+
+    unless self.my_category
+      raise ArgumentError, "Requires my_category to be set before saving"
+    end
     #TODO: If parent categories are not mandatory the code raising an error can be removed
     #if self.parent_categories.nil? || self.parent_categories.empty?
     #  raise ArgumentError, "Requires at least one parent category to be set before saving"
@@ -436,38 +289,24 @@ class BufsFileSystem
 
     #make model directory
       #debug for permissions problems
-      #FileUtils.mkdir_p "/tmp/bfs_test"
+      FileUtils.mkdir_p "/tmp/bfs_test"
       #end debug
-    #my_dir = File.join(@namespace, self.my_category)
-    #FileUtils.mkdir_p(my_dir)
+    my_dir = self.class.namespace + '/' + self.my_category + '/'
+    FileUtils.mkdir_p(my_dir)
 
-    #node_data_file = my_dir + self.class.data_file_name
-    #user_data = self.to_hash
-    #raise "No data found for #{self}" unless user_data
+    node_data_file = my_dir + self.class.data_file_name
+    node_data_hash = self.to_hash
+    raise "No data found for #{self}" unless node_data_hash
 
     #desc_file = my_dir + BufsFileSystem.description_file_basename
     #self.description = 'This description was automatically generated on #{Time.now}' unless self.description
     #File.open(desc_file, 'w') { |f| f.write(self.description.to_s)} if self.description
-    #File.open(node_data_file, 'w') {|f| f.write(user_data.to_json)} #FIXME need to mixin model data
+    File.open(node_data_file, 'w') {|f| f.write(node_data_hash.to_json)}
     #file metadata is part of the data file itself (if it exists)
     #self  <-- Right thing to do, but need stability beofre changing (for testing)
   end
 
-  def inject_node_metadata
-    inject_metadata(@user_data)
-  end
-
-  def inject_metadata(node_data)
-    node_data.merge(@model_metadata)
-  end
-
-  def update_self(rev_data)
-    self.model_metadata.merge!(rev_data)
-    version_key = DataStoreModels::FileStore::VersionKey
-    @saved_to_model = rev_data[version_key]
-  end
-
-  def  self.create_from_doc_node(node_obj)
+  def self.create_from_doc_node(node_obj)
     init_params = {}
     init_params['my_category'] = node_obj.my_category
     init_params['parent_categories'] = node_obj.parent_categories
@@ -498,9 +337,6 @@ class BufsFileSystem
 
   #TODO: replace hard coded methods based on data names with dynamically generated ones
   def add_parent_categories(new_cats)
-    puts "Warning:: add_parent_categories is being deprecated, use <param_name>_add instead ex: parent_categories_add(cats_to_add) "
-    parent_categories_add(new_cats)
-=begin
     current_cats = orig_cats = self.parent_categories||[]
     #current_cats = orig_cats = self.parent_categories||[]
     #TODO: should update node_data_hash
@@ -512,7 +348,6 @@ class BufsFileSystem
       self.parent_categories = current_cats
       self.save
     end
-=end
   end
   alias :add_category :add_parent_categories
   alias :add_categories :add_parent_categories
@@ -535,7 +370,7 @@ class BufsFileSystem
     puts "Add Raw Data --- (Unesc) File Name: #{File.basename(file_name)}"
     esc_filename = ::BufsEscape.escape(file_name)
     puts "Add Raw Data --- (Esc) File Name: #{File.basename(esc_filename)}"
-    raw_data_dir = #@my_dir # + my_cat
+    raw_data_dir = @my_dir # + my_cat
     FileUtils.mkdir_p(raw_data_dir) unless File.exist?(raw_data_dir)
     raw_data_filename = raw_data_dir + '/' + esc_filename
     File.open(raw_data_filename, 'wb'){|f| f.write(raw_data)}
