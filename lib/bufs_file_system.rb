@@ -240,6 +240,10 @@ class BufsFileSystem
 =end
 
   def self.by_parent_categories(par_cats)
+    puts "Warning:: Calling views by directly attached methods may be deprecated in the future"
+    self.call_view(:parent_categories, par_cats)
+  end
+=begin
     par_cats = [par_cats].flatten
     matched_nodes = []
     all_nodes = self.all
@@ -250,6 +254,7 @@ class BufsFileSystem
     end
     return matched_nodes
   end
+=end
 
   def initialize(init_params = {})
     @saved_to_model = nil #TODO rename to sychronized_to_model

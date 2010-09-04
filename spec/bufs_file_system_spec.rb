@@ -171,8 +171,7 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     end
   end
 
-end
-=begin
+
   it "should have a class method for finding nodes by parent categories" do
     #set initial conditions
     node_params = []
@@ -197,7 +196,6 @@ end
     end
   end
 
-
   #adding categories
   it "should add categories for a new node" do
     #set initial conditions
@@ -212,7 +210,8 @@ end
     #check node in memory
     test_node.parent_categories.should include new_parent_cat
     #check file
-    file_node_path = test_node.class.namespace + '/' + test_node.my_category
+    collection_path = test_node.class.class_env.namespace
+    file_node_path = File.join(collection_path, test_node.my_category)
     File.exists?(file_node_path).should == true
     data_file_path = file_node_path + '/' + BufsFileSystem.data_file_name
     #read node file data
@@ -231,7 +230,9 @@ end
     node_existing_new_parent_cat.save
     #verify initial conditions
     #check file
-    file_node_path = node_existing_new_parent_cat.class.namespace + '/' + node_existing_new_parent_cat.my_category
+    collection_path = node_existing_new_parent_cat.class.class_env.namespace
+    file_node_path = File.join(collection_path, node_existing_new_parent_cat.my_category)
+    #file_node_path = node_existing_new_parent_cat.class.namespace + '/' + node_existing_new_parent_cat.my_category
     File.exists?(file_node_path).should == true
     data_file_path = file_node_path + '/' + BufsFileSystem.data_file_name
     node_file_data = nil
@@ -270,7 +271,9 @@ end
     node_remove_parent_cat.save
     #verify initial conditions
     #check file
-    file_node_path = node_remove_parent_cat.class.namespace + '/' + node_remove_parent_cat.my_category
+    collection_path = node_remove_parent_cat.class.class_env.namespace
+    file_node_path = File.join(collection_path, node_remove_parent_cat.my_category)
+    #file_node_path = node_remove_parent_cat.class.namespace + '/' + node_remove_parent_cat.my_category
     File.exists?(file_node_path).should == true
     data_file_path = file_node_path + '/' + BufsFileSystem.data_file_name
     node_file_data = nil
@@ -304,6 +307,8 @@ end
     end
   end
 
+end
+=begin
   it "should save data files as a regular file" do
     #set initial conditions    
     test_filename = BufsFixtures.test_files['binary_data_pptx']

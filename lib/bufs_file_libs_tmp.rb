@@ -195,34 +195,32 @@ module DataStoreModels
       end
       return bfss
     end
-=begin      
-      map_str = "function(doc) {
-                     if (doc.bufs_namespace =='#{collection_namespace}' && doc.my_category ){
-                       emit(doc.my_category, doc);
-                    }
-		 }"
-      map_fn = { :map => map_str }
-      BufsInfoDocEnvMethods.set_view(@model_actor[:db], @model_actor[:design_doc], :my_category, map_fn)
-      raw_res = @model_actor[:design_doc].view :by_my_category, :key => match_key
-      rows = raw_res["rows"]
-      records = rows.map{|r| r["value"]}
-    end
-=end
 
-  def by_parent_categories(collection_namespace, match_keys)
-    
-    map_str = "function(doc) {
-                  if (doc.bufs_namespace == '#{collection_namespace}' && doc.parent_categories) {
-                         emit(doc.parent_categories, doc);
-                      };
-                  };"
-            #   }"
-    map_fn = { :map => map_str }
-    
-    BufsInfoDocEnvMethods.set_view(@model_actor[:db], @model_actor[:design_doc], :parent_categories, map_fn)
-    raw_res = @model_actor[:design_doc].view :by_parent_categories
-    rows = raw_res["rows"]
-    records = rows.map{|r| r["value"] if r["value"]["parent_categories"].include? match_keys}
+  def by_parent_categories(model_namespace, match_keys)
+    match_keys = [match_keys].flatten
+    #all_nodes = all collection method when all is moved into here
+    matching_node_data = []
+    all_wkg_entries = Dir.working_entries(model_namespace)
+    all_wkg_entries.each do |entry|
+      wkg_dir = File.join(model_namespace, entry)
+      if File.exists?(wkg_dir)
+        data_file_path = File.join(wkg_dir, @data_file)
+        json_data  = JSON.parse(File.open(data_file_path){|f| f.read})
+        node_data = HashKeys.str_to_sym(json_data)
+        match_keys.each do |k|
+          puts "Match: #{k}" # - data: #{node_data.inspect}"
+          pc = node_data[:parent_categories]
+          puts "Parent Categories to check: #{pc.inspect}"
+          if pc && pc.include?(k)
+            puts "Found: #{pc}"
+            matching_node_data << node_data
+            break  #we don't need to loop through each parent, if one already matches
+          end
+        end
+      end
+    end
+    #we now have all mathcing data
+    return matching_node_data
   end
 
   end 
@@ -493,7 +491,9 @@ module BufsFileEnvMethods
 
   def destroy_bulk(list_of_native_records)
     list_of_native_records.each do |r|
-      r = File.join(@namespace, r) unless File.dirname(r)
+      #puts "Dir: #{File.dirname(r)}"
+      r = File.join(@namespace, r) if File.dirname(r) == "."
+      #puts "Removing: #{r.inspect}"
       FileUtils.rm_rf(r)
     end
     nil #TODO ok to return nil if all docs destroyed? also, not verifying
