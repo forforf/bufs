@@ -160,8 +160,9 @@ module DataStoreModels
     attr_accessor :model_actor
 
 
-    def initialize(model_actor)
+    def initialize(model_actor=nil)
       @model_actor = model_actor #provides the model actor that can provide views
+      @data_file = model_actor[:data_file]
     end
 
     ## CouchDB View Definitions
@@ -169,22 +170,44 @@ module DataStoreModels
     #map is essentially a query and reduce is a way of aggregating
     #the query into summary type of information (example: summing records)
 
-    #Note this couples the model (CouchDB) and the parameter (my_category).  In other words
-    #this presupposes my_category should exist in the model, rather than inferring how to construct
-    #the view from the fact that my_category was used (I don't think the latter is possible for views)
-    def by_my_category(collection_namespace, match_key)
+    #TODO create an index to speed queries? sync issues?
+    def by_my_category(model_namespace, match_keys)
+      #raise "nt: #{nodetest.my_category.inspect}" if nodetest
+      #raise "No category provided for search" unless my_cat
+      #puts "Searching for #{my_cat.inspect}"
+      match_keys = [match_keys].flatten
+      my_dir = model_namespace
+      bfss = nil
+      match_keys.each do |match_key|
+        my_cat_dir = match_key
+        wkg_dir = File.join(my_dir, my_cat_dir)
+        if File.exists?(wkg_dir)
+          bfss = bfss || []
+          data_file_path = File.join(wkg_dir, @data_file)
+          node_data  = JSON.parse(File.open(data_file_path){|f| f.read})
+          #bfs = self.new(node_data)
+          bfss << node_data #bfs
+        end
+        #return bfss   #returned as an array for compatibility with other search and node types
+      #else
+      #  puts "Warning: #{wkg_dir.inspect} was not found"
+      #  return nil
+      end
+      return bfss
+    end
+=begin      
       map_str = "function(doc) {
                      if (doc.bufs_namespace =='#{collection_namespace}' && doc.my_category ){
                        emit(doc.my_category, doc);
                     }
-                 }"
+		 }"
       map_fn = { :map => map_str }
       BufsInfoDocEnvMethods.set_view(@model_actor[:db], @model_actor[:design_doc], :my_category, map_fn)
       raw_res = @model_actor[:design_doc].view :by_my_category, :key => match_key
       rows = raw_res["rows"]
       records = rows.map{|r| r["value"]}
     end
-
+=end
 
   def by_parent_categories(collection_namespace, match_keys)
     
@@ -455,7 +478,7 @@ module BufsFileEnvMethods
     @data_file_name = BufsFileEnvMethods.set_data_file_name
     @model_save_params = {:nodes_save_path => @namespace, :data_file => @data_file_name}
     #@files_mgr = DataStoreModels::CouchRest::FilesMgr.new(:attachment_actor_class => @user_attachClass)
-    #@views_mgr = DataStoreModels::CouchRest::ViewsMgr.new(:db => @db, :design_doc => @design_doc)
+    @views_mgr = DataStoreModels::FileStore::ViewsMgr.new({:data_file => @data_file_name})
   end
 
   def query_all  #TODO move to ViewsMgr
@@ -476,8 +499,6 @@ module BufsFileEnvMethods
     nil #TODO ok to return nil if all docs destroyed? also, not verifying
   end
 
-
   end #ClassEnv
-
 
 end

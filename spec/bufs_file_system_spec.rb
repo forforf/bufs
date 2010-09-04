@@ -156,8 +156,6 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     end
   end
 
-end
-=begin
   it "should have a class method for finding a node by its category" do
     #set initial conditions
     node_params = get_default_params.merge({:my_category => 'find_me'})
@@ -173,6 +171,8 @@ end
     end
   end
 
+end
+=begin
   it "should have a class method for finding nodes by parent categories" do
     #set initial conditions
     node_params = []

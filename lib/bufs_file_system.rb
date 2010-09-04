@@ -152,7 +152,8 @@ class BufsFileSystem
     nodes = []
     entries.each do |entry|
       data_path = File.join(self.class_env.namespace, entry, self.class_env.data_file_name)
-      data = File.open(data_path, 'r'){|f| f.read}
+      data_json = File.open(data_path, 'r'){|f| f.read}
+      data = JSON.parse(data_json)
       nodes << self.new(data)
     end
     nodes
@@ -201,7 +202,24 @@ class BufsFileSystem
 =end
   end
 
+
+  def self.call_view(param, match_keys)
+    view_method_name = "by_#{param}".to_sym
+    records = if @class_env.views_mgr.respond_to? view_method_name
+      #TODO: info and file differ in their use of namepsapce here
+      @class_env.views_mgr.__send__(view_method_name, @class_env.namespace, match_keys)
+    else
+      #TODO: Think of a more elegant way to handle an unknown view
+      raise "Unknown design view #{view_method_name} called for: #{param}"
+    end
+    nodes = records.map{|r| self.new(r)}
+  end
+
   def self.by_my_category(my_cat)
+    puts "Warning:: Calling views by directly attached methods may be deprecated in the future"
+    self.call_view(:my_category, my_cat)
+  end
+=begin
     #raise "nt: #{nodetest.my_category.inspect}" if nodetest
     raise "No category provided for search" unless my_cat
     #puts "Searching for #{my_cat.inspect}"
@@ -212,45 +230,14 @@ class BufsFileSystem
       #added 2/24 at 10:23 am due to spec failure in sync_node seems like BufsFileSystem bug fix
       node_data  = JSON.parse(File.open(wkg_dir + self.data_file_name){|f| f.read})
       bfs = self.new(node_data)
-      #
-      #cat_files = Dir.working_entries(wkg_dir)
-      #puts "Files in #{wkg_dir.inspect}"
-      #p cat_files
-      #TODO This is brittle, tie the meta categories names to the assignment at creation
-      #cat_files.delete('parent_categories.txt')
-      #cat_files.delete('description.txt')
       bfss = []
-      #if cat_files.size > 0
-      #  cat_files.each do |cat_file_name|
-      #    #parent_cats = JSON.parse(File.open(wkg_dir + BufsFileSystem.parent_categories_file_basename){|f| f.read})
-      #    #desc = File.open(wkg_dir + BufsFileSystem.description_file_basename){|f| f.read}
-      #    ##puts "BFS.by_my_category location for attachment file: #{wkg_dir + cat_file_name.inspect}"
-      #    ##file_mod_time = File.mtime(wkg_dir + cat_file_name) if File.exists?(wkg_dir + cat_file_name)
-      #    ##f_metadata = {'file_modified' => file_mod_time.to_s} if file_mod_time
-      #    ##puts "BFS.by_my_category file md: #{f_metadata.inspect}"
-      #    #bfs = BufsFileSystem.new(:parent_categories => parent_cats,
-      #    #                               :my_category => my_cat,
-      #    #                               :description => desc) #,
-      #    #                               #:file_metadata => f_metadata)
-      #    ##bfs.filename = cat_file_name
-      #  ##check for files
-      #    files = Dir.file_data_entries(wkg_dir)
-	#  files.each do |f|
-	#    full_filename = wkg_dir + '/' + f
-	#    bfs.add_data_file(full_filename)
-	#  end
-        #  bfss << bfs
-        # end
-        #return bfss  removed 2/24 at 10:14am wrong place
-      #else
-        bfss << bfs 
-      #end
+      bfss << bfs 
       return bfss   #returned as an array for compatibility with other search and node types
     else
       puts "Warning: #{wkg_dir.inspect} was not found"
       return nil
     end
-  end
+=end
 
   def self.by_parent_categories(par_cats)
     par_cats = [par_cats].flatten
@@ -500,6 +487,7 @@ class BufsFileSystem
   def add_parent_categories(new_cats)
     puts "Warning:: add_parent_categories is being deprecated, use <param_name>_add instead ex: parent_categories_add(cats_to_add) "
     parent_categories_add(new_cats)
+  end
 =begin
     current_cats = orig_cats = self.parent_categories||[]
     #current_cats = orig_cats = self.parent_categories||[]
@@ -513,7 +501,6 @@ class BufsFileSystem
       self.save
     end
 =end
-  end
   alias :add_category :add_parent_categories
   alias :add_categories :add_parent_categories
 
