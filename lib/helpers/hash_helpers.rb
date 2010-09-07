@@ -2,10 +2,12 @@ require 'ostruct'
 
 module HashKeys
   def self.str_to_sym(a_hash)
+    raise "#{a_hash.class.name} must respond to inject" unless a_hash.respond_to? :inject
     a_hash.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
   end
  
   def self.sym_to_str(a_hash) #inverse of above
+    raise "#{a_hash.class.name} must respond to inject" unless a_hash.respond_to? :inject
     a_hash.inject({}){|memo,(k,v)| memo["#{k}"] = v; memo}
   end
 end

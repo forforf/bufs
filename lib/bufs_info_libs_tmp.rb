@@ -1,5 +1,7 @@
 require 'couchrest'
 require 'monitor'
+require File.dirname(__FILE__) + '/bufs_info_attachment'
+require File.dirname(__FILE__) + '/bufs_info_link'
 
 
 #bufs libraries
@@ -7,6 +9,10 @@ require File.dirname(__FILE__) + '/node_element_operations'
 
 module DataStoreModels
   module CouchRest
+
+  AttachmentBaseID = "_attachments"
+  LinkBaseID = "_links"
+
 
   #The file handling is bound to the model, and can't be abstracted away. This means files can't be handled
   #via the dynamic methods used for other data structures.
@@ -172,9 +178,9 @@ module DataStoreModels
     #Note this couples the model (CouchDB) and the parameter (my_category).  In other words
     #this presupposes my_category should exist in the model, rather than inferring how to construct
     #the view from the fact that my_category was used (I don't think the latter is possible for views)
-    def by_my_category(collection_namespace, match_key)
+    def by_my_category(user_datastore_id, match_key)
       map_str = "function(doc) {
-                     if (doc.bufs_namespace =='#{collection_namespace}' && doc.my_category ){
+                     if (doc.bufs_namespace =='#{user_datastore_id}' && doc.my_category ){
                        emit(doc.my_category, doc);
                     }
                  }"
@@ -185,22 +191,22 @@ module DataStoreModels
       records = rows.map{|r| r["value"]}
     end
 
-
-  def by_parent_categories(collection_namespace, match_keys)
+    #namespace vs collection namespace may be confused here
+    def by_parent_categories(user_datastore_id, match_keys)
     
-    map_str = "function(doc) {
-                  if (doc.bufs_namespace == '#{collection_namespace}' && doc.parent_categories) {
+      map_str = "function(doc) {
+                  if (doc.bufs_namespace == '#{user_datastore_id}' && doc.parent_categories) {
                          emit(doc.parent_categories, doc);
                       };
                   };"
             #   }"
-    map_fn = { :map => map_str }
+      map_fn = { :map => map_str }
     
-    BufsInfoDocEnvMethods.set_view(@model_actor[:db], @model_actor[:design_doc], :parent_categories, map_fn)
-    raw_res = @model_actor[:design_doc].view :by_parent_categories
-    rows = raw_res["rows"]
-    records = rows.map{|r| r["value"] if r["value"]["parent_categories"].include? match_keys}
-  end
+      BufsInfoDocEnvMethods.set_view(@model_actor[:db], @model_actor[:design_doc], :parent_categories, map_fn)
+      raw_res = @model_actor[:design_doc].view :by_parent_categories
+      rows = raw_res["rows"]
+      records = rows.map{|r| r["value"] if r["value"]["parent_categories"].include? match_keys}
+    end
 
   end 
 
@@ -208,7 +214,7 @@ module DataStoreModels
     ModelKey = :_id
     VersionKey = :_rev
     NamespaceKey = :bufs_namespace
-    MetadataKeys = [ModelKey, VersionKey, NamespaceKey]
+    BaseMetadataKeys = [ModelKey, VersionKey, NamespaceKey]
     
     #collection_namespace corresponds to the namespace that is used to distinguish between unique
     #data sets (i.e., users) within the model
@@ -309,9 +315,25 @@ module BufsInfoDocEnvMethods
     }
   end
 
-  def self.set_namespace(db, db_user_id)
+  def self.set_namespace(db_name_path, db_user_id)
     @@mutex.synchronize {
-      namespace = "#{db.to_s}::#{db_user_id}"
+      #namespace = "#{db.to_s}::#{db_user_id}"
+      lose_leading_slash = db_name_path.split("/")
+      lose_leading_slash.shift
+      db_name = lose_leading_slash.join("")
+      namespace = "#{db_name}_#{db_user_id}"
+    }
+  end
+
+  def self.set_user_datastore_selector(db, db_user_id)
+    @@mutex.synchronize {
+      "#{db.to_s}::#{db_user_id}"
+    }
+  end
+
+  def self.set_user_datastore_id
+    @@mutex.synchronize {
+      "#{db.to_s}::#{db_user_id}"
     }
   end
 
@@ -347,11 +369,14 @@ module BufsInfoDocEnvMethods
   end
 
   def self.set_db_metadata_keys #(collection_namespace)
-    db_metadata_keys = ['_id', '_rev', '_pos', '_deleted_conflicts', 'bufs_namespace']
+    more_keys = ['_id', '_rev', '_pos', '_deleted_conflicts', 'bufs_namespace']
+    #base_keys = DataStoreModels::CouchRest::BaseMetadataKeys
+    #db_metadata_keys = base_keys + [:_pos, :_deleted_conflicts] + more_keys
+    
   end
 
   #TODO: this is a bit convoluted to just return the query string, simplify.
-  def self.query_for_all_collection_records(collection_namespace)
+  def self.query_for_all_collection_records
     "by_all_bufs".to_sym
   end
 
@@ -381,10 +406,21 @@ module BufsInfoDocEnvMethods
   class ClassEnv
   attr_accessor :db_user_id,
                                :db,
+                               :user_datastore_selector,
+                               :user_datastore_id,
                                :collection_namespace,
                                :design_doc,
                                :query_all,
+                               :attachment_base_id,
                                :db_metadata_keys,
+                               :metadata_keys,
+                               :base_metadata_keys,
+                               :required_instance_keys,
+                               :required_save_keys,
+                               :node_key,
+                               :model_key,
+                               :version_key,
+                               :namespace_key,
                                :namespace,
                                :files_mgr,
                                :views_mgr,
@@ -410,10 +446,22 @@ module BufsInfoDocEnvMethods
     @db = CouchRest.database!(couch_db_location)
     @model_save_params = {:db => @db}
     @collection_namespace = BufsInfoDocEnvMethods.set_collection_namespace(db_name_path, db_user_id)
+    @user_datastore_selector = BufsInfoDocEnvMethods.set_user_datastore_selector(@db, @db_user_id)
+    @user_datastore_id = BufsInfoDocEnvMethods.set_collection_namespace(db_name_path, db_user_id)
     @design_doc = BufsInfoDocEnvMethods.set_couch_design(@db)#, @collection_namespace)
-    @query_all = BufsInfoDocEnvMethods.query_for_all_collection_records(@collection_namespace)
+    @define_query_all = "by_all_bufs".to_sym #BufsInfoDocEnvMethods.query_for_all_collection_records
+    @attachment_base_id = DataStoreModels::CouchRest::AttachmentBaseID
     @db_metadata_keys = BufsInfoDocEnvMethods.set_db_metadata_keys #(@collection_namespace)
-    @namespace = BufsInfoDocEnvMethods.set_namespace(@db, db_user_id)
+    @metadata_keys = @db_metadata_keys
+    @base_metadata_keys = DataStoreModels::CouchRest::BaseMetadataKeys
+    @required_instance_keys = DataStructureModels::Bufs::RequiredInstanceKeys
+    @required_save_keys = DataStructureModels::Bufs::RequiredSaveKeys
+    @model_key = DataStoreModels::CouchRest::ModelKey
+    @version_key = DataStoreModels::CouchRest::VersionKey
+    @namespace_key = DataStoreModels::CouchRest::NamespaceKey
+    @node_key = DataStructureModels::Bufs::NodeKey
+    #TODO: namespace is identical to collection_namespace?
+    @namespace = BufsInfoDocEnvMethods.set_namespace(db_name_path, db_user_id)
     BufsInfoDocEnvMethods.set_view_all(@db, @design_doc, @collection_namespace)
     @user_attachClass = attachClass  
     @files_mgr = DataStoreModels::CouchRest::FilesMgr.new(:attachment_actor_class => @user_attachClass)
@@ -421,14 +469,45 @@ module BufsInfoDocEnvMethods
   end
 
   def query_all  #TODO move to ViewsMgr and change the confusing accessor/method clash
-   raw_res = @design_doc.view @query_all
+   raw_res = @design_doc.view @define_query_all
    raw_data = raw_res["rows"]
    raw_data.map {|d| d['value']}
   end
 
+  def get(id)
+    #maybe put in some validations to ensure its from the proper collection namespace?
+    rtn = begin
+      @db.get(id)
+    rescue RestClient::ResourceNotFound => e
+      nil
+    end
+    rtn
+  end
+
+  def save(model_data)
+    DataStoreModels::CouchRest.save(@model_save_params, model_data)
+  end
+
+  def destroy_node(node)
+    DataStoreModels::CouchRest::destroy_node(node)
+  end
+
+  def generate_model_key(namespace, node_key)
+    DataStoreModels::CouchRest.generate_model_key(namespace, node_key)
+  end
+
+  #some models have additional processing required, but not this one
+  def raw_all
+    query_all
+  end
+
   def destroy_bulk(list_of_native_records)
     list_of_native_records.each do |r|
-      @db.delete_doc(r)
+      begin
+        @db.delete_doc(r)
+      rescue RestClient::RequestFailed
+        puts "Warning:: Failed to delete document?"
+      end
     end
     nil #TODO ok to return nil if all docs destroyed? also, not verifying
   end

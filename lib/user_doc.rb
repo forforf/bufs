@@ -20,6 +20,7 @@ class UserDB
                                                  :path => couchdb.uri,
                                                  :user_id => user_id}
                         }
+    @user_doc_env_methods = BufsInfoDocEnvMethods
     @user_doc_class_name = "UserDoc#{user_id}"
     @user_attach_class_name = "UserAttach#{user_id}"
     @user_link_class_name = "UserLink#{user_id}"
@@ -27,8 +28,11 @@ class UserDB
     #Security TODO: remove spaces and other 
 
     #initialize Class and add constant for the User namespace
+    #Note, the include is to the base class! not the user class
+    BufsInfoDoc.__send__(:include, @user_doc_env_methods)
     #---- Dynamic Class Definitions ----
     dyn_user_class_def = "class #{@user_doc_class_name} < BufsInfoDoc
+      
       #use_database CouchRest.database!(\"http://#{@namespace.to_s}/\")
       class << self; attr_accessor :user_attachClass, :user_linkClass; end
 

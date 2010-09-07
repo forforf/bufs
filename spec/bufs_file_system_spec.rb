@@ -35,6 +35,8 @@ FSEnvironment = {:bufs_file_system_env => { :path => File.join(TestFSModelBaseDi
                                             :user_id => DummyUserID }
 
                 }
+#invoked this way for spec since we're testing the abstract class
+BufsFileSystem.__send__(:include, BufsFileEnvMethods)
 
 BufsFileSystem.set_environment(FSEnvironment)
 
@@ -213,7 +215,8 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     collection_path = test_node.class.class_env.namespace
     file_node_path = File.join(collection_path, test_node.my_category)
     File.exists?(file_node_path).should == true
-    data_file_path = file_node_path + '/' + BufsFileSystem.data_file_name
+    data_file_name = BufsFileEnvMethods.set_data_file_name
+    data_file_path = File.join(file_node_path, data_file_name)
     #read node file data
     node_file_data = nil
     cats = init_parent_cats + [new_parent_cat]
@@ -234,7 +237,9 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     file_node_path = File.join(collection_path, node_existing_new_parent_cat.my_category)
     #file_node_path = node_existing_new_parent_cat.class.namespace + '/' + node_existing_new_parent_cat.my_category
     File.exists?(file_node_path).should == true
-    data_file_path = file_node_path + '/' + BufsFileSystem.data_file_name
+    data_file_name = BufsFileEnvMethods.set_data_file_name
+    data_file_path = File.join(file_node_path, data_file_name)
+   # data_file_path = file_node_path + '/' + BufsFileSystem.data_file_name
     node_file_data = nil
     File.open(data_file_path, 'r'){|f| node_file_data = f.read}
     node_data = JSON.parse(node_file_data)
@@ -275,7 +280,9 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     file_node_path = File.join(collection_path, node_remove_parent_cat.my_category)
     #file_node_path = node_remove_parent_cat.class.namespace + '/' + node_remove_parent_cat.my_category
     File.exists?(file_node_path).should == true
-    data_file_path = file_node_path + '/' + BufsFileSystem.data_file_name
+    data_file_name = BufsFileEnvMethods.set_data_file_name
+    data_file_path = File.join(file_node_path, data_file_name)
+    #data_file_path = file_node_path + '/' + BufsFileSystem.data_file_name
     node_file_data = nil
     File.open(data_file_path, 'r'){|f| node_file_data = f.read}
     node_data = JSON.parse(node_file_data)
@@ -307,8 +314,6 @@ describe BufsFileSystem, "Basic Node Operations (no attachments)" do
     end
   end
 
-end
-=begin
   it "should save data files as a regular file" do
     #set initial conditions    
     test_filename = BufsFixtures.test_files['binary_data_pptx']
@@ -317,16 +322,20 @@ end
     node_to_save = make_node_no_attachment(node_params.dup)
     node_to_save.save
     #check initial conditions
-    node_to_save.attached_files?.should == false
+    #TODO rationalize attached_files? across models
+    #node_to_save.attached_files?.should == false
     #test
-    node_to_save.add_data_file(test_filename)
+    file_data = {:src_filename => test_filename}
+    node_to_save.add_data_file(file_data)
     #check results
     esc_test_basename = BufsEscape.escape(test_basename)
-    data_file_location = node_to_save.path_to_node_data + '/' + esc_test_basename
+    collection_path = node_to_save.class.class_env.namespace
+    file_node_path = File.join(collection_path, node_to_save.my_category)
+    data_file_location = File.join(file_node_path, esc_test_basename)
     File.exists?(data_file_location).should == true
-    node_to_save.attached_files?.should == true
-    node_to_save.file_metadata[test_filename]['file_modified'].should == File.mtime(data_file_location).to_s
-    node_to_save.filename.should == esc_test_basename
+    #node_to_save.attached_files?.should == true
+    #node_to_save.file_metadata[test_filename]['file_modified'].should == File.mtime(data_file_location).to_s
+    #node_to_save.filename.should == esc_test_basename
   end
 
 end

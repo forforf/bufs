@@ -1,118 +1,184 @@
 #common libraries
-require 'cgi'
-require 'time'
-#JSON Hack
-require 'json'
 
 #bufs libraries
 require File.dirname(__FILE__) + '/helpers/hash_helpers'
-require File.dirname(__FILE__) + '/bufs_escape'   #need to insert this 
+require File.dirname(__FILE__) + '/bufs_escape'
+#TODO: Figure out an import or configuration function for the dependent libs
+require File.dirname(__FILE__) + '/bufs_info_libs_tmp'
 require File.dirname(__FILE__) + '/bufs_file_libs_tmp'
 
-#File Node Helpers
-class Dir  #monkey patch  (duck punching?)
-  def self.working_entries(dir=Dir.pwd)
-    ignore_list = ['thumbs.db','all_child_files']
-    all_entries = Dir.entries(dir)
-    wkg_entries = all_entries.delete_if {|x| x[0] == '.'}
-    wkg_entries = wkg_entries.delete_if {|x| ignore_list.include?(x.downcase)}
-    return wkg_entries
-  end
 
-  def self.file_data_entries(dir=Dir.pwd)
-    ignore_list = ['parent_categories.txt', 'description.txt']
-    wkg_entries = Dir.working_entries(dir)
-    file_data_entries = wkg_entries.delete_if {|x| ignore_list.include?(x.downcase)}
-    return file_data_entries
-  end
-end
-
+#TODO: Move out the model specific  aspects into a seperate module
+#TODO: Use as a generic class for all models
+#This is the abstract class used.  Each user would get a unique
+#class derived from this one.  In other words, a class context
+#is specific to a user.  [User being used loosely to indicate a client-like relationship]
 
 class BufsFileSystem
-  #class << self 
-    #attr_accessor :bfs_dir
-      #:name_space, :parent_categories_file_basename,
-      #:description_file_basename, :win_dir, :linux_dir
-  #end
 
-  include BufsFileEnvMethods 
+#TODO Figure out a way to distinguish method calls from dynamically set data
+# that were assigned as instance variables
+#TODO Dynamic Class definition should include the data store, structure and evironmental models
 
   ##Class Accessors
   class << self; attr_accessor :class_env,
                                :metadata_keys
   end
 
+  ##Instance Accessors
+  attr_accessor :user_data, :model_metadata, :attached_files
+                #old accessors  :file_metadata, :filename, :my_dir, :attached_files
+
+  ##Class Methods
+  #Class Environment
   def self.set_environment(env)
     @class_env = ClassEnv.new(env)
-    @metadata_keys = DataStoreModels::FileStore::MetadataKeys
+    @metadata_keys = @class_env.metadata_keys 
   end
 
-  #put attachClass here
-
+  ##Collection Methods
+  #This returns all records, but does not create
+  #an instance of this class for each record.  Each record is provided
+  #in its native form.
   def self.all_native_records
     @class_env.query_all
   end
 
-  #call view goes here
+  def self.all
+    raw_nodes = @class_env.raw_all
+    raw_nodes.map! {|n| self.new(n)}
+  end
 
-  #get(id) goes here
+  #TODO: Harmonize namespace usage
+  def self.call_view(param, match_keys)
+    view_method_name = "by_#{param}".to_sym #using CouchDB style for now
+    records = if @class_env.views_mgr.respond_to? view_method_name
+      puts "Calling View with datstore id: #{@class_env.user_datastore_id}"
+      @class_env.views_mgr.__send__(view_method_name, @class_env.user_datastore_id, match_keys)
+    else
+      #TODO: Think of a more elegant way to handle an unknown view
+      raise "Unknown design view #{view_method_name} called for: #{param}"
+    end
+    nodes = records.map{|r| self.new(r)}
+  end
 
+  def self.get(id)
+    data = @class_env.get(id)
+    rtn = if data
+      self.new(data)
+    else
+      nil
+    end
+  end
+
+  #This destroys all nodes in the model
+  #this is more efficient than calling
+  #destroy on instances of this class
+  #as it avoids instantiating only to destroy it
   def self.destroy_all
     all_records = self.all_native_records
-    #raise "BFS about to destroy: #{all_records.inspect}"
     @class_env.destroy_bulk(all_records)
-    #all_records.each do |record|
-    #  @class_env.delete(record)
+  end
+
+  ##Class methods
+  #Create the document in the BUFS node format from an existing node.  A BUFS node is an object that ha
+  #  my_category
+  #  parent_categories
+  #  description
+  #  attachments in the form of data files
+  #
+  def self.create_from_other_node(node_obj)
+    self.create_from_doc_node(node_obj)
+  end
+
+  #Returns the id that will be appended to the document ID to uniquely
+  #identify attachment documents associated with the main document
+  def self.attachment_base_id
+    self.class_env.attachment_base_id #DataStoreModels::CouchRest::AttachmentBaseID
+  end
+
+  #Normal instantiation can take two forms that differ only in the source
+  #for the initial parameters.  The constructor could be called by the user
+  #and passed only user data, or the constructor could be called by a class
+  #collection method and the initial parameters would come from a datastore.
+  #In the latter case, some of the parameters will include information about
+  #the datastore (model metadata).
+  def initialize(init_params = {})
+    raise "init_params cannot be nil" unless init_params
+    @saved_to_model = nil #TODO rename to sychronized_to_model
+    #make sure keys are symbols
+    init_params = HashKeys.str_to_sym(init_params)
+    @user_data, @model_metadata = filter_user_from_model_data(init_params)
+    instance_data_validations(@user_data)
+    node_key = get_user_data_id(@user_data)
+    @model_metadata = update_model_metadata(@model_metadata, node_key)
+    
+    init_params.each do |attr_name, attr_value|
+      iv_set(attr_name.to_sym, attr_value)
+    end
+
+    @attached_files = []
+  end
+
+  def filter_user_from_model_data(init_params)
+    model_metadata_keys = DataStoreModels::FileStore::MetadataKeys
+    model_metadata = {}
+    model_metadata_keys.each do |k|
+      model_metadata[k] = init_params.delete(k) #delete returns deleted value
+    end
+    [init_params, model_metadata]
+  end
+
+  def instance_data_validations(user_data)
+    #raise user_data.inspect
+    #Check for Required Keys
+    required_keys = DataStructureModels::Bufs::RequiredInstanceKeys
+    required_keys.each do |rk|
+      raise ArgumentError, "Requires a value to be assigned to the key #{rk.inspect} for instantiation" unless user_data[rk]
+    end
+  end
+
+  def save_data_validations(user_data)
+    required_keys = DataStructureModels::Bufs::RequiredSaveKeys
+    required_keys.each do |rk|
+      raise ArgumentError, "Requires a value to be assigned to the key #{rk.inspect} to be set before saving" unless user_data[rk]
+    end
+  end
+
+  def get_user_data_id(user_data)
+    #FIXME User Node Key from user generated, not hard coded
+    user_node_key = DataStructureModels::Bufs::NodeKey
+    user_data[user_node_key]
+  end
+
+  def update_model_metadata(metadata, node_key)
+    #updates @saved_to_model (make a method instead)?
+    model_key = DataStoreModels::FileStore::ModelKey
+    version_key = DataStoreModels::FileStore::VersionKey
+    namespace_key = DataStoreModels::FileStore::NamespaceKey
+    id = metadata[model_key]
+    namespace = metadata[namespace_key]
+    rev = metadata[version_key]
+    namespace = @bfs_dir unless namespace #self.class.class_env.collection_namespace unless nam
+    #id = DataStoreModels::CouchRest.generate_model_key(namespace, node_key) unless id  #faster
+    updated_key_metadata = {model_key => id, namespace_key => namespace}
+    #updated_key_metadata.delete(version_key) unless rev  #TODO Is this too model specific?
+    metadata.merge!(updated_key_metadata)
+    #if rev
+    #  @saved_to_model = rev
+    #  metadata.merge!({version_key => rev})
+    #else
+    #  metadata.delete(version_key)  #TODO  Is this too model specific?
     #end
-  end
- #bind to directory model
-  #must be set before it can be used
-  #child classes should set this in their
-  #class definitions
- #---
-  def self.use_directory(bfs_dir)
-    @bfs_dir = bfs_dir
-    FileUtils.mkdir_p(File.expand_path(@bfs_dir))
+    metadata
   end
 
-  def self.namespace
-    @bfs_dir
-  end
-
-  def self.data_file_name
-    ".node_data.json"
-  end
-
-  def self.link_file_name
-    ".link_data.json"
-  end
 
   #TODO: Remove the hard coding of data as filenames and use 
   #config file
-  def parent_categories_file_basename
-    "parent_categories.txt"
-  end
-
- #---
-
-  #overwrite these in the dynamic class definition
-  #---
-  #@base_dir = nil
-  #@namespace = nil
-  #create the operating directory for the class
-  #@model_dir = "#{@base_dir}/#{@namespace}"
-  #File.mkdir_p(File.expand_path(@model_dir))
-  #---
-  #@name_space = nil
-  #@win_dir = 'windows_format'
-  #@linux_dir = 'mac_linux_format'
-  #@parent_categories_file_basename = 'parent_categories.txt'
-  #@description_file_basename = 'description.txt'
-
-
-  #TODO: Determine if there's a way for file_metadata and filename to be added dynamically
-  attr_accessor :file_metadata, :filename, 
-                :my_dir, :attached_files, :user_data, :model_metadata
+  #def parent_categories_file_basename
+  #  "parent_categories.txt"
+  #end
 
   def self.model_dir
     "#{@base_dir}/#{self.class.namespace}"
@@ -144,75 +210,6 @@ class BufsFileSystem
         end
       end
     end
-  end
-
-  #TODO: Harmonize this across models
-  def self.all
-    entries = self.all_native_records
-    nodes = []
-    entries.each do |entry|
-      data_path = File.join(self.class_env.namespace, entry, self.class_env.data_file_name)
-      data_json = File.open(data_path, 'r'){|f| f.read}
-      data = JSON.parse(data_json)
-      nodes << self.new(data)
-    end
-    nodes
-=begin
-    top_dir = self.class_env.namespace
-    unless File.exists?(top_dir)
-      raise "Can't get all. The File System Directory to work from does not exist: #{top_dir}"
-    end
-    all_nodes = []
-    #my_dir = self.namespace + '/'
-    all_entries = Dir.working_entries(top_dir)
-    all_entries.each do |cat_entry|
-      wkg_dir = File.join(top_dir, cat_entry) #my_dir + cat_entry + '/'
-      cat_name = cat_entry
-      #raise "set data file name"
-      data_fname = self.class_env.data_file_name
-      bfs = nil
-      data_path = File.join(wkg_dir, data_fname)
-      if File.exists?(data_path)
-       bfs_data = JSON.parse(File.open(data_path) {|f| f.read})
-       bfs_data = HashKeys.str_to_sym(bfs_data)
-        bfs = self.new(bfs_data) if bfs_data[:my_category]  #FIXME What to do when required cat doesn't exist?
-        files = Dir.file_data_entries(wkg_dir)
-        files.each do |f|
-          full_filename = wkg_dir + '/' + f
-          bfs.add_data_file(full_filename)
-        end
-
-      end
-      #file_mod_time = File.mtime(wkg_dir + cat_entry) if File.exists?(wkg_dir + cat_entry)
-      #f_metadata = {'file_modified' => file_mod_time.to_s} if file_mod_time
-      #bfs =  BufsFileSystem.new(:parent_categories => parent_cats,
-      #                                     :my_category => cat_name,
-      #                                     :description => desc)#,
-      #                                     #:file_metadata => f_metadata)
-      #bfs = BufsFileSystem.new(bfs_data)
-      #files = Dir.file_data_entries(wkg_dir)
-      #files.each do |f|
-      #  full_filename = wkg_dir + '/' + f
-      #  bfs.add_data_file(full_filename)
-      #end
-      all_nodes << bfs if bfs
-
-    end
-    all_nodes 
-=end
-  end
-
-
-  def self.call_view(param, match_keys)
-    view_method_name = "by_#{param}".to_sym
-    records = if @class_env.views_mgr.respond_to? view_method_name
-      #TODO: info and file differ in their use of namepsapce here
-      @class_env.views_mgr.__send__(view_method_name, @class_env.namespace, match_keys)
-    else
-      #TODO: Think of a more elegant way to handle an unknown view
-      raise "Unknown design view #{view_method_name} called for: #{param}"
-    end
-    nodes = records.map{|r| self.new(r)}
   end
 
   def self.by_my_category(my_cat)
@@ -255,7 +252,7 @@ class BufsFileSystem
     return matched_nodes
   end
 =end
-
+=begin
   def initialize(init_params = {})
     @saved_to_model = nil #TODO rename to sychronized_to_model
     #make sure keys are symbols
@@ -331,7 +328,7 @@ class BufsFileSystem
     #end
     metadata
   end
-
+=end
   #this method is basically to make it sort of act like a hash and struct
   #FIXME: IMPORTANT: This breaks under some circumstances of dynamic classing
   #When a new instance is created from the same class, these methods are
@@ -543,7 +540,11 @@ class BufsFileSystem
   end
 
   #TODO: Need to update spec to include multiple files 
-  def add_data_file(filenames)
+  def add_data_file(file_datas)
+    #TODO Use self or user_data?
+    self.class.class_env.files_mgr.add_files(self, file_datas)
+  end
+=begin
     filenames = [filenames].flatten
     filenames.each do |filename|
       my_dest_basename = ::BufsEscape.escape(File.basename(filename))
@@ -558,8 +559,9 @@ class BufsFileSystem
       self.file_metadata = {filename => {'file_modified' => File.mtime(filename).to_s}}
     end
   end
+=end
 
-  def attached_files?
+   def attached_files?
     #if @attached_files.size > 0
     #  return true
     #else

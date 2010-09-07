@@ -32,14 +32,16 @@ module BufsInfoDocSpecHelpers
   end
 end
 
-describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
   DummyUserID = 'StubID1'
   CouchDBEnvironment = {:bufs_info_doc_env => {:host => CouchDB.host,
                                                :path => CouchDB.uri,
-                                               :user_id => DummyUserID }
-                       }
-  #BufsInfoDoc.set_environment(CouchDB.host, CouchDB.uri, DummyUserID)
-  BufsInfoDoc.set_environment(CouchDBEnvironment)
+                                               :user_id => DummyUserID } }
+
+#invoked this way for spec since we're testing the abstract class
+BufsInfoDoc.__send__(:include, BufsInfoDocEnvMethods)
+BufsInfoDoc.set_environment(CouchDBEnvironment)
+
+describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
   include BufsInfoDocSpecHelpers
 
   before(:each) do
@@ -47,7 +49,9 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
   end
 
   it "should have its namespace set up correctly" do
-    BufsInfoDoc.class_env.namespace.should == "#{CouchDB.to_s}::#{DummyUserID}"
+    #raise CouchDB.inspect
+    #Namespace and Collection Namespace are identical?
+    BufsInfoDoc.class_env.namespace.should == "#{CouchDB.name}_#{DummyUserID}"
 
     db_name_path = CouchDB.uri
     lose_leading_slash = db_name_path.split("/")
@@ -122,7 +126,10 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     
     #check results
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_to_save.db_id)[param]
+      namespace = BufsInfoDoc.class_env.user_datastore_id
+      node_id = doc_to_save.my_category
+      doc_id = BufsInfoDoc.class_env.generate_model_key(namespace, node_id)
+      db_param = CouchDB.get(doc_id) #o_save.db_id)[param]
       doc_to_save.user_data[param].should == db_param
       #test accessor method
       doc_to_save.__send__(param).should == db_param

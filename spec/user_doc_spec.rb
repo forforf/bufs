@@ -385,6 +385,7 @@ describe UserDB, "Basic database operations" do
       expected_sizes[user_id].should == doc_uniq_parent_cats[user_id].parent_categories.size
       doc_id = doc_uniq_parent_cats[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
+      puts "Doc ID searched: #{doc_id.inspect}"
       db_doc.user_data[:parent_categories].sort.should == doc_uniq_parent_cats[user_id].parent_categories.sort
       records[user_id] = docClass.call_view(:parent_categories, 'dup cat2')
       records[user_id].size.should == 1

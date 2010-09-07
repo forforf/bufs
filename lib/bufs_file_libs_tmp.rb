@@ -1,5 +1,28 @@
 #require 'couchrest'
 require 'monitor'
+require 'cgi'
+require 'time'
+require 'json'
+
+#File Node Helpers
+class Dir  #monkey patch  (duck punching?)
+  def self.working_entries(dir=Dir.pwd)
+    ignore_list = ['thumbs.db','all_child_files']
+    all_entries = Dir.entries(dir)
+    wkg_entries = all_entries.delete_if {|x| x[0] == '.'}
+    wkg_entries = wkg_entries.delete_if {|x| ignore_list.include?(x.downcase)}
+    return wkg_entries
+  end
+
+  def self.file_data_entries(dir=Dir.pwd)
+    ignore_list = ['parent_categories.txt', 'description.txt']
+    wkg_entries = Dir.working_entries(dir)
+    file_data_entries = wkg_entries.delete_if {|x| ignore_list.include?(x.downcase)}
+    return file_data_entries
+  end
+end
+
+
 
 
 #bufs libraries
@@ -39,51 +62,29 @@ module DataStoreModels
 
     attr_accessor :model_actor, :record_ref
     #TODO: after class is functionally complete, evaluate if model_actor is needed
-    def initialize(model_actor) #provides the model actor that can manage files
+    def initialize(model_actor = {}) #provides the model actor that can manage files
       @model_actor = model_actor
       @record_ref = nil #id for files container  #PROBLEM - 
     end
 
     def add_files(node, file_datas)
-      bia_class = @model_actor[:attachment_actor_class]
-      attachment_package = {}
-      file_datas = [file_datas].flatten
-      file_datas.each do |file_data|
-        #get file data
-        src_filename = file_data[:src_filename]
-        src_basename = File.basename(src_filename)
-        raise "File data must include the source filename when adding a file to the model" unless src_filename
-        model_basename = file_data[:model_basename] || src_basename
-        model_basename.gsub!('+', ' ')  #plus signs are problematic
-        #TODO: Consider creating BufsEscape.unescape method
-        model_basename = CGI.unescape(model_basename)
-        content_type = file_data[:content_type] || MimeNew.for_ofc_x(model_basename)
-        modified_time = file_data[:modified_time] || File.mtime(src_filename).to_s
-        #create attachment class data structure
-        file_metadata = {}
-        file_metadata['content_type'] = content_type
-        file_metadata['file_modified'] = modified_time
-        #read in file
-        #TODO: reading the file in this way is memory intensive for large files, chunking it up woudl be better
-        file_data = File.open(src_filename, "rb") {|f| f.read}
-        attachment_package[model_basename] = {'data' => file_data, 'md' => file_metadata}
+      filenames = []
+      file_datas.each do |k,v|
+        filenames << file_datas[:src_filename]
       end
-      #attachment package has now been created
-      #create the attachment record
-      #TODO: What if the attachment already exists?
-      user_id = node.class.class_env.db_user_id
-      node_id = node.model_metadata[:_id]
-      record = bia_class.add_attachment_package(node, attachment_package)
-      if node.respond_to? :attachment_doc_id
-        if node.attachment_doc_id && (node.attachment_doc_id != record['_id'] )
-          raise "Attachment ID mismatch, current id: #{node.attachment_doc_id} new id: #{record['_id']}"
-        elsif node.attachment_doc_id.nil?
-          node.attachment_doc_id = record['_id']  #TODO How is it nil?
-        end
-      else
-        node.iv_set(:attachment_doc_id,  record['_id'] )
+      filenames.each do |filename|
+        my_dest_basename = ::BufsEscape.escape(File.basename(filename))
+        #puts "Add Data File --- Basename (Esc) #{my_dest_basename}"
+        #@filename = my_dest_basename
+        #FileUtils.mkdir_p(@my_dir) unless File.exist?(@my_dir) #TODO Throw error if its a file
+        node_dir = File.join(node.class.class_env.user_datastore_selector, node.my_category)  #TODO: this should be node id, not my cat
+        my_dest = File.join(node_dir, my_dest_basename)
+        #FIXME: obj.attached_files is broken, list_attached_files should work
+        #@attached_files << my_dest
+        same_file = filename == my_dest
+        FileUtils.cp(filename, my_dest, :preserve => true, :verbose => true ) unless same_file
+        #self.file_metadata = {filename => {'file_modified' => File.mtime(filename).to_s}}
       end
-      node.attachment_doc_id
     end
 
     def add_raw_data(node, attach_name, content_type, raw_data, file_modified_at = nil)
@@ -171,12 +172,12 @@ module DataStoreModels
     #the query into summary type of information (example: summing records)
 
     #TODO create an index to speed queries? sync issues?
-    def by_my_category(model_namespace, match_keys)
+    def by_my_category(user_datastore_selector, match_keys)
       #raise "nt: #{nodetest.my_category.inspect}" if nodetest
       #raise "No category provided for search" unless my_cat
       #puts "Searching for #{my_cat.inspect}"
       match_keys = [match_keys].flatten
-      my_dir = model_namespace
+      my_dir = user_datastore_selector
       bfss = nil
       match_keys.each do |match_key|
         my_cat_dir = match_key
@@ -196,25 +197,22 @@ module DataStoreModels
       return bfss
     end
 
-  def by_parent_categories(model_namespace, match_keys)
+  def by_parent_categories(user_datastore_selector, match_keys)
     match_keys = [match_keys].flatten
     #all_nodes = all collection method when all is moved into here
     matching_node_data = []
-    all_wkg_entries = Dir.working_entries(model_namespace)
+    all_wkg_entries = Dir.working_entries(user_datastore_selector)
     all_wkg_entries.each do |entry|
-      wkg_dir = File.join(model_namespace, entry)
+      wkg_dir = File.join(user_datastore_selector, entry)
       if File.exists?(wkg_dir)
         data_file_path = File.join(wkg_dir, @data_file)
         json_data  = JSON.parse(File.open(data_file_path){|f| f.read})
         node_data = HashKeys.str_to_sym(json_data)
         match_keys.each do |k|
-          puts "Match: #{k}" # - data: #{node_data.inspect}"
           pc = node_data[:parent_categories]
-          puts "Parent Categories to check: #{pc.inspect}"
           if pc && pc.include?(k)
-            puts "Found: #{pc}"
             matching_node_data << node_data
-            break  #we don't need to loop through each parent, if one already matches
+            break  #we don't need to loop through each parent cat, if one already matches
           end
         end
       end
@@ -340,13 +338,30 @@ module BufsFileEnvMethods
 =end
 
   #assigns a inter-model, consistent and unique namespace to the collection of nodes belonging to this class
-  def self.set_collection_namespace(fs_name_path, fs_user_id)
+#  def self.set_collection_namespace(fs_name_path, fs_user_id)
+#    @@mutex.synchronize {
+#      #lose_leading_slash = fs_name_path.split("/")
+#      #lose_leading_slash.shift
+#      #fs_name = lose_leading_slash.join("_")
+#      collection_root = File.basename(fs_name_path)
+#      collection_namespace = "#{collection_root}_#{fs_user_id}"
+#    }
+#  end
+
+  def self.set_user_datastore_selector(fs_name_path, fs_user_id)
     @@mutex.synchronize {
+      File.join(fs_name_path, fs_user_id)
+    }
+  end
+
+  def self.set_user_datastore_id(fs_name_path, fs_user_id)
+    @@mutex.synchronize {
+      File.join(fs_name_path, fs_user_id)
       #lose_leading_slash = fs_name_path.split("/")
       #lose_leading_slash.shift
       #fs_name = lose_leading_slash.join("_")
-      collection_root = File.basename(fs_name_path)
-      collection_namespace = "#{collection_root}_#{fs_user_id}"
+      #collection_root = File.basename(fs_name_path)
+      #collection_namespace = "#{collection_root}_#{fs_user_id}"
     }
   end
 
@@ -438,9 +453,12 @@ module BufsFileEnvMethods
   attr_accessor :fs_user_id,
                                :data_file_name,
                                :collection_namespace,
+                               :user_datastore_selector,
+                               :user_datastore_id,
                                #:design_doc,
                                #:query_all,
                                :fs_metadata_keys,
+                               :metadata_keys,
                                :namespace,
                                :files_mgr,
                                :views_mgr,
@@ -463,36 +481,48 @@ module BufsFileEnvMethods
       puts "Warning:: Multiuser support for attachments not enabled. This is useful only for basic testing"
       attachClass = "AttachClassShouldBeInFileHandler"
     end
-    #@db_user_id = db_user_id
-    #couch_db_location = BufsInfoDocEnvMethods.set_db_location(couch_db_host, db_name_path)
-    #@db = CouchRest.database!(couch_db_location)
-    @collection_namespace = BufsFileEnvMethods.set_collection_namespace(fs_path, fs_user_id)
-    #@design_doc = BufsInfoDocEnvMethods.set_couch_design(@db)#, @collection_namespace)
-    #@query_all = BufsInfoDocEnvMethods.query_for_all_collection_records(@collection_namespace)
+
+    #@collection_namespace = BufsFileEnvMethods.set_collection_namespace(fs_path, fs_user_id)
+    @user_datastore_selector = BufsFileEnvMethods.set_user_datastore_selector(fs_path, fs_user_id)
+    @user_datastore_id = BufsFileEnvMethods.set_user_datastore_id(fs_path, fs_user_id)
+
     @fs_metadata_keys = BufsFileEnvMethods.set_fs_metadata_keys #(@collection_namespace)
+    @metadata_keys = @fs_metadata_keys #TODO spaghetti code alert
+    @user_datastore_selector = BufsFileEnvMethods.set_namespace(fs_path, fs_user_id)
     @namespace = BufsFileEnvMethods.set_namespace(fs_path, fs_user_id)
     #BufsInfoDocEnvMethods.set_view_all(@db, @design_doc, @collection_namespace)
     @user_attachClass = attachClass  
     @data_file_name = BufsFileEnvMethods.set_data_file_name
-    @model_save_params = {:nodes_save_path => @namespace, :data_file => @data_file_name}
-    #@files_mgr = DataStoreModels::CouchRest::FilesMgr.new(:attachment_actor_class => @user_attachClass)
+    @model_save_params = {:nodes_save_path => @user_datastore_selector, :data_file => @data_file_name}
+    @files_mgr = DataStoreModels::FileStore::FilesMgr.new
     @views_mgr = DataStoreModels::FileStore::ViewsMgr.new({:data_file => @data_file_name})
   end
 
   def query_all  #TODO move to ViewsMgr
-    unless File.exists?(@namespace)
-      raise "Can't get all. The File System Directory to work from does not exist: #{self.name_space}"
+    unless File.exists?(@user_datastore_selector)
+      raise "Can't get all. The File System Directory to work from does not exist: #{@user_datastore_selector}"
     end
     all_nodes = []
-    my_dir = @namespace + '/' #TODO: Can this be removed?
+    my_dir = @user_datastore_selector + '/' #TODO: Can this be removed?
     all_entries = Dir.working_entries(my_dir)
   end
 
+  def raw_all
+    entries = query_all
+    raw_nodes = []
+    entries.each do |entry|
+    data_path = File.join(@user_datastore_selector, entry, @data_file_name)
+      data_json = File.open(data_path, 'r'){|f| f.read}
+      data = JSON.parse(data_json)
+      raw_nodes << data
+    end
+    raw_nodes
+  end
 
   def destroy_bulk(list_of_native_records)
     list_of_native_records.each do |r|
       #puts "Dir: #{File.dirname(r)}"
-      r = File.join(@namespace, r) if File.dirname(r) == "."
+      r = File.join(@user_datastore_selector, r) if File.dirname(r) == "."
       #puts "Removing: #{r.inspect}"
       FileUtils.rm_rf(r)
     end
