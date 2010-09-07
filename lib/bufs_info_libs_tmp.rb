@@ -138,6 +138,7 @@ module DataStoreModels
     def subtract_some(node, model_basenames, bia_class)
       if node.attachment_doc_id
         bia_doc = bia_class.get(node.attachment_doc_id)
+        raise "BiaClass_Attach: #{node.user_attachClass} Node: #{node.class.name} AttID: #{node.attachment_doc_id}" unless bia_doc
         bia_doc.remove_attachment(model_basenames)
         rem_atts = bia_doc.get_attachments
         subtract_all(node, bia_class) if rem_atts.empty?
