@@ -51,13 +51,13 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
   it "should have its namespace set up correctly" do
     #raise CouchDB.inspect
     #Namespace and Collection Namespace are identical?
-    BufsInfoDoc.class_env.namespace.should == "#{CouchDB.name}_#{DummyUserID}"
+    BufsInfoDoc.myClassEnv.namespace.should == "#{CouchDB.name}_#{DummyUserID}"
 
     db_name_path = CouchDB.uri
     lose_leading_slash = db_name_path.split("/")
     lose_leading_slash.shift
     db_name = lose_leading_slash.join("")
-    BufsInfoDoc.class_env.collection_namespace.should == "#{db_name}_#{DummyUserID}"
+    BufsInfoDoc.myClassEnv.collection_namespace.should == "#{db_name}_#{DummyUserID}"
   end
 
   it "should initialize correctly" do
@@ -126,10 +126,10 @@ describe BufsInfoDoc, "Basic Document Operations (no attachments)" do
     
     #check results
     doc_params.keys.each do |param|
-      namespace = BufsInfoDoc.class_env.user_datastore_id
+      namespace = BufsInfoDoc.myClassEnv.user_datastore_id
       node_id = doc_to_save.my_category
-      doc_id = BufsInfoDoc.class_env.generate_model_key(namespace, node_id)
-      db_param = CouchDB.get(doc_id) #o_save.db_id)[param]
+      doc_id = BufsInfoDoc.myClassEnv.generate_model_key(namespace, node_id)
+      db_param = CouchDB.get(doc_id)[param]
       doc_to_save.user_data[param].should == db_param
       #test accessor method
       doc_to_save.__send__(param).should == db_param

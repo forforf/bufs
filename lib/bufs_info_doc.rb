@@ -8,52 +8,54 @@ require File.dirname(__FILE__) + '/bufs_info_libs_tmp'
 require File.dirname(__FILE__) + '/bufs_file_libs_tmp'
 
 
-#TODO: Move out the model specific  aspects into a seperate module
-#TODO: Use as a generic class for all models
 #This is the abstract class used.  Each user would get a unique
 #class derived from this one.  In other words, a class context
-#is specific to a user.  [User being used loosely to indicate a client-like relationship]
+#is specific to a user.
+#[User being used loosely to indicate a client-like relationship]
 
 class BufsInfoDoc
 
 #TODO Figure out a way to distinguish method calls from dynamically set data
 # that were assigned as instance variables
-#TODO Dynamic Class definition should include the data store, structure and evironmental models
+#TODO Dynamic Class definition should include the data store, structure and 
+#evironmental models
 
-  ##Class Accessors
-  class << self; attr_accessor :class_env,
+  #Class Accessors
+  class << self; attr_accessor :myClassEnv,
                                :metadata_keys
   end
 
   ##Instance Accessors
-  attr_accessor :user_data, :model_metadata, :attached_files
+  attr_accessor :user_data, :model_metadata, :attached_files, :my_ClassEnv
                 #old accessors :saved_to_model
 
-  ##Class Methods
-  #Class Environment
+  #Class Methods
+  #Setting up the Class Environment - The class environment holds all
+  # model-specific implementation details
   def self.set_environment(env)
-    @class_env = ClassEnv.new(env)
-    @metadata_keys = @class_env.metadata_keys 
+    @myClassEnv = ClassEnv.new(env)
+    @metadata_keys = @myClassEnv.metadata_keys 
   end
 
-  ##Collection Methods
+  #Collection Methods
   #This returns all records, but does not create
   #an instance of this class for each record.  Each record is provided
   #in its native form.
   def self.all_native_records
-    @class_env.query_all
+    @myClassEnv.query_all
   end
 
   def self.all
-    raw_nodes = @class_env.raw_all
+    raw_nodes = @myClassEnv.raw_all
     raw_nodes.map! {|n| self.new(n)}
   end
 
-  #TODO: Harmonize namespace usage
   def self.call_view(param, match_keys)
     view_method_name = "by_#{param}".to_sym #using CouchDB style for now
-    records = if @class_env.views_mgr.respond_to? view_method_name
-      @class_env.views_mgr.__send__(view_method_name, @class_env.user_datastore_id, match_keys)
+    records = if @myClassEnv.views_mgr.respond_to? view_method_name
+      @myClassEnv.views_mgr.__send__(view_method_name,
+                                    @myClassEnv.user_datastore_id, 
+                                    match_keys)
     else
       #TODO: Think of a more elegant way to handle an unknown view
       raise "Unknown design view #{view_method_name} called for: #{param}"
@@ -62,7 +64,7 @@ class BufsInfoDoc
   end
 
   def self.get(id)
-    data = @class_env.get(id)
+    data = @myClassEnv.get(id)
     rtn = if data
       self.new(data)
     else
@@ -76,24 +78,20 @@ class BufsInfoDoc
   #as it avoids instantiating only to destroy it
   def self.destroy_all
     all_records = self.all_native_records
-    @class_env.destroy_bulk(all_records)
+    @myClassEnv.destroy_bulk(all_records)
   end
 
-  ##Class methods 
-  #Create the document in the BUFS node format from an existing node.  A BUFS node is an object that has the following properties:
-  #  my_category
-  #  parent_categories
-  #  description
-  #  attachments in the form of data files
-  #
+  #TODO: Fix create from other node to work
+  #Create the document in the BUFS node format from an existing node.
   def self.create_from_other_node(node_obj)
     self.create_from_file_node(node_obj)
   end
 
   #Returns the id that will be appended to the document ID to uniquely
   #identify attachment documents associated with the main document
+  #TODO: NOT COMPLETELY ABSTRACTED YET
   def self.attachment_base_id
-    self.class_env.attachment_base_id #DataStoreModels::CouchRest::AttachmentBaseID 
+    @myClassEnv.attachment_base_id 
   end
 
 
@@ -104,6 +102,9 @@ class BufsInfoDoc
   #In the latter case, some of the parameters will include information about
   #the datastore (model metadata).
   def initialize(init_params = {})
+    #setting the class accessor to also be an instance accessor
+    #for convenience and hopefully doesn't create confusion
+    @my_ClassEnv = self.class.myClassEnv
     raise "init_params cannot be nil" unless init_params
     @saved_to_model = nil #TODO rename to sychronized_to_model
     #make sure keys are symbols
@@ -121,7 +122,7 @@ class BufsInfoDoc
   end
 
   def filter_user_from_model_data(init_params)
-    model_metadata_keys = self.class.class_env.base_metadata_keys
+    model_metadata_keys = @my_ClassEnv.base_metadata_keys
     model_metadata = {}
     model_metadata_keys.each do |k|
       model_metadata[k] = init_params.delete(k) #delete returns deleted value
@@ -131,38 +132,40 @@ class BufsInfoDoc
 
   def instance_data_validations(user_data)
     #Check for Required Keys
-    required_keys = self.class.class_env.required_instance_keys
+    required_keys = @my_ClassEnv.required_instance_keys
     required_keys.each do |rk|
-      raise ArgumentError, "Requires a value to be assigned to the key #{rk} for instantiation" unless user_data[rk]
+      err_str = "The key #{rk.inspect} must be associated with a"\
+                " value for instantiation"
+      raise ArgumentError, err_str unless user_data[rk]
     end
   end
 
   def save_data_validations(user_data)
-    required_keys = self.class.class_env.required_save_keys
+    required_keys = @my_ClassEnv.required_save_keys
     required_keys.each do |rk|
-      raise ArgumentError, "Requires a value to be assigned to the key #{rk} to be set before saving" unless user_data[rk]
+      err_str = "The key #{rk.inspect} must be associated with a"\
+                " value before saving"
+      raise ArgumentError, err_str unless user_data[rk]
     end
   end
 
   def get_user_data_id(user_data)
-    #FIXME User Node Key from user generated, not hard coded
-    user_node_key = self.class.class_env.node_key
+    user_node_key = @my_ClassEnv.node_key
     user_data[user_node_key]
   end
 
   def update_model_metadata(metadata, node_key)
     #updates @saved_to_model (make a method instead)?
-    model_key = self.class.class_env.model_key #DataStoreModels::CouchRest::ModelKey
-    version_key = self.class.class_env.version_key #DataStoreModels::CouchRest::VersionKey
-    namespace_key = self.class.class_env.namespace_key #DataStoreModels::CouchRest::NamespaceKey
+    model_key = @my_ClassEnv.model_key
+    version_key = @my_ClassEnv.version_key
+    namespace_key = @my_ClassEnv.namespace_key
     id = metadata[model_key] 
     namespace = metadata[namespace_key] 
     rev = metadata[version_key]
-    #id = self.class.db_id(node_key) unless id
-    namespace = self.class.class_env.user_datastore_id unless namespace
-    id = self.class.class_env.generate_model_key(namespace, node_key)  unless id #DataStoreModels::CouchRest.generate_model_key(namespace, node_key) unless id  #faster without the conditional?
+    namespace = @my_ClassEnv.user_datastore_id unless namespace
+    id = @my_ClassEnv.generate_model_key(namespace, node_key)  unless id
     updated_key_metadata = {model_key => id, namespace_key => namespace}
-    updated_key_metadata.delete(version_key) unless rev  #TODO Is this too model specific?
+    updated_key_metadata.delete(version_key) unless rev 
     metadata.merge!(updated_key_metadata)
     if rev 
       @saved_to_model = rev 
@@ -173,21 +176,20 @@ class BufsInfoDoc
     metadata
   end
 
-  #TODO There should be a better way that combines assign user node key
-  #def get_model_key
-  #  #FIXME: Should come from model data, not hard coded
-  #  '_id'
-  #end
-
-  #This will take a key-value pair and create an instance variable (actually it's a method)
-  # using key as the method name, and sets the return value to the value associated with that key
-  # changes to the key's value are reflected in subsequent method calls, and the value can be 
-  # updated by using method_name = some value.  Additionally, any custom operations that have been
-  # defined for that key name will be loaded in and assigned methods in the form methodname_operation
+  #This will take a key-value pair and create an instance variable (actually
+  # it's a method)using key as the method name, and sets the return value to
+  # the value associated with that key changes to the key's value are reflected
+  # in subsequent method calls, and the value can be updated by using
+  # method_name = some value.  Additionally, any custom operations that have
+  # been defined for that key name will be loaded in and assigned methods in
+  # the form methodname_operation
   def iv_set(attr_var, attr_value)
     ops = NodeElementOperations::Ops 
-    add_op_method(attr_var, ops[attr_var]) if ops[attr_var] #incorporates predefined methods
-    @user_data[attr_var] = attr_value unless self.class.metadata_keys.include? attr_var.to_sym #self.class.db_metadata_keys.include? attr_var.to_s
+    #incorporates predefined methods
+    add_op_method(attr_var, ops[attr_var]) if ops[attr_var]
+    unless self.class.metadata_keys.include? attr_var.to_sym
+      @user_data[attr_var] = attr_value
+    end
     #manually setting instance variable (rather than using instance_variable_set),
     # so @node_data_hash can be updated
     #dynamic method acting like an instance variable getter
@@ -248,22 +250,18 @@ class BufsInfoDoc
   #Save the object to the CouchDB database
   def save
     save_data_validations(self.user_data)
-    node_key = self.class.class_env.node_key 
+    node_key = @my_ClassEnv.node_key 
     node_id = self.model_metadata[node_key]
     model_data = inject_node_metadata
     #raise model_data.inspect
-    res = self.class.class_env.save(model_data) 
-    version_key = self.class.class_env.version_key
+    res = @my_ClassEnv.save(model_data) 
+    version_key = @my_ClassEnv.version_key
     rev_data = {version_key => res['rev']}
     update_self(rev_data)
     return self
   end
 
-  #def create_view(param)
-  #  BufsInfoDocEnvMethods.set_view(self.class.db, self.class.design_doc, param)
-  #end
-
-
+  #Deprecated Methods
   #Adds parent categories, it can accept a single category or an array of categories
   #aliased for backwards compatibility, this method is dynamically defined and generated
   def add_parent_categories(new_cats)
@@ -289,23 +287,23 @@ class BufsInfoDoc
   end
 
   def get_attachment_names
-    self.class.class_env.files_mgr.list_file_keys(self)
+    @my_ClassEnv.files_mgr.list_file_keys(self)
   end
 
   #Get attachment content.  Note that the data is read in as a complete block, this may be something that needs optimized.
   #TODO: add_raw_data parameters to a hash?
   def add_raw_data(attach_name, content_type, raw_data, file_modified_at = nil)
-    self.class.class_env.files_mgr.add_raw_data(self, attach_name, content_type, raw_data, file_modified_at = nil)
+    @my_ClassEnv.files_mgr.add_raw_data(self, attach_name, content_type, raw_data, file_modified_at = nil)
   end
 
   def files_add(file_data)
-    attach_id = self.class.class_env.files_mgr.add_files(self, file_data)
+    attach_id = @my_ClassEnv.files_mgr.add_files(self, file_data)
     self.iv_set(:attachment_doc_id, attach_id)
     self.save
   end
 
   def files_subtract(file_basenames)
-    self.class.class_env.files_mgr.subtract_files(self, file_basenames)
+    @my_ClassEnv.files_mgr.subtract_files(self, file_basenames)
   end
 
 
@@ -330,37 +328,6 @@ class BufsInfoDoc
     current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
   end
 
-  #TODO: Genericize for all models
-#  def self.db_id(node_id)
-#    puts "Warning:: method db_id has been deprecated use DataStoreModels::<data store model>.generate_model_key(coll_ns, node_id) instead"
-#    #@collection_namespace + '::' + node_id
-#    DataStoreModels::CouchRest.generate_model_key(@class_env.collection_namespace, node_id)
-#  end
-
-#  def db_id
-#    puts "Warning:: instance method db_id has been deprecated use instance method model_key instead"
-#    self.class.db_id(self.my_category)
-#  end
-
-#  def model_key
-#    node_key = DataStructureModels::Bufs::NodeKey 
-#    node_id = self.user_data[node_key]
-#    DataStoreModels::CouchRest.generate_model_key(@clas_env.collection_namespace, node_id)
-#  end
-  
-  #meta_data should not be in node data so this shouldn't be necessary
-  #def remove_node_db_metadata
-  #  remove_node_db_metadata(@node_data_hash)
-  #end
-  
-  #this won't work as an instance method because the data needs to be
-  #purged before creating the instance
-  #def remove_db_metadata(raw_data)
-  #  db_metadata_keys = @db_metadata
-  #  db_metadata_keys.each {|k| raw_data.delete(k)}
-  #  raw_data #now with metadata removed
-  #end
-
   def inject_node_metadata
     inject_metadata(@user_data)
   end
@@ -371,13 +338,13 @@ class BufsInfoDoc
 
   def update_self(rev_data)
     self.model_metadata.merge!(rev_data)
-    version_key = self.class.class_env.version_key #DataStoreModels::CouchRest::VersionKey
+    version_key = @my_ClassEnv.version_key 
     @saved_to_model = rev_data[version_key]
   end
 
-  #Deletes the object and its CouchDB entry
+  #Deletes the object
   def destroy_node
-    self.class.class_env.destroy_node(self) #DataStoreModels::CouchRest::destroy_node(self)
+    @my_ClassEnv.destroy_node(self)
   end
  
   #Last to be fixed

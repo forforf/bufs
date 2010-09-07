@@ -169,7 +169,7 @@ describe UserDB, "Basic database operations" do
     UserDB.user_to_docClass.each do |user_id, docClass|
       docs_params[user_id].keys.each do |param|
         doc_id = docs_to_save[user_id].model_metadata[:_id]
-        doc_from_db = docClass.class_env.db.get(doc_id)
+        doc_from_db = docClass.myClassEnv.db.get(doc_id)
         db_param = doc_from_db[param]
         docs_to_save[user_id].user_data[param].should == db_param
         #test accessor method
@@ -211,7 +211,7 @@ describe UserDB, "Basic database operations" do
       docs_with_new_parent_cat[user_id].parent_categories.should include new_cat
       #check database
       doc_params[user_id].keys.each do |param|
-        db_param = docClass.class_env.db.get(docs_with_new_parent_cat[user_id].model_metadata[:_id])[param]
+        db_param = docClass.myClassEnv.db.get(docs_with_new_parent_cat[user_id].model_metadata[:_id])[param]
         docs_with_new_parent_cat[user_id].user_data[param].should == db_param
         #test accessor method
         docs_with_new_parent_cat[user_id].__send__(param).should == db_param
@@ -545,7 +545,7 @@ describe UserDB, "Document Operations with Attachments" do
       doc_id = basic_docs[user_id].model_metadata[:_id]
       db_doc = docClass.get(doc_id)
       att_doc_ids[user_id] = db_doc.attachment_doc_id
-      db = db_doc.class.class_env.db
+      db = db_doc.my_ClassEnv.db
       att_docs[user_id] = db.get(att_doc_ids[user_id])
       docClass.get(doc_id).attachment_doc_id.should == att_docs[user_id][:_id]
       att_docs[user_id]['_attachments'].keys.should include BufsEscape.escape(test_basename1)

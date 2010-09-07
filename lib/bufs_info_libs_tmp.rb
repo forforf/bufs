@@ -77,7 +77,7 @@ module DataStoreModels
       #attachment package has now been created
       #create the attachment record
       #TODO: What if the attachment already exists?
-      user_id = node.class.class_env.db_user_id
+      user_id = node.my_ClassEnv.db_user_id
       node_id = node.model_metadata[:_id]
       record = bia_class.add_attachment_package(node, attachment_package)
       if node.respond_to? :attachment_doc_id
@@ -146,7 +146,7 @@ module DataStoreModels
     #TODO: make private
     def subtract_all(node, bia_class)
       #delete the attachment record
-      doc_db = node.class.class_env.db
+      doc_db = node.my_ClassEnv.db
       if node.attachment_doc_id
         attach_doc = doc_db.get(node.attachment_doc_id)
         doc_db.delete_doc(attach_doc)
@@ -260,7 +260,7 @@ module DataStoreModels
     end
 
     def self.destroy(node)
-      node.class.class_env.db.delete_doc('_id' => node.model_metadata[ModelKey], '_rev' => node.model_metadata[VersionKey])
+      node.my_ClassEnv.db.delete_doc('_id' => node.model_metadata[ModelKey], '_rev' => node.model_metadata[VersionKey])
     end
 
   end
