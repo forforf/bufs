@@ -1,7 +1,7 @@
 #require 'couchrest'
 
 #bufs model
-require File.dirname(__FILE__) + '/bufs_info_doc'
+require File.dirname(__FILE__) + '/bufs_base_node'
 
 class UserDB
   class << self; attr_accessor :docClasses, :user_to_docClass, :docClass_users; end
@@ -29,9 +29,10 @@ class UserDB
 
     #initialize Class and add constant for the User namespace
     #Note, the include is to the base class! not the user class
-    BufsInfoDoc.__send__(:include, @user_doc_env_methods)
+    #BufsInfoDoc.__send__(:include, @user_doc_env_methods)
+    BufsBaseNode.__send__(:include, @user_doc_env_methods)
     #---- Dynamic Class Definitions ----
-    dyn_user_class_def = "class #{@user_doc_class_name} < BufsInfoDoc
+    dyn_user_class_def = "class #{@user_doc_class_name} < BufsBaseNode
       
       #use_database CouchRest.database!(\"http://#{@namespace.to_s}/\")
       class << self; attr_accessor :user_attachClass, :user_linkClass; end
