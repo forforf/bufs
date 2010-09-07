@@ -138,7 +138,7 @@ module DataStoreModels
     def subtract_some(node, model_basenames, bia_class)
       if node.attachment_doc_id
         bia_doc = bia_class.get(node.attachment_doc_id)
-        raise "BiaClass_Attach: #{node.user_attachClass} Node: #{node.class.name} AttID: #{node.attachment_doc_id}" unless bia_doc
+        raise "BiaClass_Attach: #{node.class.user_attachClass} Node: #{node.class.name} AttID: #{node.attachment_doc_id}" unless bia_doc
         bia_doc.remove_attachment(model_basenames)
         rem_atts = bia_doc.get_attachments
         subtract_all(node, bia_class) if rem_atts.empty?
@@ -437,7 +437,7 @@ module BufsInfoDocEnvMethods
     user_attach_class_name = "UserAttach#{db_user_id}"
     #the rescue is so that testing works
     begin
-      attachClass = UserDB.const_get(user_attach_class_name)
+      attachClass = UserNode.const_get(user_attach_class_name)
     rescue NameError
       puts "Warning:: Multiuser support for attachments not enabled. This is useful only for basic testing"
       attachClass = BufsInfoAttachment
@@ -514,6 +514,6 @@ module BufsInfoDocEnvMethods
   end
 
   end #ClassEnv
-
-
 end
+
+ClassEnv = BufsInfoDocEnvMethods::ClassEnv  #FIXME: Hack to get things to work
