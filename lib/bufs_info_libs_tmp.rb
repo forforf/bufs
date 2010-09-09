@@ -432,14 +432,14 @@ module BufsInfoDocEnvMethods
     env_name = :bufs_info_doc_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
     couch_db_host = env[env_name][:host]
     db_name_path = env[env_name][:path]
-    db_user_id = env[env_name][:user_id]
+    db_user_id = env[env_name][:user_id] #TODO Change to "data_set_id at some point
     #TODO move the other couch specific stuff from user_doc into here as well
     user_attach_class_name = "UserAttach#{db_user_id}"
     #the rescue is so that testing works
     begin
       attachClass = UserNode.const_get(user_attach_class_name)
     rescue NameError
-      puts "Warning:: Multiuser support for attachments not enabled. This is useful only for basic testing"
+      puts "Warning:: Multiuser support for attachments not enabled. Using generic Attachment Class"
       attachClass = BufsInfoAttachment
     end
     @db_user_id = db_user_id

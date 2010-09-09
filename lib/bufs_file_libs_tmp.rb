@@ -166,11 +166,6 @@ module DataStoreModels
       @data_file = model_actor[:data_file]
     end
 
-    ## CouchDB View Definitions
-    #CouchDB uses a map/reduce structure using javascript
-    #map is essentially a query and reduce is a way of aggregating
-    #the query into summary type of information (example: summing records)
-
     #TODO create an index to speed queries? sync issues?
     def by_my_category(user_datastore_selector, match_keys)
       #raise "nt: #{nodetest.my_category.inspect}" if nodetest
@@ -227,7 +222,7 @@ module DataStoreModels
     ModelKey = :_id  #not used
     VersionKey = :_rev #to have timestapm
     NamespaceKey = :files_namespace
-    MetadataKeys = [ModelKey, VersionKey, NamespaceKey]
+    BaseMetadataKeys = [ModelKey, VersionKey, NamespaceKey]
     
     #collection_namespace corresponds to the namespace that is used to distinguish between unique
     #data sets (i.e., users) within the model
@@ -459,7 +454,14 @@ module BufsFileEnvMethods
                                #:query_all,
                                :fs_metadata_keys,
                                :metadata_keys,
+                               :required_instance_keys,
+                               :required_save_keys,
+                               :base_metadata_keys,
                                :namespace,
+                               :node_key,
+                               :model_key,
+                               :version_key,
+                               :namespace_key,
                                :files_mgr,
                                :views_mgr,
                                :model_save_params,
@@ -488,7 +490,14 @@ module BufsFileEnvMethods
 
     @fs_metadata_keys = BufsFileEnvMethods.set_fs_metadata_keys #(@collection_namespace)
     @metadata_keys = @fs_metadata_keys #TODO spaghetti code alert
-    @user_datastore_selector = BufsFileEnvMethods.set_namespace(fs_path, fs_user_id)
+    @base_metadata_keys = DataStoreModels::FileStore::BaseMetadataKeys
+    @required_instance_keys = DataStructureModels::Bufs::RequiredInstanceKeys
+    @required_save_keys = DataStructureModels::Bufs::RequiredSaveKeys
+    @node_key = DataStructureModels::Bufs::NodeKey
+    @version_key = DataStoreModels::FileStore::VersionKey
+    @model_key = DataStoreModels::FileStore::ModelKey
+    @namespace_key = DataStoreModels::FileStore::NamespaceKey
+    #@user_datastore_selector = BufsFileEnvMethods.set_namespace(fs_path, fs_user_id)
     @namespace = BufsFileEnvMethods.set_namespace(fs_path, fs_user_id)
     #BufsInfoDocEnvMethods.set_view_all(@db, @design_doc, @collection_namespace)
     @user_attachClass = attachClass  
@@ -506,6 +515,33 @@ module BufsFileEnvMethods
     my_dir = @user_datastore_selector + '/' #TODO: Can this be removed?
     all_entries = Dir.working_entries(my_dir)
   end
+
+  def get(id)
+    #TODO my_cat and id are identical, this is probably not a good thing
+    #maybe put in some validations to ensure its from the proper collection namespace?
+    
+    #FIXME: Hack to make it work
+    id_path = id.gsub("::","/")
+    rtn = if File.exists?(id_path)
+      data_file_path = File.join(id_path, @data_file_name)
+      json_data = File.open(data_file_path, 'r'){|f| f.read}
+      node_data = JSON.parse(json_data)
+      node_data = HashKeys.str_to_sym(node_data)
+    else
+      nil
+    end
+  end
+
+
+  def generate_model_key(namespace, node_key)
+    DataStoreModels::FileStore.generate_model_key(namespace, node_key)
+  end
+
+  def save(model_data)
+    DataStoreModels::FileStore.save(@model_save_params, model_data)
+  end
+
+
 
   def raw_all
     entries = query_all
@@ -532,3 +568,5 @@ module BufsFileEnvMethods
   end #ClassEnv
 
 end
+
+ClassEnv = BufsFileEnvMethods::ClassEnv  #temporary hack
