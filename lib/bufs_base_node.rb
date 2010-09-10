@@ -56,14 +56,13 @@ class BufsBaseNode
   attr_accessor :user_data, :model_metadata, :attached_files, 
                 :my_GlueEnv,  #note the "_" to differentiate from class accessor
                 :my_files_mgr
-                #old accessors :saved_to_model
 
   #Class Methods
   #Setting up the Class Environment - The class environment holds all
   # model-specific implementation details
   def self.set_environment(env)
-    reqs = env.delete(:requires)  #TODO: magic deletions, or better structured env?
-    incs = env.delete(:includes)  #TODO: magic deletions, or better structured env?
+    reqs = env[:requires]  #Typically nil, since it's set at the factory
+    incs = env[:includes] 
     reqs.each {|r| require r} if reqs   #load software libraries needed
     incs.each {|mod| include Module.const_get(mod)} if incs  #include the modules to mix in to the node
     @myGlueEnv = GlueEnv.new(env)
@@ -165,10 +164,11 @@ class BufsBaseNode
   end
 
   def filter_user_from_model_data(init_params)
-    model_metadata_keys = @my_GlueEnv.base_metadata_keys
+    model_metadata_keys = @my_GlueEnv.metadata_keys
+    #model_metadata_keys = @my_GlueEnv.base_metadata_keys
     model_metadata = {}
     model_metadata_keys.each do |k|
-      model_metadata[k] = init_params.delete(k) #delete returns deleted value
+      model_metadata[k] = init_params.delete(k) if init_params[k] #delete returns deleted value
     end
     [init_params, model_metadata]
   end
@@ -232,6 +232,8 @@ class BufsBaseNode
     add_op_method(attr_var, ops[attr_var]) if ops[attr_var]
     unless self.class.metadata_keys.include? attr_var.to_sym
       @user_data[attr_var] = attr_value
+    else
+      raise "Key match: #{attr_var.to_sym.inspect} UserData: #{@user_data.inspect}"
     end
     #manually setting instance variable (rather than using instance_variable_set),
     # so @node_data_hash can be updated

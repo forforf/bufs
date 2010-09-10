@@ -116,15 +116,13 @@ class GlueEnv
     @user_datastore_id = CouchRestEnv.set_collection_namespace(db_name_path, db_user_id)
     @design_doc = CouchRestEnv.set_couch_design(@db)#, @collection_namespace)
     @define_query_all = "by_all_bufs".to_sym #CouchRestEnv.query_for_all_collection_records
-    @attachment_base_id = DataStoreModels::CouchRest::AttachmentBaseID
-    @db_metadata_keys = CouchRestEnv.set_db_metadata_keys #(@collection_namespace)
-    @metadata_keys = @db_metadata_keys
-    @base_metadata_keys = DataStoreModels::CouchRest::BaseMetadataKeys
+    @attachment_base_id = CouchRestEnv::AttachmentBaseID
+    @metadata_keys = CouchRestEnv.set_db_metadata_keys #(@collection_namespace)
     @required_instance_keys = DataStructureModels::Bufs::RequiredInstanceKeys
     @required_save_keys = DataStructureModels::Bufs::RequiredSaveKeys
-    @model_key = DataStoreModels::CouchRest::ModelKey
-    @version_key = DataStoreModels::CouchRest::VersionKey
-    @namespace_key = DataStoreModels::CouchRest::NamespaceKey
+    @model_key = CouchRestEnv::ModelKey
+    @version_key = CouchRestEnv::VersionKey
+    @namespace_key = CouchRestEnv::NamespaceKey
     @node_key = DataStructureModels::Bufs::NodeKey
     #TODO: namespace is identical to collection_namespace?
     @namespace = CouchRestEnv.set_namespace(db_name_path, db_user_id)
@@ -152,15 +150,15 @@ class GlueEnv
   end
 
   def save(model_data)
-    DataStoreModels::CouchRest.save(@model_save_params, model_data)
+    CouchRestEnv.save(@model_save_params, model_data)
   end
 
   def destroy_node(node)
-    DataStoreModels::CouchRest::destroy_node(node)
+    CouchRestEnv::destroy_node(node)
   end
 
   def generate_model_key(namespace, node_key)
-    DataStoreModels::CouchRest.generate_model_key(namespace, node_key)
+    CouchRestEnv.generate_model_key(namespace, node_key)
   end
 
   #some models have additional processing required, but not this one

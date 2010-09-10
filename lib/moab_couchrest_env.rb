@@ -1,70 +1,20 @@
 require 'couchrest'
 require 'monitor'
 require File.dirname(__FILE__) + '/bufs_info_attachment'
-require File.dirname(__FILE__) + '/bufs_info_link'
-module DataStoreModels
-  module CouchRest
-
-  AttachmentBaseID = "_attachments"
-  LinkBaseID = "_links"
-
-
-    ModelKey = :_id
-    VersionKey = :_rev
-    NamespaceKey = :bufs_namespace
-    BaseMetadataKeys = [ModelKey, VersionKey, NamespaceKey]
-    
-    #collection_namespace corresponds to the namespace that is used to distinguish between unique
-    #data sets (i.e., users) within the model
-    def self.generate_model_key(collection_namespace, node_key)
-      "#{collection_namespace}::#{node_key}"
-    end  
-
-    def self.save(model_save_params, data)
-      db = model_save_params[:db]
-      raise "No database found to save data" unless db
-      raise "No id found in data: #{data.inspect}" unless data[:_id]
-      model_data = HashKeys.sym_to_str(data) #data.inject({}){|memo,(k,v)| memo["#{k}"] = v; memo}
-      raise "No id found in model data: #{model_data.inspect}" unless model_data['_id']
-      #db.save_doc(model_data)
-      begin
-        #TODO: Genericize this
-        res = db.save_doc(model_data)
-      rescue RestClient::RequestFailed => e
-        #TODO Update specs to test for this
-        if e.http_code == 409
-          raise "Document Conflict in the Database, most likely this is duplication. Error Code was 409. Need to build handling routine"
-          #TODO: Update the below to the new class scheme
-          #existing_doc['_attachments'] = existing_doc['attachments'].merge(self['_attachments']) if self['_attachments']
-          #existing_doc['file_metadata'] = existing_doc['file_metadata'].merge(self['file_metadata']) if self['file_metadata']
-          #existing_doc.save
-          #return existing_doc
-        else
-          raise "Request Failed -- Response: #{res.inspect} Error:#{e}"
-        end
-      end
-    end
-
-    def self.destroy_node(node)
-      att_doc = node.class.user_attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
-      att_doc.destroy if att_doc
-      begin
-        self.destroy(node)
-      rescue ArgumentError => e
-        puts "Rescued Error: #{e} while trying to destroy #{node.my_category} node"
-        node = node.class.get(node.model_metadata['_id'])
-        self.destroy(node)
-      end
-    end
-
-    def self.destroy(node)
-      node.my_GlueEnv.db.delete_doc('_id' => node.model_metadata[ModelKey], '_rev' => node.model_metadata[VersionKey])
-    end
-
-  end
-end
 
 module CouchRestEnv
+  ##Uncomment all mutexs and monitors for thread safety for this module (untested)
+  #TODO Test for thread safety
+  @@mutex = Mutex.new
+  @@monitor = Monitor.new
+  include CouchRest::Mixins::Views::ClassMethods
+
+  ModelKey = :_id
+  VersionKey = :_rev
+  NamespaceKey = :bufs_namespace
+  BaseMetadataKeys = [ModelKey, VersionKey, NamespaceKey]
+
+  AttachmentBaseID = "_attachments"
 
   #The file handling is bound to the model, and can't be abstracted away. This means files can't be handle
   #via the dynamic methods used for other data structures.
@@ -211,11 +161,6 @@ module CouchRestEnv
     end
   end
 
-  ##Uncomment all mutexs and monitors for thread safety for this module (untested)
-  #TODO Test for thread safety
-  @@mutex = Mutex.new
-  @@monitor = Monitor.new
-  include CouchRest::Mixins::Views::ClassMethods
   #Class Environment
   
   #Sets the specific environment needed for this particular class.
@@ -288,9 +233,9 @@ module CouchRestEnv
   end
 
   def self.set_db_metadata_keys #(collection_namespace)
-    more_keys = ['_id', '_rev', '_pos', '_deleted_conflicts', 'bufs_namespace']
-    #base_keys = DataStoreModels::CouchRest::BaseMetadataKeys
-    #db_metadata_keys = base_keys + [:_pos, :_deleted_conflicts] + more_keys
+    #more_keys = ['_id', '_rev', '_pos', '_deleted_conflicts', 'bufs_namespace']
+    base_keys = BaseMetadataKeys
+    db_metadata_keys = base_keys + [:_pos, :_deleted_conflicts] #+ more_keys
     
   end
 
@@ -298,4 +243,61 @@ module CouchRestEnv
   def self.query_for_all_collection_records
     "by_all_bufs".to_sym
   end
+
+  #collection_namespace corresponds to the namespace that is used to distinguish between unique
+  #data sets (i.e., users) within the model
+  def self.generate_model_key(collection_namespace, node_key)
+    "#{collection_namespace}::#{node_key}"
+  end
+
+  #Nodal Actions
+  def self.save(model_save_params, data)
+    db = model_save_params[:db]
+    raise "No database found to save data" unless db
+    raise "No id found in data: #{data.inspect}" unless data[:_id]
+    model_data = HashKeys.sym_to_str(data) #data.inject({}){|memo,(k,v)| memo["#{k}"] = v; memo}
+    raise "No id found in model data: #{model_data.inspect}" unless model_data['_id']
+    #db.save_doc(model_data)
+    begin
+      #TODO: Genericize this
+      res = db.save_doc(model_data)
+    rescue RestClient::RequestFailed => e
+      #TODO Update specs to test for this
+      if e.http_code == 409
+	raise "Document Conflict in the Database, most likely this is duplication."\
+	      " Error Code was 409. Need to build handling routine"\
+	      "\nAdditonal Data: model params: #{model_save_params.inspect}"\
+	      "\n                model data: #{model_data.inspect}"\
+	      "\n                all data: #{data.inspect}"
+	#TODO: Update the below to the new class scheme
+	#existing_doc['_attachments'] = existing_doc['attachments'].merge(self['_attachments']) if self[
+	#existing_doc['file_metadata'] = existing_doc['file_metadata'].merge(self['file_metadata']) if s
+	#existing_doc.save
+	#return existing_doc
+      else
+	raise "Request Failed -- Response: #{res.inspect} Error:#{e}"\
+	      "\nAdditonal Data: model params: #{model_save_params.inspect}"\
+	      "\n                model data: #{model_data.inspect}"\
+	      "\n                all data: #{data.inspect}"
+      end
+    end
+  end
+
+  def self.destroy_node(node)
+    att_doc = node.class.user_attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
+    att_doc.destroy if att_doc
+    begin
+      self.destroy(node)
+    rescue ArgumentError => e
+      puts "Rescued Error: #{e} while trying to destroy #{node.my_category} node"
+      node = node.class.get(node.model_metadata['_id'])
+      self.destroy(node)
+    end
+  end
+
+  def self.destroy(node)
+    node.my_GlueEnv.db.delete_doc('_id' => node.model_metadata[ModelKey], 
+				  '_rev' => node.model_metadata[VersionKey])
+  end
+
 end
