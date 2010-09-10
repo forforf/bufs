@@ -1,3 +1,11 @@
+module DataStructureModels
+  module Bufs
+    #Required Keys on instantiation
+    RequiredInstanceKeys = [:my_category]
+    RequiredSaveKeys = [:my_category]  #duplicative?
+    NodeKey = :my_category #TODO look at supporting multiple node keys
+  end
+end
 
 module NodeElementOperations
   #TODO the hash inside the proc is confusing (the curly braces) update to better readability

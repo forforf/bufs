@@ -304,7 +304,7 @@ module DataStructureModels
 end
 
 
-module BufsFileEnvMethods
+module FileSystemEnv
   ##Uncomment all mutexs and monitors for thread safety for this module (untested)
   #TODO Test for thread safety
   @@mutex = Mutex.new
@@ -442,7 +442,7 @@ module BufsFileEnvMethods
     ".node_data.json"
   end
 
-  class ClassEnv
+  class GlueEnv
   #TODO: Rather than using File class directly, should a special class be used?
 #=begin
   attr_accessor :fs_user_id,
@@ -484,11 +484,11 @@ module BufsFileEnvMethods
       attachClass = "AttachClassShouldBeInFileHandler"
     end
 
-    #@collection_namespace = BufsFileEnvMethods.set_collection_namespace(fs_path, fs_user_id)
-    @user_datastore_selector = BufsFileEnvMethods.set_user_datastore_selector(fs_path, fs_user_id)
-    @user_datastore_id = BufsFileEnvMethods.set_user_datastore_id(fs_path, fs_user_id)
+    #@collection_namespace = FileSystemEnv.set_collection_namespace(fs_path, fs_user_id)
+    @user_datastore_selector = FileSystemEnv.set_user_datastore_selector(fs_path, fs_user_id)
+    @user_datastore_id = FileSystemEnv.set_user_datastore_id(fs_path, fs_user_id)
 
-    @fs_metadata_keys = BufsFileEnvMethods.set_fs_metadata_keys #(@collection_namespace)
+    @fs_metadata_keys = FileSystemEnv.set_fs_metadata_keys #(@collection_namespace)
     @metadata_keys = @fs_metadata_keys #TODO spaghetti code alert
     @base_metadata_keys = DataStoreModels::FileStore::BaseMetadataKeys
     @required_instance_keys = DataStructureModels::Bufs::RequiredInstanceKeys
@@ -497,11 +497,11 @@ module BufsFileEnvMethods
     @version_key = DataStoreModels::FileStore::VersionKey
     @model_key = DataStoreModels::FileStore::ModelKey
     @namespace_key = DataStoreModels::FileStore::NamespaceKey
-    #@user_datastore_selector = BufsFileEnvMethods.set_namespace(fs_path, fs_user_id)
-    @namespace = BufsFileEnvMethods.set_namespace(fs_path, fs_user_id)
+    #@user_datastore_selector = FileSystemEnv.set_namespace(fs_path, fs_user_id)
+    @namespace = FileSystemEnv.set_namespace(fs_path, fs_user_id)
     #BufsInfoDocEnvMethods.set_view_all(@db, @design_doc, @collection_namespace)
     @user_attachClass = attachClass  
-    @data_file_name = BufsFileEnvMethods.set_data_file_name
+    @data_file_name = FileSystemEnv.set_data_file_name
     @model_save_params = {:nodes_save_path => @user_datastore_selector, :data_file => @data_file_name}
     @files_mgr = DataStoreModels::FileStore::FilesMgr.new
     @views_mgr = DataStoreModels::FileStore::ViewsMgr.new({:data_file => @data_file_name})
@@ -565,8 +565,8 @@ module BufsFileEnvMethods
     nil #TODO ok to return nil if all docs destroyed? also, not verifying
   end
 
-  end #ClassEnv
+  end #GlueEnv
 
 end
 
-ClassEnv = BufsFileEnvMethods::ClassEnv  #temporary hack
+GlueEnv = FileSystemEnv::GlueEnv  #temporary hack

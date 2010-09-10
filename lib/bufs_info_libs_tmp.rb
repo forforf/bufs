@@ -5,8 +5,76 @@ require File.dirname(__FILE__) + '/bufs_info_link'
 
 
 #bufs libraries
-require File.dirname(__FILE__) + '/node_element_operations'
+require File.dirname(__FILE__) + '/bufs_couchrest_glue_env'
 
+=begin
+module BufsCouchRestViews
+
+  def self.set_view(db, design_doc, view_name, opts={})
+    #raise view_name if view_name == :parent_categories
+    #TODO: Add options for custom maps, etc
+    #creating view in design_doc
+    design_doc.view_by view_name.to_sym, opts
+    db_view_name = "by_#{view_name}"
+    views = design_doc['views'] || {}
+    view_keys = views.keys || []
+    unless view_keys.include? db_view_name
+      design_doc['_rev'] = nil
+    end
+    begin
+      view_rev_in_db = db.get(design_doc['_id'])['_rev']
+      res = design_doc.save unless design_doc['rev'] == view_rev_in_db
+    rescue RestClient::RequestFailed
+      puts "Warning: Request Failed, assuming because the design doc was already saved?"
+      puts "doc_rev: #{design_doc['_rev'].inspect}"
+      puts "db_rev: #{view_rev_in_db}"
+    end
+  end
+
+  def self.set_view_all(db, design_doc, db_namespace)
+    view_name = "all_bufs"
+    namespace_id = "bufs_namespace"
+    map_str = "function(doc) {
+		  if (doc['#{namespace_id}'] == '#{db_namespace}') {
+		     emit(doc['_id'], doc);
+		  }
+	       }"
+    map_fn = { :map => map_str } #returned from synced block
+    self.set_view(db, design_doc, view_name, map_fn)
+  end
+
+  def self.by_my_category(db, design_doc, user_datastore_id, match_key)
+    map_str = "function(doc) {
+                   if (doc.bufs_namespace =='#{user_datastore_id}' && doc.my_category ){
+                     emit(doc.my_category, doc);
+                  }
+               }"
+    map_fn = { :map => map_str }
+    self.set_view(db, design_doc, :my_category, map_fn)
+    raw_res = design_doc.view :by_my_category, :key => match_key
+    rows = raw_res["rows"]
+    records = rows.map{|r| r["value"]}
+  end 
+
+
+  def self.by_parent_categories(db, design_doc, user_datastore_id, match_keys)
+
+    map_str = "function(doc) {
+                if (doc.bufs_namespace == '#{user_datastore_id}' && doc.parent_categories) {
+                       emit(doc.parent_categories, doc);
+                    };
+                };"
+          #   }"
+    map_fn = { :map => map_str }
+
+    self.set_view(db, design_doc, :parent_categories, map_fn)
+    raw_res = design_doc.view :by_parent_categories
+    rows = raw_res["rows"]
+    records = rows.map{|r| r["value"] if r["value"]["parent_categories"].include? match_keys}
+  end
+
+end
+=end
 module DataStoreModels
   module CouchRest
 
@@ -77,7 +145,7 @@ module DataStoreModels
       #attachment package has now been created
       #create the attachment record
       #TODO: What if the attachment already exists?
-      user_id = node.my_ClassEnv.db_user_id
+      user_id = node.my_GlueEnv.db_user_id
       node_id = node.model_metadata[:_id]
       record = bia_class.add_attachment_package(node, attachment_package)
       if node.respond_to? :attachment_doc_id
@@ -147,7 +215,7 @@ module DataStoreModels
     #TODO: make private
     def subtract_all(node, bia_class)
       #delete the attachment record
-      doc_db = node.my_ClassEnv.db
+      doc_db = node.my_GlueEnv.db
       if node.attachment_doc_id
         attach_doc = doc_db.get(node.attachment_doc_id)
         doc_db.delete_doc(attach_doc)
@@ -159,57 +227,6 @@ module DataStoreModels
       node
     end
   end
-
-
-  #TODO Make thread safe
-  class ViewsMgr
-    #Dependency on BufsInfoDocEnvMethods
-    attr_accessor :model_actor
-
-
-    def initialize(model_actor)
-      @model_actor = model_actor #provides the model actor that can provide views
-    end
-
-    ## CouchDB View Definitions
-    #CouchDB uses a map/reduce structure using javascript
-    #map is essentially a query and reduce is a way of aggregating
-    #the query into summary type of information (example: summing records)
-
-    #Note this couples the model (CouchDB) and the parameter (my_category).  In other words
-    #this presupposes my_category should exist in the model, rather than inferring how to construct
-    #the view from the fact that my_category was used (I don't think the latter is possible for views)
-    def by_my_category(user_datastore_id, match_key)
-      map_str = "function(doc) {
-                     if (doc.bufs_namespace =='#{user_datastore_id}' && doc.my_category ){
-                       emit(doc.my_category, doc);
-                    }
-                 }"
-      map_fn = { :map => map_str }
-      BufsInfoDocEnvMethods.set_view(@model_actor[:db], @model_actor[:design_doc], :my_category, map_fn)
-      raw_res = @model_actor[:design_doc].view :by_my_category, :key => match_key
-      rows = raw_res["rows"]
-      records = rows.map{|r| r["value"]}
-    end
-
-    #namespace vs collection namespace may be confused here
-    def by_parent_categories(user_datastore_id, match_keys)
-    
-      map_str = "function(doc) {
-                  if (doc.bufs_namespace == '#{user_datastore_id}' && doc.parent_categories) {
-                         emit(doc.parent_categories, doc);
-                      };
-                  };"
-            #   }"
-      map_fn = { :map => map_str }
-    
-      BufsInfoDocEnvMethods.set_view(@model_actor[:db], @model_actor[:design_doc], :parent_categories, map_fn)
-      raw_res = @model_actor[:design_doc].view :by_parent_categories
-      rows = raw_res["rows"]
-      records = rows.map{|r| r["value"] if r["value"]["parent_categories"].include? match_keys}
-    end
-
-  end 
 
 
     ModelKey = :_id
@@ -261,12 +278,12 @@ module DataStoreModels
     end
 
     def self.destroy(node)
-      node.my_ClassEnv.db.delete_doc('_id' => node.model_metadata[ModelKey], '_rev' => node.model_metadata[VersionKey])
+      node.my_GlueEnv.db.delete_doc('_id' => node.model_metadata[ModelKey], '_rev' => node.model_metadata[VersionKey])
     end
 
   end
 end
-
+=begin
 module DataStructureModels
   module Bufs
     #Required Keys on instantiation
@@ -276,9 +293,9 @@ module DataStructureModels
     
   end
 end
+=end
 
-
-module BufsInfoDocEnvMethods
+module CouchRestEnv
   ##Uncomment all mutexs and monitors for thread safety for this module (untested)
   #TODO Test for thread safety
   @@mutex = Mutex.new
@@ -355,20 +372,6 @@ module BufsInfoDocEnvMethods
     }
   end
 
-  def self.set_view_all(db, design_doc, db_namespace)
-    @@monitor.synchronize {
-      view_name = "all_bufs"
-      namespace_id = "bufs_namespace"
-      map_str = "function(doc) {
-                    if (doc['#{namespace_id}'] == '#{db_namespace}') {
-                       emit(doc['_id'], doc);
-                    }
-                 }"
-      map_fn = { :map => map_str } #returned from synced block
-      self.set_view(db, design_doc, view_name, map_fn)
-    }
-  end
-
   def self.set_db_metadata_keys #(collection_namespace)
     more_keys = ['_id', '_rev', '_pos', '_deleted_conflicts', 'bufs_namespace']
     #base_keys = DataStoreModels::CouchRest::BaseMetadataKeys
@@ -380,31 +383,9 @@ module BufsInfoDocEnvMethods
   def self.query_for_all_collection_records
     "by_all_bufs".to_sym
   end
-
-  def self.set_view(db, design_doc, view_name, opts={})
-    @@monitor.synchronize {
-      #raise view_name if view_name == :parent_categories
-      #TODO: Add options for custom maps, etc
-      #creating view in design_doc
-      design_doc.view_by view_name.to_sym, opts
-      db_view_name = "by_#{view_name}"
-      views = design_doc['views'] || {}
-      view_keys = views.keys || []
-      unless view_keys.include? db_view_name
-        design_doc['_rev'] = nil
-      end
-      begin
-        view_rev_in_db = db.get(design_doc['_id'])['_rev']
-        res = design_doc.save unless design_doc['rev'] == view_rev_in_db
-      rescue RestClient::RequestFailed
-        puts "Warning: Request Failed, assuming because the design doc was already saved?"
-        puts "doc_rev: #{design_doc['_rev'].inspect}"
-        puts "db_rev: #{view_rev_in_db}"
-      end
-    }  
-  end
-
-  class ClassEnv
+end
+=begin
+class GlueEnv
   attr_accessor :db_user_id,
                                :db,
                                :user_datastore_selector,
@@ -424,7 +405,8 @@ module BufsInfoDocEnvMethods
                                :namespace_key,
                                :namespace,
                                :files_mgr,
-                               :views_mgr,
+                               :views,
+                               #:views_mgr,
                                :model_save_params,
                                :user_attachClass #should be overwritten?
 
@@ -443,16 +425,16 @@ module BufsInfoDocEnvMethods
       attachClass = BufsInfoAttachment
     end
     @db_user_id = db_user_id
-    couch_db_location = BufsInfoDocEnvMethods.set_db_location(couch_db_host, db_name_path)
+    couch_db_location = CouchRestEnv.set_db_location(couch_db_host, db_name_path)
     @db = CouchRest.database!(couch_db_location)
     @model_save_params = {:db => @db}
-    @collection_namespace = BufsInfoDocEnvMethods.set_collection_namespace(db_name_path, db_user_id)
-    @user_datastore_selector = BufsInfoDocEnvMethods.set_user_datastore_selector(@db, @db_user_id)
-    @user_datastore_id = BufsInfoDocEnvMethods.set_collection_namespace(db_name_path, db_user_id)
-    @design_doc = BufsInfoDocEnvMethods.set_couch_design(@db)#, @collection_namespace)
-    @define_query_all = "by_all_bufs".to_sym #BufsInfoDocEnvMethods.query_for_all_collection_records
+    @collection_namespace = CouchRestEnv.set_collection_namespace(db_name_path, db_user_id)
+    @user_datastore_selector = CouchRestEnv.set_user_datastore_selector(@db, @db_user_id)
+    @user_datastore_id = CouchRestEnv.set_collection_namespace(db_name_path, db_user_id)
+    @design_doc = CouchRestEnv.set_couch_design(@db)#, @collection_namespace)
+    @define_query_all = "by_all_bufs".to_sym #CouchRestEnv.query_for_all_collection_records
     @attachment_base_id = DataStoreModels::CouchRest::AttachmentBaseID
-    @db_metadata_keys = BufsInfoDocEnvMethods.set_db_metadata_keys #(@collection_namespace)
+    @db_metadata_keys = CouchRestEnv.set_db_metadata_keys #(@collection_namespace)
     @metadata_keys = @db_metadata_keys
     @base_metadata_keys = DataStoreModels::CouchRest::BaseMetadataKeys
     @required_instance_keys = DataStructureModels::Bufs::RequiredInstanceKeys
@@ -462,11 +444,12 @@ module BufsInfoDocEnvMethods
     @namespace_key = DataStoreModels::CouchRest::NamespaceKey
     @node_key = DataStructureModels::Bufs::NodeKey
     #TODO: namespace is identical to collection_namespace?
-    @namespace = BufsInfoDocEnvMethods.set_namespace(db_name_path, db_user_id)
-    BufsInfoDocEnvMethods.set_view_all(@db, @design_doc, @collection_namespace)
+    @namespace = CouchRestEnv.set_namespace(db_name_path, db_user_id)
+    @views = BufsCouchRestViews
+    @views.set_view_all(@db, @design_doc, @collection_namespace)
     @user_attachClass = attachClass  
     @files_mgr = DataStoreModels::CouchRest::FilesMgr.new(:attachment_actor_class => @user_attachClass)
-    @views_mgr = DataStoreModels::CouchRest::ViewsMgr.new(:db => @db, :design_doc => @design_doc)
+    #@views_mgr = DataStoreModels::CouchRest::ViewsMgr.new(:db => @db, :design_doc => @design_doc)
   end
 
   def query_all  #TODO move to ViewsMgr and change the confusing accessor/method clash
@@ -512,8 +495,5 @@ module BufsInfoDocEnvMethods
     end
     nil #TODO ok to return nil if all docs destroyed? also, not verifying
   end
-
-  end #ClassEnv
-end
-
-ClassEnv = BufsInfoDocEnvMethods::ClassEnv  #FIXME: Hack to get things to work
+end 
+=end
