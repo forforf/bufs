@@ -8,8 +8,8 @@
 #require 'mime/types'
 require 'cgi'
 
-require File.dirname(__FILE__) + '/bufs_escape'
-require File.dirname(__FILE__) + '/helpers/mime_types_new'
+require File.dirname(__FILE__) + '/../bufs_escape'
+require File.dirname(__FILE__) + '/../helpers/mime_types_new'
 require 'couchrest'
 
 #Module of helper functions for BufsInfoAttachment that performs manipulations on the

@@ -1,5 +1,5 @@
-require File.dirname(__FILE__) + '/bufs_data_structure'
-require File.dirname(__FILE__) + '/moab_couchrest_env'
+require File.dirname(__FILE__) + '/../midas/bufs_data_structure'
+require File.dirname(__FILE__) + '/../moabs/moab_couchrest_env'
 
 module BufsCouchRestViews
 

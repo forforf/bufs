@@ -1,6 +1,6 @@
 require 'couchrest'
 require 'monitor'
-require File.dirname(__FILE__) + '/bufs_info_attachment'
+require File.dirname(__FILE__) + '/couchrest_attachment_handler'
 
 module CouchRestEnv
   ##Uncomment all mutexs and monitors for thread safety for this module (untested)

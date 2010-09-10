@@ -13,9 +13,9 @@ CouchDB2.compact!
 require File.dirname(__FILE__) + '/../lib/bufs_node_factory'
 
 module UserNodeSpecHelpers
-  BufsDocLibs = [File.dirname(__FILE__) + '/../lib/bufs_couchrest_glue_env',
-                 File.dirname(__FILE__) + '/../lib/bufs_info_attachment']
-  BufsDocIncludes = [:CouchRestEnv, :DataStoreModels]
+  BufsDocLibs = [File.dirname(__FILE__) + '/../lib/glue_envs/bufs_couchrest_glue_env']
+                 #File.dirname(__FILE__) + '/../lib/moabs/bufs_info_attachment']
+  BufsDocIncludes = [:CouchRestEnv]
 end
 
 #for testing CouchRest model

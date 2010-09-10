@@ -9,7 +9,7 @@ CouchDB.compact!
 require File.dirname(__FILE__) + '/../lib/bufs_base_node'
 
 #BufsDoc Libraries
-BufsDocLibs = [File.dirname(__FILE__) + '/../lib/bufs_couchrest_glue_env']
+BufsDocLibs = [File.dirname(__FILE__) + '/../lib/glue_envs/bufs_couchrest_glue_env']
 
 #BufsBaseNode.set_name_space(CouchDB)
 
