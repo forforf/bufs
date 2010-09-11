@@ -46,9 +46,6 @@ module CouchRestNodeHelpers
   end
   
   def make_doc_no_attachment(user_class, override_defaults={})
-    #default_params = {:my_category => 'default', 
-    #                  :parent_categories => ['default_parent'],
-    #		      :description => 'default description'}
     init_params = get_default_params.merge(override_defaults)
     return user_class.new(init_params)
   end

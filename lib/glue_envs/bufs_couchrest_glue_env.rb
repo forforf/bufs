@@ -36,7 +36,9 @@ module BufsCouchRestViews
     self.set_view(db, design_doc, view_name, map_fn)
   end
 
-  def self.by_my_category(db, design_doc, user_datastore_id, match_key)
+  def self.by_my_category(moab_data, user_datastore_id, match_key)
+    db = moab_data[:db]
+    design_doc = moab_data[:design_doc]
     map_str = "function(doc) {
                    if (doc.bufs_namespace =='#{user_datastore_id}' && doc.my_category ){
                      emit(doc.my_category, doc);
@@ -50,8 +52,9 @@ module BufsCouchRestViews
   end 
 
 
-  def self.by_parent_categories(db, design_doc, user_datastore_id, match_keys)
-
+  def self.by_parent_categories(moab_data, user_datastore_id, match_keys)
+    db = moab_data[:db]
+    design_doc = moab_data[:design_doc]
     map_str = "function(doc) {
                 if (doc.bufs_namespace == '#{user_datastore_id}' && doc.parent_categories) {
                        emit(doc.parent_categories, doc);
@@ -89,32 +92,33 @@ class GlueEnv
                                :namespace,
                                :files_mgr,
                                :views,
-                               #:views_mgr,
                                :model_save_params,
-                               :user_attachClass #should be overwritten?
+                               :moab_data
+                               #:user_attachClass #should be overwritten?
 
   def initialize(env)
     env_name = :bufs_info_doc_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
     couch_db_host = env[env_name][:host]
     db_name_path = env[env_name][:path]
     db_user_id = env[env_name][:user_id] #TODO Change to "data_set_id at some point
-    #TODO move the other couch specific stuff from user_doc into here as well
-    user_attach_class_name = "UserAttach#{db_user_id}"
+    #user_attach_class_name = "UserAttach#{db_user_id}"
     #the rescue is so that testing works
-    begin
-      attachClass = UserNode.const_get(user_attach_class_name)
-    rescue NameError
-      puts "Warning:: Multiuser support for attachments not enabled. Using generic Attachment Class"
-      attachClass = BufsInfoAttachment
-    end
+    #begin
+    #  attachClass = UserNode.const_get(user_attach_class_name)
+    #rescue NameError
+    #  puts "Warning:: Multiuser support for attachments not enabled. Using generic Attachment Class"
+    #  attachClass = BufsInfoAttachment
+    #end
     @db_user_id = db_user_id
     couch_db_location = CouchRestEnv.set_db_location(couch_db_host, db_name_path)
     @db = CouchRest.database!(couch_db_location)
     @model_save_params = {:db => @db}
+    
     @collection_namespace = CouchRestEnv.set_collection_namespace(db_name_path, db_user_id)
     @user_datastore_selector = CouchRestEnv.set_user_datastore_selector(@db, @db_user_id)
     @user_datastore_id = CouchRestEnv.set_collection_namespace(db_name_path, db_user_id)
     @design_doc = CouchRestEnv.set_couch_design(@db)#, @collection_namespace)
+    @moab_data = {:db => @db, :design_doc => @design_doc}
     @define_query_all = "by_all_bufs".to_sym #CouchRestEnv.query_for_all_collection_records
     @attachment_base_id = CouchRestEnv::AttachmentBaseID
     @metadata_keys = CouchRestEnv.set_db_metadata_keys #(@collection_namespace)
@@ -128,7 +132,7 @@ class GlueEnv
     @namespace = CouchRestEnv.set_namespace(db_name_path, db_user_id)
     @views = BufsCouchRestViews
     @views.set_view_all(@db, @design_doc, @collection_namespace)
-    @user_attachClass = attachClass  
+    #@user_attachClass = attachClass  
     @files_mgr = CouchRestEnv::FilesMgr.new(:attachment_actor_class => @user_attachClass)
     #@views_mgr = DataStoreModels::CouchRest::ViewsMgr.new(:db => @db, :design_doc => @design_doc)
   end

@@ -28,14 +28,14 @@ require File.dirname(__FILE__) + '/bufs_escape'
 class GlueEnv
   def method_missing(name)
     raise NameError,"#{name} not found in #{self.class}. Has it been"\
-                    "overwritten to support the persistent model yet?"
+                    " overwritten to support the persistent model yet?"
   end
 end
 
 class FilesMgr
   def method_missing(name)
     raise NameError,"#{name} not found in #{self.class}. Has it been"\
-                    "overwritten to support file/attachment management yet?"
+                    " overwritten to support file/attachment management yet?"
   end
 end
 
@@ -86,8 +86,7 @@ class BufsBaseNode
     view_method_name = "by_#{param}".to_sym #using CouchDB style for now
     records = if @myGlueEnv.views.respond_to? view_method_name
       @myGlueEnv.views.__send__(view_method_name,
-                                  @myGlueEnv.db,
-                                  @myGlueEnv.design_doc,
+                                  @myGlueEnv.moab_data,
                                   @myGlueEnv.user_datastore_id, 
                                   match_keys)
     else

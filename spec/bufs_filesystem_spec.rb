@@ -5,7 +5,7 @@ require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
 require File.dirname(__FILE__) + '/../lib/bufs_base_node'
 
 #BufsDoc Libraries
-BufsFileLibs = [File.dirname(__FILE__) + '/../lib/bufs_file_libs_tmp']
+BufsFileLibs = [File.dirname(__FILE__) + '/../lib/glue_envs/bufs_filesystem_glue_env']
 
 TestFSModelBaseDir = BufsFixtures::ProjectLocation  + 'sandbox_for_specs/file_system_specs'
 
