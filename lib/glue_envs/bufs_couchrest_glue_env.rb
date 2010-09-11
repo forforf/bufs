@@ -90,11 +90,11 @@ class GlueEnv
                                :version_key,
                                :namespace_key,
                                :namespace,
-                               :files_mgr,
+                               :files_mgr_class,
                                :views,
                                :model_save_params,
-                               :moab_data
-                               #:user_attachClass #should be overwritten?
+                               :moab_data,
+                               :attachClass 
 
   def initialize(env)
     env_name = :bufs_info_doc_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
@@ -132,8 +132,11 @@ class GlueEnv
     @namespace = CouchRestEnv.set_namespace(db_name_path, db_user_id)
     @views = BufsCouchRestViews
     @views.set_view_all(@db, @design_doc, @collection_namespace)
-    #@user_attachClass = attachClass  
-    @files_mgr = CouchRestEnv::FilesMgr.new(:attachment_actor_class => @user_attachClass)
+    attach_class_name = "MoabAttachmentHandler#{db_user_id}"
+    @attachClass = CouchRestEnv.set_attach_class(@db.root, attach_class_name) 
+    @files_mgr_class = CouchRestEnv::FilesMgr
+    #@files_mgr_class.model_params = {:attachment_actor_class => @user_attachClass}
+    #@files_mgr_class = CouchRestEnv::FilesMgr.new(:attachment_actor_class => @user_attachClass)
     #@views_mgr = DataStoreModels::CouchRest::ViewsMgr.new(:db => @db, :design_doc => @design_doc)
   end
 

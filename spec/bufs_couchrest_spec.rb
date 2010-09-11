@@ -312,3 +312,38 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     records.size.should == 1
   end
 end
+
+describe BufsBaseNode, "Attachment Operations" do
+  include BufsBaseNodeSpecHelpers
+
+  before(:all) do
+    @test_files = BufsFixtures.test_files
+  end
+
+  before(:each) do
+    BufsBaseNode.destroy_all
+  end
+
+  it "should save data files with metadata" do
+    test_filename = @test_files['binary_data_spaces_in_fname_pptx']
+    test_basename = File.basename(test_filename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    parent_cats = ['nodes with attachments']
+    my_cat = 'doc_w_att1'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    #check initial conditions
+    BufsBaseNode.get(basic_node.model_metadata[:_id]).attached_files.should == nil
+    #test (single file)
+    basic_node.files_add(:src_filename => test_filename)
+    #check results
+    att_node_id = basic_node.model_metadata[:_id]
+    att_node = BufsBaseNode.get(att_node_id)
+    att_node.attached_files.size.should == 1
+    att_node.user_data.should == basic_node.user_data
+  end
+end
+

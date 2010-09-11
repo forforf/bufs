@@ -131,13 +131,14 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
     raise "No id found for the document" unless bufs_info_doc.model_metadata[:_id]
     raise "No attachments provided for attaching" unless attachments
     att_doc_id = self.uniq_att_doc_id(bufs_info_doc)
-    att_doc = bufs_info_doc.class.user_attachClass.get(att_doc_id)
+    #TODO: Fix the dependency upon structure of the node (my_GlueEnv)
+    att_doc = bufs_info_doc.my_GlueEnv.attachClass.get(att_doc_id)
     rtn = if att_doc
       #TODO: This call should be able to be simplified in the new architecture
-      bufs_info_doc.class.user_attachClass.update_attachment_package(att_doc, attachments)
+      bufs_info_doc.my_GlueEnv.attachClass.update_attachment_package(att_doc, attachments)
     else
       #TODO: simplify call
-      bufs_info_doc.class.user_attachClass.create_attachment_package(att_doc_id, bufs_info_doc, attachments)
+      bufs_info_doc.my_GlueEnv.attachClass.create_attachment_package(att_doc_id, bufs_info_doc, attachments)
     end
     return rtn
   end
@@ -153,23 +154,23 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
     sorted_attachments = BufsInfoAttachmentHelpers.sort_attachment_data(attachments)
     #att_doc_id  = self.uniq_att_doc_id(bufs_info_doc)
     custom_metadata_doc_params = {'_id' => att_doc_id, 'md_attachments' => sorted_attachments['cust_md_by_name']}
-    att_doc = bufs_info_doc.class.user_attachClass.get(att_doc_id)
+    att_doc = bufs_info_doc.my_GlueEnv.attachClass.get(att_doc_id)
     raise IndexError, "Can't create new attachment document for #{self}. Document already exists in Database" if att_doc
-    att_doc = bufs_info_doc.class.user_attachClass.new(custom_metadata_doc_params)
+    att_doc = bufs_info_doc.my_GlueEnv.attachClass.new(custom_metadata_doc_params)
     att_doc.save
     sorted_attachments['att_md_by_name'].each do |att_name, params|
       esc_att_name = BufsEscape.escape(att_name)
       att_doc.put_attachment(esc_att_name, sorted_attachments['data_by_name'][esc_att_name],params)
     end
     #returns the updated document from the database
-    return bufs_info_doc.class.user_attachClass.get(att_doc_id)
+    return bufs_info_doc.my_GlueEnv.attachClass.get(att_doc_id)
   end
 
   #Update the attachment data of the attachment document
   #Note: The attachment is decoupled from the associated bufs document, requiring the bufs document
   #to explicitly be provided.
   def update_attachment_package(bufs_doc, new_attachments)
-    bufs_doc.class.user_attachClass.update_attachment_package(self, new_attachments)
+    bufs_doc.my_GlueEnv.attachClass.update_attachment_package(self, new_attachments)
   end
 
 

@@ -41,20 +41,23 @@ module CouchRestEnv
       # filename_key = model_filenames to delete
 
   class FilesMgr
-    #class << self; attr_accessor :model_mgrClass; end
-    #@model_mgrClass = nil  #FIXME: Not needed for every model?  How to abstract then?
+    #class << self; attr_accessor :model_params; end
+    #self.model_params = nil  #will be set at run time by glue env
 
-    attr_accessor :model_actor, :record_ref
-    #TODO: after class is functionally complete, evaluate if model_actor is needed
-    def initialize(model_actor) #provides the model actor that can manage files
-      @model_actor = model_actor
-      @record_ref = nil #id for files container  #PROBLEM - 
-    end
+    #attr_accessor :model_actor, :record_ref
+    #def initialize #provides the couchrest attachment handler
+    #  raise "CouchRest model needs the the parameter :node => <node with attachments> to initialize" unless model_params[:node]
+
+      
+      #@model_actor = self.model_params
+      #@record_ref = nil #id for files container  #PROBLEM - 
+    #end
 
     def add_files(node, file_datas)
-      bia_class = @model_actor[:attachment_actor_class]
+      bia_class = node.my_GlueEnv.attachClass
       attachment_package = {}
       file_datas = [file_datas].flatten
+      stored_basenames = []
       file_datas.each do |file_data|
         #get file data
         src_filename = file_data[:src_filename]
@@ -74,6 +77,7 @@ module CouchRestEnv
         #TODO: reading the file in this way is memory intensive for large files, chunking it up woudl be better
         file_data = File.open(src_filename, "rb") {|f| f.read}
         attachment_package[model_basename] = {'data' => file_data, 'md' => file_metadata}
+        stored_basenames << src_filename  #TODO: Tie this more closely with successful attachment
       end
       #attachment package has now been created
       #create the attachment record
@@ -90,7 +94,8 @@ module CouchRestEnv
       else
         node.iv_set(:attachment_doc_id,  record['_id'] )
       end
-      node.attachment_doc_id
+      #node.attachment_doc_id
+      stored_basenames
     end
 
     def add_raw_data(node, attach_name, content_type, raw_data, file_modified_at = nil)
@@ -248,6 +253,19 @@ module CouchRestEnv
   #data sets (i.e., users) within the model
   def self.generate_model_key(collection_namespace, node_key)
     "#{collection_namespace}::#{node_key}"
+  end
+
+  def self.set_attach_class(db_root_location, attach_class_name)
+    dyn_attach_class_def = "class #{attach_class_name} < BufsInfoAttachment
+      use_database CouchRest.database!(\"http://#{db_root_location}/\")
+ 
+      def self.namespace
+        CouchRest.database!(\"http://#{db_root_location}/\")
+      end
+    end"
+    
+    self.class_eval(dyn_attach_class_def)
+    self.const_get(attach_class_name)
   end
 
   #Nodal Actions

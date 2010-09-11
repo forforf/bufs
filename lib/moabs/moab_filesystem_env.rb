@@ -1,0 +1,270 @@
+#require 'couchrest'
+#require 'monitor'
+require 'cgi'
+require 'time'
+require 'json'
+
+require File.dirname(__FILE__) + '/../midas/bufs_data_structure'
+
+#File Node Helpers
+class Dir  #monkey patch  (duck punching?)
+  def self.working_entries(dir=Dir.pwd)
+    ignore_list = ['thumbs.db','all_child_files']
+    all_entries = Dir.entries(dir)
+    wkg_entries = all_entries.delete_if {|x| x[0] == '.'}
+    wkg_entries = wkg_entries.delete_if {|x| ignore_list.include?(x.downcase)}
+    return wkg_entries
+  end
+
+  def self.file_data_entries(dir=Dir.pwd)
+    ignore_list = ['parent_categories.txt', 'description.txt']
+    wkg_entries = Dir.working_entries(dir)
+    file_data_entries = wkg_entries.delete_if {|x| ignore_list.include?(x.downcase)}
+    return file_data_entries
+  end
+end
+
+module FileSystemEnv
+  ##Uncomment all mutexs and monitors for thread safety for this module (untested)
+  #TODO Test for thread safety
+  @@mutex = Mutex.new
+  @@monitor = Monitor.new
+
+  ModelKey = :_id  #not used
+  VersionKey = :_rev #to have timestapm
+  NamespaceKey = :files_namespace
+  BaseMetadataKeys = [ModelKey, VersionKey, NamespaceKey]
+
+  #The file handling is bound to the model, and can't be abstracted away. This means files can't be handled
+  #via the dynamic methods used for other data structures.
+  #models that will handle data files (whether filesystem files or attachments)
+  #must provide a method called files_mgr that provides an object that can add from a file, add from raw data
+  #and subtract (i.e.) delete the file from the model. These functions must be implemented
+  #by the following named methods.
+      # .add_file(add_file_hashes)      -> adds file data from a file on the local file system (to this program)
+      # .add_raw_data(raw_data_hashes)  -> creates a file in the model from the raw data provided
+      # .subtract(filename_keys)        -> removes the file and metadata associated with the model_filename matching file
+      # .list_files
+      # .get_file(filename_key)
+
+      # add_file_hash = { :model_filename => filename stored in model, (defaults to src_filename's basename)
+      #                   :src_filename => source filename,  (either src_filename or raw_data must be provided)
+      #                   :content_type => :mime content type for the file (derived from file extension defaults to TBD i
+      #                 }
+
+      # raw_data_hash = { :model_filename => filename stored in model, (required)
+      #                   :src_data => source data, (the data to be stored in the file,
+      #                   :content_type => :mime content type for the file (required)
+      #                 }
+      #
+      # filename_key = model_filenames to delete
+
+
+  #TODO Make thread safe
+  class FilesMgr
+    
+    #def initialize(model_params=nil)
+      #no model params needed
+    #end
+
+    def add_files(node, file_datas)
+      filenames = []
+      file_datas.each do |file_data|
+        #TODO Validate file data before saving
+        filenames << file_data[:src_filename]
+      end
+      filenames.each do |filename|
+        my_dest_basename = ::BufsEscape.escape(File.basename(filename))
+        node_dir = File.join(node.my_GlueEnv.user_datastore_selector, node.my_category)  #TODO: this should be node id, not my cat
+        my_dest = File.join(node_dir, my_dest_basename)
+        #FIXME: obj.attached_files is broken, list_attached_files should work
+        #@attached_files << my_dest
+        same_file = filename == my_dest
+        FileUtils.cp(filename, my_dest, :preserve => true, :verbose => true ) unless same_file
+        #self.file_metadata = {filename => {'file_modified' => File.mtime(filename).to_s}}
+      end
+      filenames.map {|f| File.basename(f)} #return basenames
+    end
+
+    def add_raw_data(node, attach_name, content_type, raw_data, file_modified_at = nil)
+      bia_class = @model_actor[:attachment_actor_class]
+      file_metadata = {}
+      if file_modified_at
+        file_metadata['file_modified'] = file_modified_at
+      else
+        file_metadata['file_modified'] = Time.now.to_s
+      end
+      file_metadata['content_type'] = content_type #TODO: is unknown content handled gracefully?
+      attachment_package = {}
+      unesc_attach_name = BufsEscape.unescape(attach_name)
+      attachment_package[unesc_attach_name] = {'data' => raw_data, 'md' => file_metadata}
+      bia = bia_class.get(node.my_attachment_doc_id)
+      record = bia_class.add_attachment_package(node, attachment_package)
+      @record_ref = record['_id']
+    end
+
+    #TODO  Document the :all shortcut somewhere
+    def subtract_files(node, model_basenames)
+      bia_class = @model_actor[:attachment_actor_class]
+      if model_basenames == :all
+        subtract_all(node, bia_class)
+      else
+        subtract_some(node, model_basenames, bia_class)
+      end
+    end
+
+    def list_files(node)
+      return nil unless node.attachment_doc_id
+      bia_class = @model_actor[:attachment_actor_class]
+      rtn = if node.attachment_doc_id
+        bia_doc = bia_class.get(node.attachment_doc_id)
+        bia_doc.get_attachments
+      end
+      rtn
+    end
+
+    def list_file_keys(node)
+       return nil unless node.attachment_doc_id
+       atts = list_files(node)
+       rtn = atts.keys
+    end
+    #TODO: make private
+    def subtract_some(node, model_basenames, bia_class)
+      if node.attachment_doc_id
+        bia_doc = bia_class.get(node.attachment_doc_id)
+        bia_doc.remove_attachment(model_basenames)
+        rem_atts = bia_doc.get_attachments
+        subtract_all(node, bia_class) if rem_atts.empty?
+      end
+    end
+    #TODO: make private
+    def subtract_all(node, bia_class)
+      #delete the attachment record
+      doc_db = node.class.class_env.db
+      if node.attachment_doc_id
+        attach_doc = doc_db.get(node.attachment_doc_id)
+        doc_db.delete_doc(attach_doc)
+        node.iv_unset(:attachment_doc_id)
+        node.save
+      else
+        puts "Warning: Attempted to delete attachments when none existed"
+      end
+      node
+    end
+  end
+
+
+  #Class Environment
+  
+  #Sets the specific environment needed for this particular class.
+  #The goal is to have the class environment completed abstracted from the
+  #operations (i.e. methods) of the class. Perfect abstraction would yield
+  #a model class that could be readily applied to differnt models, and perhaps 
+  #elimivgnate the need for an abstract class to encapsulate the modesl (the current approach) 
+  #The class variables should be able to be reused across all models (yet to be seen if this is possible)
+  #The structure of the environment is a hash (which can contain multiple class environments)
+  #           { env_name => env_options_for_that_particular_class }
+  #
+  # Thus all classes would have a set_environment class method, but each class would have its own
+  # environmental variables and structures
+
+
+  def self.set_user_datastore_selector(fs_name_path, fs_user_id)
+    @@mutex.synchronize {
+      File.join(fs_name_path, fs_user_id)
+    }
+  end
+
+  def self.set_user_datastore_id(fs_name_path, fs_user_id)
+    @@mutex.synchronize {
+      File.join(fs_name_path, fs_user_id)
+    }
+  end
+
+  #model namespace
+  def self.set_namespace(fs_name_path, fs_user_id)
+    @@mutex.synchronize {
+      namespace = File.join(fs_name_path, fs_user_id)
+    }
+  end
+
+  def self.set_fs_metadata_keys #(collection_namespace)
+    metadata_keys = BaseMetadataKeys 
+  end
+
+  def self.set_data_file_name
+    ".node_data.json"
+  end
+
+  #Node Actions
+    
+    #collection_namespace corresponds to the namespace that is used to distinguish between unique
+    #data sets (i.e., users) within the model
+    def self.generate_model_key(collection_namespace, node_key)
+      "#{collection_namespace}::#{node_key}"
+    end  
+
+    def self.save(model_save_params, data)
+      #TODO: Figure out how to separate node_id and my_category, still munged currently
+      parent_path = model_save_params[:nodes_save_path]
+      node_path = File.join(parent_path, data[:my_category])  #<- Fix this dependency on my_cat
+      file_name = model_save_params[:data_file]
+      save_path = File.join(node_path, file_name)  
+      raise "Path not found to save data: #{parent_path}" unless File.exist?(parent_path)
+      #raise "No id found in data: #{data.inspect}" unless data[:_id]
+      model_data = HashKeys.sym_to_str(data) #data.inject({}){|memo,(k,v)| memo["#{k}"] = v; memo}
+      #raise "No id found in model data: #{model_data.inspect}" unless model_data['_id']
+      #db.save_doc(model_data)
+      FileUtils.mkdir_p(node_path) unless File.exist?(node_path)
+      #begin
+        #TODO: Genericize this
+      #if File.exist?(save_path)
+        #File.open(save_path, 'w') {|f| f.write(model_data.to_json)}
+      rev = Time.now.hash #<- I would use File.mtime, but how to get the mod time before saving?
+      model_data['_rev'] = rev
+      f = File.open(save_path, 'w')
+      f.write(model_data.to_json)
+      f.close
+      #else
+      #  File.new(save_path, 'w') {|f| f.write(model_data.to_json)}
+        #check_saved_data = File.open(save_path, 'r') {|f| f.read}
+        #raise check_saved_data.inspect
+      #end
+      #rev = Time.now(save_path).hash  #<- revision is based on file modified time
+      #model_data['rev'] = rev
+      model_data['rev'] = model_data['_rev'] #TODO <- Fix this
+      return model_data
+        #res = db.save_doc(model_data)
+      #rescue RestClient::RequestFailed => e
+        #TODO Update specs to test for this
+      #  if e.http_code == 409
+      #    raise "Document Conflict in the Database, most likely this is duplication. Error Code was 409. Need to build handling routine"
+          #TODO: Update the below to the new class scheme
+          #existing_doc['_attachments'] = existing_doc['attachments'].merge(self['_attachments']) if self['_attachments']
+          #existing_doc['file_metadata'] = existing_doc['file_metadata'].merge(self['file_metadata']) if self['file_metadata']
+          #existing_doc.save
+          #return existing_doc
+      #  else
+      #    raise "Request Failed -- Response: #{res.inspect} Error:#{e}"
+      #  end
+      #end
+    end
+
+    def self.destroy_node(node)
+      att_doc = node.class.user_attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
+      att_doc.destroy if att_doc
+      begin
+        self.destroy(node)
+      rescue ArgumentError => e
+        puts "Rescued Error: #{e} while trying to destroy #{node.my_category} node"
+        node = node.class.get(node.model_metadata['_id'])
+        self.destroy(node)
+      end
+    end
+
+    def self.destroy(node)
+      node.class.class_env.db.delete_doc('_id' => node.model_metadata[ModelKey], '_rev' => node.model_metadata[VersionKey])
+    end
+
+end
+

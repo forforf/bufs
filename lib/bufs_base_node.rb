@@ -55,7 +55,7 @@ class BufsBaseNode
   ##Instance Accessors
   attr_accessor :user_data, :model_metadata, :attached_files, 
                 :my_GlueEnv,  #note the "_" to differentiate from class accessor
-                :my_files_mgr
+                :files_mgr
 
   #Class Methods
   #Setting up the Class Environment - The class environment holds all
@@ -146,6 +146,7 @@ class BufsBaseNode
     #setting the class accessor to also be an instance accessor
     #for convenience and hopefully doesn't create confusion
     @my_GlueEnv = self.class.myGlueEnv
+    @files_mgr = @my_GlueEnv.files_mgr_class.new
     raise "init_params cannot be nil" unless init_params
     @saved_to_model = nil #TODO rename to sychronized_to_model
     #make sure keys are symbols
@@ -158,8 +159,6 @@ class BufsBaseNode
     init_params.each do |attr_name, attr_value|
       iv_set(attr_name.to_sym, attr_value)
     end
-
-    @attached_files = nil
   end
 
   def filter_user_from_model_data(init_params)
@@ -286,9 +285,9 @@ class BufsBaseNode
   end
 
   #some object convenience methods for accessing class methods
-  def files_mgr
-    self.class.files_mgr
-  end
+  #def files_mgr
+  #  self.class.files_mgr
+  #end
 
 
   #Save the object to the CouchDB database
@@ -320,34 +319,29 @@ class BufsBaseNode
     parent_categories_subtract(cats_to_remove)
   end  
 
-  #Returns the attachment id associated with this document.  Note that this does not depend upon there being an attachment.
-  #TODO: Verify this is abstracted from the model (I don't hink it is (see attachment_base_id)
-  def my_attachment_doc_id
-    if self.model_metadata[:_id]
-      return self.model_metadata[:_id] + self.class.attachment_base_id
-    else
-      raise "Can't attach to a document that has not first been saved to the db"
-    end
-  end
-
   def get_attachment_names
-    @my_GlueEnv.files_mgr.list_file_keys(self)
+    @files_mgr.list_file_keys(self)
   end
 
   #Get attachment content.  Note that the data is read in as a complete block, this may be something that needs optimized.
   #TODO: add_raw_data parameters to a hash?
   def add_raw_data(attach_name, content_type, raw_data, file_modified_at = nil)
-    @my_GlueEnv.files_mgr.add_raw_data(self, attach_name, content_type, raw_data, file_modified_at = nil)
+    @files_mgr.add_raw_data(self, attach_name, content_type, raw_data, file_modified_at = nil)
   end
 
-  def files_add(file_data)
-    attach_id = @my_GlueEnv.files_mgr.add_files(self, file_data)
-    self.iv_set(:attachment_doc_id, attach_id)
+  def files_add(file_datas)
+    file_datas = [file_datas].flatten
+    attached_basenames = @files_mgr.add_files(self, file_datas)
+    if self.attached_files
+      self.attached_files += attached_basenames
+    else
+      self.iv_set(:attached_files, attached_basenames)
+    end
     self.save
   end
 
   def files_subtract(file_basenames)
-    @my_GlueEnv.files_mgr.subtract_files(self, file_basenames)
+    @files_mgr.subtract_files(self, file_basenames)
   end
 
 
