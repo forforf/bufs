@@ -344,6 +344,24 @@ describe BufsBaseNode, "Attachment Operations" do
     att_node = BufsBaseNode.get(att_node_id)
     att_node.attached_files.size.should == 1
     att_node.user_data.should == basic_node.user_data
+    att_node.attached_files.should == basic_node.attached_files
+  end
+
+  it "should remove specified data files" do
+    test_filename = @test_files['binary_data_spaces_in_fname_pptx']
+    test_basename = File.basename(test_filename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    parent_cats = ['nodes with attachments']
+    my_cat = 'doc_w_att1'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    basic_node.files_add(:src_filename => test_filename)
+    #check initial conditions
+    
+
   end
 end
 

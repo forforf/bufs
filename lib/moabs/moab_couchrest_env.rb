@@ -2,6 +2,8 @@ require 'couchrest'
 require 'monitor'
 require File.dirname(__FILE__) + '/couchrest_attachment_handler'
 
+require File.dirname(__FILE__) + '/files_manager_base'
+
 module CouchRestEnv
   ##Uncomment all mutexs and monitors for thread safety for this module (untested)
   #TODO Test for thread safety
@@ -41,17 +43,6 @@ module CouchRestEnv
       # filename_key = model_filenames to delete
 
   class FilesMgr
-    #class << self; attr_accessor :model_params; end
-    #self.model_params = nil  #will be set at run time by glue env
-
-    #attr_accessor :model_actor, :record_ref
-    #def initialize #provides the couchrest attachment handler
-    #  raise "CouchRest model needs the the parameter :node => <node with attachments> to initialize" unless model_params[:node]
-
-      
-      #@model_actor = self.model_params
-      #@record_ref = nil #id for files container  #PROBLEM - 
-    #end
 
     def add_files(node, file_datas)
       bia_class = node.my_GlueEnv.attachClass

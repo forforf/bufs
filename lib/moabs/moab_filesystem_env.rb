@@ -4,7 +4,7 @@ require 'cgi'
 require 'time'
 require 'json'
 
-require File.dirname(__FILE__) + '/../midas/bufs_data_structure'
+require File.dirname(__FILE__) + '/files_manager_base'
 
 #File Node Helpers
 class Dir  #monkey patch  (duck punching?)
@@ -63,10 +63,6 @@ module FileSystemEnv
   #TODO Make thread safe
   class FilesMgr
     
-    #def initialize(model_params=nil)
-      #no model params needed
-    #end
-
     def add_files(node, file_datas)
       filenames = []
       file_datas.each do |file_data|
@@ -105,11 +101,11 @@ module FileSystemEnv
 
     #TODO  Document the :all shortcut somewhere
     def subtract_files(node, model_basenames)
-      bia_class = @model_actor[:attachment_actor_class]
+      #bia_class = @model_actor[:attachment_actor_class]
       if model_basenames == :all
         subtract_all(node, bia_class)
       else
-        subtract_some(node, model_basenames, bia_class)
+        subtract_some(node, model_basenames)
       end
     end
 
@@ -129,27 +125,28 @@ module FileSystemEnv
        rtn = atts.keys
     end
     #TODO: make private
-    def subtract_some(node, model_basenames, bia_class)
-      if node.attachment_doc_id
-        bia_doc = bia_class.get(node.attachment_doc_id)
-        bia_doc.remove_attachment(model_basenames)
-        rem_atts = bia_doc.get_attachments
-        subtract_all(node, bia_class) if rem_atts.empty?
+    def subtract_some(node, model_basenames)
+      if node.attached_files
+        #TODO: replace the duplicative namespaces with path to the node dir
+        root_path = node.my_GlueEnv.user_datastore_selector
+        node_loc  = node.user_data[node.my_GlueEnv.node_key]
+        node_path = File.join(root_path, node_loc)
+        filenames = model_basenames.map{|b| File.join(node_path, BufsEscape.escape(b))}
+        #raise filenames.inspect
+        FileUtils.rm_f(filenames)
+        #subtract_all(node) if rem_atts.empty?
       end
     end
     #TODO: make private
     def subtract_all(node, bia_class)
       #delete the attachment record
-      doc_db = node.class.class_env.db
-      if node.attachment_doc_id
-        attach_doc = doc_db.get(node.attachment_doc_id)
-        doc_db.delete_doc(attach_doc)
-        node.iv_unset(:attachment_doc_id)
-        node.save
-      else
-        puts "Warning: Attempted to delete attachments when none existed"
-      end
-      node
+      #  doc_db.delete_doc(attach_doc)
+      #  node.iv_unset(:attachment_doc_id)
+      #  node.save
+      #else
+      #  puts "Warning: Attempted to delete attachments when none existed"
+      #end
+      #node
     end
   end
 

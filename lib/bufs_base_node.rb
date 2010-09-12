@@ -25,6 +25,8 @@ require File.dirname(__FILE__) + '/bufs_escape'
 #   destroy_bulk - destroy records in native persistence model format
 # Important Accessors
 #   :files_mgr - points to the FilesMgr object that handles
+#    files
+
 class GlueEnv
   def method_missing(name)
     raise NameError,"#{name} not found in #{self.class}. Has it been"\
@@ -342,6 +344,8 @@ class BufsBaseNode
 
   def files_subtract(file_basenames)
     @files_mgr.subtract_files(self, file_basenames)
+    self.attached_files -= file_basenames
+    self.save
   end
 
 
