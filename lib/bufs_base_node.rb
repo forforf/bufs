@@ -328,11 +328,20 @@ class BufsBaseNode
   #Get attachment content.  Note that the data is read in as a complete block, this may be something that needs optimized.
   #TODO: add_raw_data parameters to a hash?
   def add_raw_data(attach_name, content_type, raw_data, file_modified_at = nil)
-    @files_mgr.add_raw_data(self, attach_name, content_type, raw_data, file_modified_at = nil)
+    attached_basenames = @files_mgr.add_raw_data(self, attach_name, content_type, raw_data, file_modified_at = nil)
+    if self.attached_files
+      self.attached_files += attached_basenames
+    else
+      self.iv_set(:attached_files, attached_basenames)
+    end
+
+    self.save
   end
 
   def files_add(file_datas)
     file_datas = [file_datas].flatten
+    #TODO keep original names, and have model abstract character issues
+    #TODO escaping is spread all over, do it in one place
     attached_basenames = @files_mgr.add_files(self, file_datas)
     if self.attached_files
       self.attached_files += attached_basenames
@@ -345,6 +354,12 @@ class BufsBaseNode
   def files_subtract(file_basenames)
     @files_mgr.subtract_files(self, file_basenames)
     self.attached_files -= file_basenames
+    self.save
+  end
+
+  def files_remove_all
+    @files_mgr.subtract_files(self, :all)
+    self.attached_files = nil
     self.save
   end
 

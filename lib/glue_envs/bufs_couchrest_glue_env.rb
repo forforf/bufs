@@ -162,6 +162,7 @@ class GlueEnv
 
   def destroy_node(node)
     CouchRestEnv::destroy_node(node)
+    node = nil
   end
 
   def generate_model_key(namespace, node_key)

@@ -16,6 +16,7 @@ class Dir  #monkey patch  (duck punching?)
     return wkg_entries
   end
 
+  #TODO: this duplicates working_entries is it needed?
   def self.file_data_entries(dir=Dir.pwd)
     ignore_list = ['parent_categories.txt', 'description.txt']
     wkg_entries = Dir.working_entries(dir)
@@ -70,7 +71,7 @@ module FileSystemEnv
         filenames << file_data[:src_filename]
       end
       filenames.each do |filename|
-        my_dest_basename = ::BufsEscape.escape(File.basename(filename))
+        my_dest_basename = BufsEscape.escape(File.basename(filename))
         node_dir = File.join(node.my_GlueEnv.user_datastore_selector, node.my_category)  #TODO: this should be node id, not my cat
         my_dest = File.join(node_dir, my_dest_basename)
         #FIXME: obj.attached_files is broken, list_attached_files should work
@@ -79,11 +80,11 @@ module FileSystemEnv
         FileUtils.cp(filename, my_dest, :preserve => true, :verbose => true ) unless same_file
         #self.file_metadata = {filename => {'file_modified' => File.mtime(filename).to_s}}
       end
-      filenames.map {|f| File.basename(f)} #return basenames
+      filenames.map {|f| BufsEscape.escape(File.basename(f))} #return basenames
     end
 
     def add_raw_data(node, attach_name, content_type, raw_data, file_modified_at = nil)
-      bia_class = @model_actor[:attachment_actor_class]
+      #bia_class = @model_actor[:attachment_actor_class]
       file_metadata = {}
       if file_modified_at
         file_metadata['file_modified'] = file_modified_at
@@ -92,18 +93,33 @@ module FileSystemEnv
       end
       file_metadata['content_type'] = content_type #TODO: is unknown content handled gracefully?
       attachment_package = {}
-      unesc_attach_name = BufsEscape.unescape(attach_name)
-      attachment_package[unesc_attach_name] = {'data' => raw_data, 'md' => file_metadata}
-      bia = bia_class.get(node.my_attachment_doc_id)
-      record = bia_class.add_attachment_package(node, attachment_package)
-      @record_ref = record['_id']
+      esc_attach_name = BufsEscape.escape(attach_name)
+      root_path = node.my_GlueEnv.user_datastore_selector
+      node_loc  = node.user_data[node.my_GlueEnv.node_key]
+      node_path = File.join(root_path, node_loc)
+      FileUtils.mkdir_p(node_path) unless File.exist?(node_path)
+      raw_data_filename = File.join(node_path, esc_attach_name)
+      File.open(raw_data_filename, 'wb'){|f| f.write(raw_data)}
+      if file_modified_at
+        File.utime(Time.parse(file_modified_at), Time.parse(file_modified_at), raw_data_filename)
+      else
+        file_modified_at = File.mtime(raw_data_filename).to_s     
+      end
+      #@file_metadata = {'file_modified' => file_modified_at}
+      #@attached_files << raw_data_filename
+
+      #attachment_package[unesc_attach_name] = {'data' => raw_data, 'md' => file_metadata}
+      #bia = bia_class.get(node.my_attachment_doc_id)
+      #record = bia_class.add_attachment_package(node, attachment_package)
+      #@record_ref = record['_id']
+      [esc_attach_name]
     end
 
     #TODO  Document the :all shortcut somewhere
     def subtract_files(node, model_basenames)
       #bia_class = @model_actor[:attachment_actor_class]
       if model_basenames == :all
-        subtract_all(node, bia_class)
+        subtract_all(node)
       else
         subtract_some(node, model_basenames)
       end
@@ -138,15 +154,14 @@ module FileSystemEnv
       end
     end
     #TODO: make private
-    def subtract_all(node, bia_class)
-      #delete the attachment record
-      #  doc_db.delete_doc(attach_doc)
-      #  node.iv_unset(:attachment_doc_id)
-      #  node.save
-      #else
-      #  puts "Warning: Attempted to delete attachments when none existed"
-      #end
-      #node
+    def subtract_all(node)
+      root_path = node.my_GlueEnv.user_datastore_selector
+      node_loc  = node.user_data[node.my_GlueEnv.node_key]
+      node_path = File.join(root_path, node_loc)
+      attached_entries = Dir.working_entries(node_path)
+      #alternate approach would be to use node.files_attached
+      attached_filenames = attached_entries.map{|e| File.join(node_path, e)}
+      FileUtils.rm(attached_filenames)
     end
   end
 

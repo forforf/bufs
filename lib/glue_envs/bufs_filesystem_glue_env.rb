@@ -156,6 +156,11 @@ attr_accessor :fs_user_id,
   end
 
   def destroy_node(node)
+    root_dir = @user_datastore_selector
+    node_dir_name = node.user_data[@node_key]
+    node_dir = File.join(root_dir, node_dir_name)
+    FileUtils.rm_rf(node_dir)
+    node = nil
   end
 
   def generate_model_key(namespace, node_key)

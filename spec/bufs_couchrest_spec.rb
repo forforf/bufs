@@ -360,8 +360,132 @@ describe BufsBaseNode, "Attachment Operations" do
     basic_node.save
     basic_node.files_add(:src_filename => test_filename)
     #check initial conditions
-    
+    attached_basenames = basic_node.attached_files
+    attached_basenames.size.should == 1
+    attached_basenames.first.should == BufsEscape.escape(test_basename)
+    #test
+    basic_node.files_subtract(attached_basenames)
+    #check_results
+    basic_node.attached_files.size.should == 0
+    att_node_id = basic_node.model_metadata[:_id]
+    att_node = BufsBaseNode.get(att_node_id)
+    att_node.attached_files.size.should == 0 
+  end
 
+  it "should not have orphaned attachments when node is deleted" do
+    test_filename = @test_files['binary_data_spaces_in_fname_pptx']
+    test_basename = File.basename(test_filename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    parent_cats = ['nodes with attachments']
+    my_cat = 'doc_w_att1'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    basic_node.files_add(:src_filename => test_filename)
+    #check initial conditions
+    attached_basenames = basic_node.attached_files
+    attached_basenames.size.should == 1
+    attached_basenames.first.should == BufsEscape.escape(test_basename)
+    #test
+    basic_node.destroy_node
+    #check results
+    att_node_id = basic_node.model_metadata[:_id]
+    att_node = BufsBaseNode.get(att_node_id)
+    att_node.should == nil
+    atts = basic_node.my_GlueEnv.attachClass.get(basic_node.attachment_doc_id)
+    atts.should == nil
+  end
+
+  it "should remove all attachments" do
+    test_filename = @test_files['binary_data_spaces_in_fname_pptx']
+    test_basename = File.basename(test_filename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    parent_cats = ['nodes with attachments']
+    my_cat = 'doc_w_att1'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    basic_node.files_add(:src_filename => test_filename)
+    #check initial conditions
+    attached_basenames = basic_node.attached_files
+    attached_basenames.size.should == 1
+    attached_basenames.first.should == BufsEscape.escape(test_basename)
+    #test
+    basic_node.files_remove_all
+    #verify results
+    basic_node.attached_files.should == nil
+    att_node_id = basic_node.model_metadata[:_id]
+    att_node = BufsBaseNode.get(att_node_id)
+    att_node.attached_files.should == nil
+  end
+
+  it "should list attachments" do
+    list = []
+    test_filename = @test_files['binary_data_spaces_in_fname_pptx']
+    test_basename = File.basename(test_filename)
+    list << BufsEscape.escape(test_basename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    parent_cats = ['nodes with attachments']
+    my_cat = 'doc_w_att1'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    basic_node.files_add(:src_filename => test_filename)
+    #check initial conditions
+    attached_basenames = basic_node.attached_files
+    attached_basenames.size.should == 1
+    attached_basenames.first.should == BufsEscape.escape(test_basename)
+    #test
+    #  performed in code
+    #verify results
+    basic_node.attached_files.sort.should == list.sort
+  end
+
+  it "should avoid creating hellish names when escaping and unescaping" do
+    test_filename = @test_files['strange_characters_in_file_name']
+    test_basename = File.basename(test_filename)
+    list = [test_basename]
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    parent_cats = ['nodes with attachments']
+    my_cat = 'doc_w_att1_esc_test'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    #test
+    basic_node.files_add(:src_filename => test_filename)
+    #check results
+    attached_basenames = basic_node.attached_files
+    attached_basenames.size.should == 1
+    attached_basenames.first.should == BufsEscape.escape(test_basename)
+  end
+
+  it "should create an attachment from raw data" do
+    #set initial conditions
+    data_file = @test_files['binary_data3_pptx'] #@test_files['strange_characters_in_file_name']
+    binary_data = File.open(data_file, 'rb'){|f| f.read}
+    binary_data_content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    attach_name = File.basename(data_file)
+    parent_cats = ['nodes with attachments']
+    my_cat = 'doc_w_att1_raw_data'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    #test
+    basic_node.add_raw_data(attach_name, binary_data_content_type, binary_data)
+    #check results
+    att_node_id = basic_node.model_metadata[:_id]
+    att_node = BufsBaseNode.get(att_node_id)
+    att_node.attached_files.size.should == 1
+    att_node.attached_files.first.should == BufsEscape.escape(attach_name)
   end
 end
 

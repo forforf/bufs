@@ -52,7 +52,7 @@ module CouchRestEnv
       file_datas.each do |file_data|
         #get file data
         src_filename = file_data[:src_filename]
-        src_basename = File.basename(src_filename)
+        src_basename = BufsEscape.escape(File.basename(src_filename))
         raise "File data must include the source filename when adding a file to the model" unless src_filename
         model_basename = file_data[:model_basename] || src_basename
         model_basename.gsub!('+', ' ')  #plus signs are problematic
@@ -68,7 +68,7 @@ module CouchRestEnv
         #TODO: reading the file in this way is memory intensive for large files, chunking it up woudl be better
         file_data = File.open(src_filename, "rb") {|f| f.read}
         attachment_package[model_basename] = {'data' => file_data, 'md' => file_metadata}
-        stored_basenames << src_filename  #TODO: Tie this more closely with successful attachment
+        stored_basenames << src_basename  #TODO: Tie this more closely with successful attachment
       end
       #attachment package has now been created
       #create the attachment record
@@ -90,7 +90,7 @@ module CouchRestEnv
     end
 
     def add_raw_data(node, attach_name, content_type, raw_data, file_modified_at = nil)
-      bia_class = @model_actor[:attachment_actor_class]
+      bia_class = node.my_GlueEnv.attachClass
       file_metadata = {}
       if file_modified_at
         file_metadata['file_modified'] = file_modified_at
@@ -101,14 +101,24 @@ module CouchRestEnv
       attachment_package = {}
       unesc_attach_name = BufsEscape.unescape(attach_name)
       attachment_package[unesc_attach_name] = {'data' => raw_data, 'md' => file_metadata}
-      bia = bia_class.get(node.my_attachment_doc_id)
+      #bia = bia_class.get(node.attachment_doc_id)
       record = bia_class.add_attachment_package(node, attachment_package)
-      @record_ref = record['_id']
+      if node.respond_to? :attachment_doc_id
+        if node.attachment_doc_id && (node.attachment_doc_id != record['_id'] )
+          raise "Attachment ID mismatch, current id: #{node.attachment_doc_id} new id: #{record['_id']}"
+        elsif node.attachment_doc_id.nil?
+          node.attachment_doc_id = record['_id']  #TODO How is it nil?
+        end
+      else
+        node.iv_set(:attachment_doc_id,  record['_id'] )
+      end
+      [attach_name]
+      #@record_ref = record['_id']
     end
 
     #TODO  Document the :all shortcut somewhere
     def subtract_files(node, model_basenames)
-      bia_class = @model_actor[:attachment_actor_class]
+      bia_class = node.my_GlueEnv.attachClass
       if model_basenames == :all
         subtract_all(node, bia_class)
       else
@@ -293,7 +303,7 @@ module CouchRestEnv
   end
 
   def self.destroy_node(node)
-    att_doc = node.class.user_attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
+    att_doc = node.my_GlueEnv.attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
     att_doc.destroy if att_doc
     begin
       self.destroy(node)
