@@ -86,8 +86,8 @@ describe UserFileNode, "Basic file operations" do
 
     @user1_id = "User001"
     @user2_id = "User002"
-    @user1_fs = UserFileNode.new(FileSystem1, @user1_id)
-    @user2_fs = UserFileNode.new(FileSystem2, @user2_id)
+    #@user1_fs = UserFileNode.new(FileSystem1, @user1_id)
+    #@user2_fs = UserFileNode.new(FileSystem2, @user2_id)
   end
 
   it "should have the filesystem initialized correctly" do

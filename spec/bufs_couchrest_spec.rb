@@ -37,13 +37,14 @@ end
                                                :path => CouchDB.uri,
                                                :user_id => DummyUserID},
                         :requires => BufsDocLibs,
-                        :includes => BufsDocIncludes }  #may not be final form
+                        :includes => BufsDocIncludes,
+                        :glue_name => "BufsCouchRestEnv" }  #may not be final form
 
 
 #TODO Tesing CouchRest implementation, need generic spec
 #invoked this way for spec since we're testing the abstract class
 #BufsBaseNode.__send__(:include, CouchRestEnv)
-BufsBaseNode.set_environment(CouchDBEnvironment)
+BufsBaseNode.set_environment(CouchDBEnvironment, CouchDBEnvironment[:glue_name])
 
 describe BufsBaseNode, "Basic Document Operations (no attachments)" do
   include BufsBaseNodeSpecHelpers
@@ -134,6 +135,8 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
       node_id = doc_to_save.my_category
       doc_id = BufsBaseNode.myGlueEnv.generate_model_key(namespace, node_id)
       db_param = CouchDB.get(doc_id)[param]
+      bufs_param = BufsBaseNode.get(doc_id).__send__(param.to_sym)
+      db_param.should == bufs_param
       doc_to_save.user_data[param].should == db_param
       #test accessor method
       doc_to_save.__send__(param).should == db_param

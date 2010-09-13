@@ -10,9 +10,14 @@ require File.dirname(__FILE__) + '/files_manager_base'
 class Dir  #monkey patch  (duck punching?)
   def self.working_entries(dir=Dir.pwd)
     ignore_list = ['thumbs.db','all_child_files']
-    all_entries = Dir.entries(dir)
-    wkg_entries = all_entries.delete_if {|x| x[0] == '.'}
-    wkg_entries = wkg_entries.delete_if {|x| ignore_list.include?(x.downcase)}
+    all_entries = if File.exists?(dir)
+      Dir.entries(dir)
+    else
+      nil
+    end
+    wgk_entries = nil
+    wkg_entries = all_entries.delete_if {|x| x[0] == '.'} if all_entries
+    wkg_entries = wkg_entries.delete_if {|x| ignore_list.include?(x.downcase)} if wkg_entries
     return wkg_entries
   end
 
@@ -222,7 +227,7 @@ module FileSystemEnv
       node_path = File.join(parent_path, data[:my_category])  #<- Fix this dependency on my_cat
       file_name = model_save_params[:data_file]
       save_path = File.join(node_path, file_name)  
-      raise "Path not found to save data: #{parent_path}" unless File.exist?(parent_path)
+      #raise "Path not found to save data: #{parent_path}" unless File.exist?(parent_path)
       #raise "No id found in data: #{data.inspect}" unless data[:_id]
       model_data = HashKeys.sym_to_str(data) #data.inject({}){|memo,(k,v)| memo["#{k}"] = v; memo}
       #raise "No id found in model data: #{model_data.inspect}" unless model_data['_id']

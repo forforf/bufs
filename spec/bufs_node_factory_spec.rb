@@ -3,19 +3,21 @@ require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
 
 
 require 'couchrest'
-doc_db_name = "http://bufs.younghawk.org:5984/bufs_test_spec/"
-CouchDB = BufsFixtures::CouchDB #CouchRest.database!(doc_db_name)
+node_db_name = "http://bufs.younghawk.org:5984/bufs_test_spec/"
+CouchDB = BufsFixtures::CouchDB #CouchRest.database!(node_db_name)
 CouchDB.compact!
 CouchDB2 = BufsFixtures::CouchDB2
 CouchDB2.compact!
-
+FileSystem1 = "/home/bufs/bufs/sandbox_for_specs/file_system_specs/group1"
+FileSystem2 = "/home/bufs/bufs/sandbox_for_specs/file_system_specs/group2"
 
 require File.dirname(__FILE__) + '/../lib/bufs_node_factory'
 
 module UserNodeSpecHelpers
-  BufsDocLibs = [File.dirname(__FILE__) + '/../lib/glue_envs/bufs_couchrest_glue_env']
-                 #File.dirname(__FILE__) + '/../lib/moabs/bufs_info_attachment']
-  BufsDocIncludes = [:CouchRestEnv]
+  BufsNodeLibs = [File.dirname(__FILE__) + '/../lib/glue_envs/bufs_couchrest_glue_env']
+  BufsNodeIncludes = [:CouchRestEnv]
+  BufsFileLibs = [File.dirname(__FILE__) + '/../lib/glue_envs/bufs_filesystem_glue_env']
+  BufsFileIncludes = [:FileSystemEnv]
 end
 
 #for testing CouchRest model
@@ -23,10 +25,11 @@ module CouchRestNodeHelpers
 
   def self.env_builder(node_class_id, db, db_user_id)
       node_env = Hash[ node_class_id =>
-                      Hash[ :requires => UserNodeSpecHelpers::BufsDocLibs,
+                      Hash[ :requires => UserNodeSpecHelpers::BufsNodeLibs,
+                            :includes => UserNodeSpecHelpers::BufsNodeIncludes,
+                            :glue_name => "BufsCouchRestEnv",
                             :class_env =>
-                            Hash[ :includes => UserNodeSpecHelpers::BufsDocIncludes,
-                                  :bufs_info_doc_env =>
+                            Hash[ :bufs_info_doc_env =>
                                   Hash[ :host => db.host,
                                         :path => db.uri,
                                         :user_id => db_user_id 
@@ -35,16 +38,35 @@ module CouchRestNodeHelpers
                           ]
                     ]
   end
+end
 
+module FileSystemNodeHelpers
+  def self.env_builder(node_class_id, root_path, fs_user_id)
+      node_env = Hash[ node_class_id =>
+                      Hash[ :requires => UserNodeSpecHelpers::BufsFileLibs,
+                            :includes => UserNodeSpecHelpers::BufsFileIncludes,
+                            :glue_name => "BufsFileSystemEnv",
+                            :class_env =>
+                            Hash[ :bufs_file_system_env =>
+                                  Hash[ :path => root_path,
+                                        :user_id => fs_user_id
+                                      ]
+                                ]
+                          ]
+                    ]
+  end
 
-  DefaultDocParams = {:my_category => 'default',
+end
+
+module NodeHelpers  
+  DefaultNodeParams = {:my_category => 'default',
                       :parent_categories => ['default_parent'],
                       :description => 'default description'}
 
   def get_default_params
-    DefaultDocParams.dup #to avoid a couchrest weirdness don't use the params directly
+    DefaultNodeParams.dup #to avoid a couchrest weirdness don't use the params directly
   end
-  
+
   def make_doc_no_attachment(user_class, override_defaults={})
     init_params = get_default_params.merge(override_defaults)
     return user_class.new(init_params)
@@ -63,72 +85,131 @@ module CouchRestNodeHelpers
   end
 end
 
-describe BufsNodeFactory, "Making the Class" do
-  #include BufsInfoDocSpecHelpers
-
-  before(:each) do
-    @user1_id = "User001"
-    @user2_id = "User002"
-    node_class_id1 = "BufsInfoDoc#{@user1_id}"
-    node_class_id2 = "BufsInfoDoc#{@user2_id}"
+module MakeUserClasses
+    @user1_id = "CouchUser001"
+    @user2_id = "CouchUser002"
+    @user3_id = "FileSysUser003"
+    @user4_id = "FileSysUser004"
+    node_class_id1 = "BufsInfoNode#{@user1_id}"
+    node_class_id2 = "BufsInfoNode#{@user2_id}"
+    node_class_id3 = "BufsFile#{@user3_id}"
+    node_class_id4 = "BufsFile#{@user4_id}"
     node_env1 = CouchRestNodeHelpers.env_builder(node_class_id1, CouchDB, @user1_id)
     node_env2 = CouchRestNodeHelpers.env_builder(node_class_id2, CouchDB2, @user2_id)
+    node_env3 = FileSystemNodeHelpers.env_builder(node_class_id3, FileSystem1, @user3_id)
+    node_env4 = FileSystemNodeHelpers.env_builder(node_class_id4, FileSystem2, @user4_id)
+    User1Class =  BufsNodeFactory.make(node_env1)
+    User2Class =  BufsNodeFactory.make(node_env2)
+    User3Class =  BufsNodeFactory.make(node_env3)
+    User4Class =  BufsNodeFactory.make(node_env4)
+    #@user_classes = [@user1_class, @user2_class, @user3_class, @user4_class]
+end
 
+describe BufsNodeFactory, "Making the Class" do
+  include MakeUserClasses
+  #include BufsInfoNodeSpecHelpers
+=begin
+  before(:all) do
+    @user1_id = "CouchUser001"
+    @user2_id = "CouchUser002"
+    @user3_id = "FileSysUser003"
+    @user4_id = "FileSysUser004"
+    node_class_id1 = "BufsInfoNode#{@user1_id}"
+    node_class_id2 = "BufsInfoNode#{@user2_id}"
+    node_class_id3 = "BufsFile#{@user3_id}"
+    node_class_id4 = "BufsFile#{@user4_id}"
+    node_env1 = CouchRestNodeHelpers.env_builder(node_class_id1, CouchDB, @user1_id)
+    node_env2 = CouchRestNodeHelpers.env_builder(node_class_id2, CouchDB2, @user2_id)
+    node_env3 = FileSystemNodeHelpers.env_builder(node_class_id3, FileSystem1, @user3_id)
+    node_env4 = FileSystemNodeHelpers.env_builder(node_class_id4, FileSystem2, @user4_id)
     @user1_class = BufsNodeFactory.make(node_env1) 
     @user2_class = BufsNodeFactory.make(node_env2)
+    @user3_class = BufsNodeFactory.make(node_env3)
+    @user4_class = BufsNodeFactory.make(node_env4)
+    @user_classes = [@user1_class, @user2_class, @user3_class, @user4_class]
+  end
+=end
+  before(:each) do
+    @user_classes = [User1Class, User2Class, User3Class, User4Class]
   end
 
   after(:each) do
-    @user1_class.destroy_all
-    @user2_class.destroy_all
+    @user_classes.each do |user_class|
+      user_class.destroy_all
+    end
   end
 
   it "should initialize user docs properly" do
+    user_docs = {}
     #test
-    user1_doc = @user1_class.new({:my_category => "user1_data"})
-    user2_doc = @user2_class.new({:my_category => "user2_data"})
+    @user_classes.each do |user_class|
+      user_docs[user_class] = user_class.new({:my_category => "#{user_class.name}_data"})
+    end
+    #user2_doc = @user2_class.new({:my_category => "user2_data"})
 
     #check results
-    user1_doc.my_category.should == "user1_data"
-    user2_doc.my_category.should == "user2_data"
+    user_docs.each do |user_class, user_node|
+      user_node.my_category.should == "#{user_class.name}_data"
+    end 
+    #user1_doc.my_category.should == "user1_data"
+    #user2_doc.my_category.should == "user2_data"
+
     #users should be in different databases
-    user1_doc.my_GlueEnv.db.should_not == user2_doc.my_GlueEnv.db.should_not
-    #users should be registered in UserNode
+    #raise @user_classes.inspect
+    couchrest_users = @user_classes.select{|u| u.to_s =~ /BufsInfoNode/}
+    couchrest_users.size.should == 2
+    couchrest_users[0].myGlueEnv.db.should_not == couchrest_users[1].myGlueEnv.db
+
+    #users should be in different directories
+    filesystem_users = @user_classes.select{|u| u.to_s =~ /BufsFile/}
+    filesystem_users.size.should == 2
+    user_dirs = filesystem_users.map{|f| f.myGlueEnv.user_datastore_selector}
+    user_dirs[0].should_not == user_dirs[1]
   end
 end
 
 
 describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
-  include CouchRestNodeHelpers
+  #include CouchRestNodeHelpers
+  include MakeUserClasses
+  include NodeHelpers
 
-  before(:each) do
+=begin
+  before(:all) do
     @user1_id = "User001"
     @user2_id = "User002"
-    node_class_id1 = "BufsInfoDoc#{@user1_id}"
-    node_class_id2 = "BufsInfoDoc#{@user2_id}"
+    node_class_id1 = "BufsInfoNode#{@user1_id}"
+    node_class_id2 = "BufsInfoNode#{@user2_id}"
     node_env1 = CouchRestNodeHelpers.env_builder(node_class_id1, CouchDB, @user1_id)
     node_env2 = CouchRestNodeHelpers.env_builder(node_class_id2, CouchDB2, @user2_id)
 
     @user1_class = BufsNodeFactory.make(node_env1)
     @user2_class = BufsNodeFactory.make(node_env2)
 
-    @docClasses = [@user1_class, @user2_class]
+    @user_classes = [@user1_class, @user2_class]
+  end
+=end
+  before(:each) do
+    @user_classes = [User1Class, User2Class, User3Class, User4Class]
   end
 
   after(:each) do
-    @user1_class.destroy_all
-    @user2_class.destroy_all
+    @user_classes.each do |user_class|
+      user_class.destroy_all
+    end
+    #@user1_class.destroy_all
+    #@user2_class.destroy_all
   end
 
-  it "should have the database initialized correctly" do
+  it "should initialize correctly with no nodes" do
     #check initial conditions
-    @docClasses.each do |docClass|
-      docClass.all.size.should == 0
+    @user_classes.each do |user_class|
+      user_class.all.size.should == 0
     end
     #test
     default_docs = []
-    @docClasses.each do |docClass|
-      default_docs << docClass.new(get_default_params)
+    @user_classes.each do |user_class|
+      default_docs << user_class.new(get_default_params)
     end
     #check results
     default_docs.each do |default_doc|
@@ -137,44 +218,56 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
       default_doc.description.should == get_default_params[:description]
     end
     #we haven't saved it to the database yet
-    @docClasses.each do |docClass|
-      docClass.all.size.should == 0
+    @user_classes.each do |user_class|
+      user_class.all.size.should == 0
     end
   end
 
   it "should perform basic collection operations properly" do
-    user1_doc = @user1_class.new({:my_category => "user1_data"})
-    user2_doc = @user2_class.new({:my_category => "user2_data"})
-    user1_doc.save
-    user2_doc.save
-    @user1_class.all.first.my_category.should == "user1_data"  
-    @user2_class.all.first.my_category.should == "user2_data"
+    user_docs = {}
+    @user_classes.each do |user_class|
+      user_docs[user_class] = user_class.new({:my_category => "#{user_class.name}_data2"})
+    end
+
+    #user1_doc = @user1_class.new({:my_category => "user1_data"})
+    #user2_doc = @user2_class.new({:my_category => "user2_data"})
+    user_docs.each do |user_class, node|
+      node.save
+    end
+    #user1_doc.save
+    #user2_doc.save
+    #@user1_class.all.first.my_category.should == "user1_data"  
+    #@user2_class.all.first.my_category.should == "user2_data"
+
+    @user_classes.each do |user_class|
+      user_class.all.first.my_category.should == "#{user_class.name}_data2"
+    end
   end
 
   it "should not save if required fields don't exist" do
     #set initial condition
-    orig_db_size = {}
-    @docClasses.each do |user_class|
-      orig_db_size[user_class] = user_class.all.size
+    orig_size = {}
+    @user_classes.each do |user_class|
+      orig_size[user_class] = user_class.all.size
       lambda { user_class.new(:parent_categories => ['no_my_category'],
                               :description => 'some description',
                               :file_metadata => {})
              }.should raise_error(ArgumentError)
     end
 
-    @docClasses.each do |user_class|
-      user_class.all.size.should == orig_db_size[user_class]
+    @user_classes.each do |user_class|
+      user_class.all.size.should == orig_size[user_class]
     end
   end
 
   it "should save" do
     #set initial conditions
-    orig_db_size = {}
+    orig_size = {}
     docs_params = {}
     docs_to_save = {}
-    @docClasses.each do |user_class|
-#    @docClasses.each do |user_class|
-      orig_db_size[user_class] = user_class.all.size
+    @user_classes.each do |user_class|
+#    @user_classes.each do |user_class|
+      orig_size[user_class] = user_class.all.size
       docs_params[user_class] = get_default_params.merge({:my_category => 'save_test'})
       docs_to_save[user_class] = make_doc_no_attachment(user_class, docs_params[user_class].dup)
     end
@@ -186,53 +279,63 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     end
 
     #check results
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       docs_params[user_class].keys.each do |param|
         doc_id = docs_to_save[user_class].model_metadata[:_id]
-        doc_from_db = user_class.myGlueEnv.db.get(doc_id)
-        db_param = doc_from_db[param]
+        doc_from_db = user_class.get(doc_id)
+        db_param = doc_from_db.__send__(param)
         docs_to_save[user_class].user_data[param].should == db_param
         #test accessor method
         docs_to_save[user_class].__send__(param).should == db_param
       end
     end
-    @docClasses.each do |user_class|
-      user_class.all.size.should == orig_db_size[user_class] + 1
+    @user_classes.each do |user_class|
+      user_class.all.size.should == orig_size[user_class] + 1
     end 
   end
 
-#adding categories
+  #adding categories
   it  "should add a single category (and add the property :parent_categories) for an initial category setting for a new doc" do
     #set initial conditions
     orig_parent_cats = {}
     doc_params = {}
+    initial_revs = {}
+    aftersave_revs = {}
     docs_with_new_parent_cat = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       orig_parent_cats[user_class] = ['old parent cat']
-      new_params = get_default_params.merge({:my_category => "cat_test#{user_class}", :parent_categories => orig_parent_cats[user_class]})
+      new_params = get_default_params.merge({:my_category => "cat_test#{(user_class.hash).to_s}", :parent_categories => orig_parent_cats[user_class]})
       doc_params[user_class] = new_params
       docs_with_new_parent_cat[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
+      initial_revs[user_class] = docs_with_new_parent_cat[user_class].model_metadata[:_rev]
+      #puts "#{user_class.inspect} rev: #{initial_revs[user_class].inspect}"
     end
-
     new_cat = 'new parent cat'
 
     #test
-    @docClasses.each do |user_class|
-     docs_with_new_parent_cat[user_class].add_parent_categories(new_cat)
+    @user_classes.each do |user_class|
+     docs_with_new_parent_cat[user_class].parent_categories_add(new_cat)
+     aftersave_revs[user_class] = docs_with_new_parent_cat[user_class].model_metadata[:_rev]
+     #puts "AS: #{user_class.inspect} rev: #{aftersave_revs[user_class].inspect}"
     end
+    
     #check results
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       #check doc in memory
       docs_with_new_parent_cat[user_class].parent_categories.should include new_cat
       #check database
       doc_params[user_class].keys.each do |param|
-        db_param = user_class.myGlueEnv.db.get(docs_with_new_parent_cat[user_class].model_metadata[:_id])[param]
+        node = docs_with_new_parent_cat[user_class]
+        node_id = node.model_metadata[:_id]
+        model_node = node.class.get(node_id)
+        db_param = model_node.__send__(param.to_sym)
         docs_with_new_parent_cat[user_class].user_data[param].should == db_param
         #test accessor method
         docs_with_new_parent_cat[user_class].__send__(param).should == db_param
       end
     end
   end
+
 
   #TODO Setup a test to verify datastructure can change dynamically
   #i.e. add new parameters, check them, set them and delete them
@@ -242,7 +345,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     orig_parent_cats = {}
     doc_params = {}
     doc_existing_new_parent_cats = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       orig_parent_cats[user_class] = ["#{user_class}-orig_cat1", "#{user_class}-orig_cat2"]
       doc_params[user_class] = get_default_params.merge({:my_category => "#{user_class}-cat_test2",
                                                       :parent_categories => orig_parent_cats[user_class]})
@@ -250,10 +353,10 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
       doc_existing_new_parent_cats[user_class].save
     end
     #verify initial conditions
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_params[user_class].keys.each do |param|
         doc_id = doc_existing_new_parent_cats[user_class].model_metadata['_id']
-        db_doc = docClass.get(doc_id)
+        db_doc = user_class.get(doc_id)
         #raise db_doc.model_metadata.inspect
         db_param = db_doc.node_data_hash[param]
         doc_existing_new_parent_cats[user_class].node_data_hash[param].should == db_param
@@ -269,19 +372,19 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     orig_parent_cats = {}
     doc_params = {}
     doc_existing_new_parent_cats = {}
-    @docClasses.each do |user_class|
-      orig_parent_cats[user_class]  = ["#{user_class.to_s}-orig_cat1", "#{user_class.to_s}-orig_cat2"]
-      doc_params[user_class] = get_default_params.merge({:my_category => "#{user_class.to_s}-cat_test2",
+    @user_classes.each do |user_class|
+      orig_parent_cats[user_class]  = ["#{user_class.hash.to_s}-orig_cat1", "#{user_class.hash.to_s}-orig_cat2"]
+      doc_params[user_class] = get_default_params.merge({:my_category => "#{user_class.hash.to_s}-cat_test2",
                                                       :parent_categories => orig_parent_cats[user_class]})
       doc_existing_new_parent_cats[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
       doc_existing_new_parent_cats[user_class].save
     end
     #verify initial conditions
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_params[user_class].keys.each do |param|
         doc_id = doc_existing_new_parent_cats[user_class].model_metadata[:_id]
         db_doc = user_class.get(doc_id)
-        #raise db_doc.model_metadata.inspect
+        #raise doc_id unless db_doc #.model_metadata.inspect
         db_param = db_doc.user_data[param]
         doc_existing_new_parent_cats[user_class].user_data[param].should == db_param
         #test accessor method
@@ -291,26 +394,26 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     #continue with initial conditions
     new_cats = ['new_cat1', 'new cat2', 'orig_cat2']
     #test
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_existing_new_parent_cats[user_class].add_parent_categories(new_cats)
     end
     #check results
     #check doc in memory
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       new_cats.each do |new_cat|
         doc_existing_new_parent_cats[user_class].parent_categories.should include new_cat
       end
     end
     #check database
     parent_cats = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = user_class.get(doc_existing_new_parent_cats[user_class].model_metadata[:_id]).parent_categories
       new_cats.each do |cat|
         parent_cats[user_class].should include cat
       end
     end
     #check all cats are there and are unique
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class].sort.should == (orig_parent_cats[user_class] + new_cats).uniq.sort
     end
   end
@@ -320,14 +423,14 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     doc_params = {}
     doc_remove_parent_cats = {}
     #set initial conditions
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       orig_parent_cats[user_class]  = ['orig_cat3', 'orig_cat4', 'del_this_cat1', "del_this_cat2-#{user_class.to_s}"]
       doc_params[user_class] = get_default_params.merge({:my_category => 'cat_test3', :parent_categories => orig_parent_cats[user_class]})
       doc_remove_parent_cats[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
       doc_remove_parent_cats[user_class].save
     end
     #verify initial conditions
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_params[user_class].keys.each do |param|
         db_param = user_class.get(doc_remove_parent_cats[user_class].model_metadata[:_id]).user_data[param]
         doc_remove_parent_cats[user_class].user_data[param].should == db_param
@@ -337,7 +440,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     end
     #continue with initial conditions
     remove_multi_cats = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       remove_multi_cats[user_class] = ['del_this_cat1', "del_this_cat2-#{user_class.to_s}"]
       remove_multi_cats[user_class].each do |cat|
         doc_remove_parent_cats[user_class].parent_categories.should include cat
@@ -345,19 +448,19 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     end
 
     #test
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_remove_parent_cats[user_class].remove_parent_categories(remove_multi_cats[user_class])
     end
 
     #verify results
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       remove_multi_cats[user_class].each do |cat|
         doc_remove_parent_cats[user_class].parent_categories.should_not include cat
       end
     end
 
     cats_in_db = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_id = doc_remove_parent_cats[user_class].model_metadata[:_id]
       db_doc = user_class.get(doc_id)
       cats_in_db[user_class] = db_doc.user_data[:parent_categories].inspect
@@ -367,9 +470,10 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     end
   end
 
+
   it "should only have unique categories" do
     #verify initial state
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       user_class.all.size.should == 0
     end
 
@@ -380,7 +484,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     new_cats = {}
     expected_sizes = {}
     #set initial conditions
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       orig_parent_cats[user_class] = ['dup cat1', 'dup cat2', 'uniq cat1']
       doc_params[user_class] = get_default_params.merge({:my_category => 'cat_test3', :parent_categories => orig_parent_cats[user_class]})
       doc_uniq_parent_cats[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
@@ -391,13 +495,13 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     end
 
     #test
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_uniq_parent_cats[user_class].add_parent_categories(new_cats[user_class])
     end
 
     #verify results
     records = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       expected_sizes[user_class].should == doc_uniq_parent_cats[user_class].parent_categories.size
       doc_id = doc_uniq_parent_cats[user_class].model_metadata[:_id]
       db_doc = user_class.get(doc_id)
@@ -409,38 +513,44 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     end
   end
 end
-=begin
-describe UserNode, "Document Operations with Attachments" do
-  include UserNodeSpecHelpers
+
+describe BufsNodeFactory, "Document Operations with Attachments" do
+  include MakeUserClasses
+  include NodeHelpers
+  #include UserNodeSpecHelpers
 
   before(:all) do
     @test_files = BufsFixtures.test_files
   end
 
   before(:each) do
-    #delete any existing db records
-    #TODO This only works if the db entry also exists in UserNode
-    #Need to query each user database (how do we know the names?)
-    # => need to enforce database naming convention.
-    #query for couchrest-type that matches /UserNode::UserNode*/
-    UserNode.docClasses.each do |docClass|
-      attachClass = docClass.user_attachClass
-      all_attach_docs = attachClass.all
-      all_attach_docs.each do |attach_doc|
-        attach_doc.destroy
-      end
-      docClass.destroy_all
-    end
-
-    @user1_id = "User001"
-    @user2_id = "User002"
-    @user1_db = UserNode.new(CouchDB, @user1_id)
-    @user2_db = UserNode.new(CouchDB2, @user2_id)
+    @user_classes = [User1Class, User2Class, User3Class, User4Class]
   end
 
-  it "has an attachment class associated with it" do
-     @docClasses.each do |user_class|
-       docClass.user_attachClass.name.should == "UserNode::UserAttach#{user_id}"
+    after(:each) do
+    @user_classes.each do |user_class|
+      user_class.destroy_all
+    end
+  end
+
+  it "has a file manager associated with its nodes" do
+     files_mgr_methods = [:add_files, :add_raw_data, :list_files, :subtract_files, :subtract_all]
+    #set initial conditions
+    orig_parent_cats = {}
+    node_params = {}
+    nodes = {}
+    @user_classes.each do |user_class|
+      orig_parent_cats[user_class] = ['old parent cat']
+      new_params = get_default_params.merge({:my_category => "cat_test#{(user_class.hash).to_s}",
+                                             :parent_categories => orig_parent_cats[user_class] })
+      node_params[user_class] = new_params
+      nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
+    end
+
+     @user_classes.each do |user_class|
+       files_mgr_methods.each do |meth|
+         nodes[user_class].files_mgr.respond_to?(meth).should == true
+       end
      end
    end
 
@@ -454,7 +564,7 @@ describe UserNode, "Document Operations with Attachments" do
     parent_cats = {}
     doc_params = {}
     basic_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = ['docs with attachments']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
@@ -462,34 +572,28 @@ describe UserNode, "Document Operations with Attachments" do
     end
 
     #check initial conditions
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_id = basic_docs[user_class].model_metadata[:_id]
-      db_doc = docClass.get(doc_id)
+      db_doc = user_class.get(doc_id)
       db_doc.model_metadata['attachment_doc_id'].should == nil
-      #(docClass.get(basic_docs[user_class].model_metadata['_id'])['attachment_doc_id']).should == nil
+      #(user_class.get(basic_docs[user_class].model_metadata['_id'])['attachment_doc_id']).should == nil
     end
     #test
     #using just the filename
     file_data = {:src_filename => test_filename}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       basic_docs[user_class].files_add(file_data)
     end
-
 
     #check results
     att_doc_ids = {}
     att_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       id_of_doc_w_att = basic_docs[user_class].model_metadata[:_id]
-      doc_w_att = docClass.get(id_of_doc_w_att)
-      att_doc_ids[user_class] = doc_w_att.attachment_doc_id
-      att_docs[user_class] = docClass.user_attachClass.get(att_doc_ids[user_class])
-      doc_id = basic_docs[user_class].model_metadata[:_id]
-      db_doc = docClass.get(doc_id)
-      db_doc.attachment_doc_id.should == att_docs[user_class][:_id]
-      att_docs[user_class]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_basename)
-      att_docs[user_class]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
-     
+      doc_w_att = user_class.get(id_of_doc_w_att)
+      doc_w_att.attached_files.size.should == 1
+      doc_w_att.user_data.should == basic_docs[user_class].user_data
+      doc_w_att.attached_files.should == basic_docs[user_class].attached_files
     end
   end
 
@@ -500,39 +604,35 @@ describe UserNode, "Document Operations with Attachments" do
     parent_cats = {}
     doc_params = {}
     basic_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = ['docs with attachments']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_w_attach_from_file(user_class, test_filename, doc_params[user_class])
     end
     #verify initial conditions
     att_doc_ids = {}
-    att_docs = {}
+    att_files = {}
     test_basename = File.basename(test_filename)
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_id = basic_docs[user_class].model_metadata[:_id]
-      db_doc = docClass.get(doc_id)
+      db_doc = user_class.get(doc_id)
       #raise db_doc.attachment_doc_id.inspect
-      att_doc_ids[user_class] = db_doc.attachment_doc_id
-      att_docs[user_class] = docClass.user_attachClass.get(att_doc_ids[user_class])
-      docClass.get(doc_id).attachment_doc_id.should == att_docs[user_class][:_id]
-      att_docs[user_class]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_base
-      att_docs[user_class]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
+      att_files[user_class] = db_doc.attached_files
+      att_files[user_class].size.should == 1
+      att_files[user_class].first.should == BufsEscape.escape(test_basename)
     end
     #test
     attachment_name = test_basename
-    @docClasses.each do |user_class|
-      doc = docClass.get(basic_docs[user_class].model_metadata[:_id])
-      doc.files_subtract(:all)
+    @user_classes.each do |user_class|
+      doc = user_class.get(basic_docs[user_class].model_metadata[:_id])
+      doc.files_remove_all
     end
     #check results
-    @docClasses.each do |user_class|
+    #TODO: Highlight the fact that basic doc still has attachments in memory?
+    @user_classes.each do |user_class|
       doc_id = basic_docs[user_class].model_metadata[:_id]
-      db_doc = docClass.get(doc_id)
-      lambda {db_doc.attachment_doc_id}.should raise_error NoMethodError   #reference to attachment doc from user doc
-      #db_doc.attachment_doc_id.should == nil
-      att_docs[user_class] = docClass.get(att_doc_ids[user_class])  #attachment doc
-      att_docs[user_class].should == nil
+      db_doc = user_class.get(doc_id)
+      db_doc.attached_files.should == nil
     end
   end
 
@@ -545,7 +645,7 @@ describe UserNode, "Document Operations with Attachments" do
     parent_cats = {}
     doc_params = {}
     basic_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = ['docs with attachments']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_att2', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_w_attach_from_file(user_class, test_filename1, doc_params[user_class])
@@ -553,54 +653,44 @@ describe UserNode, "Document Operations with Attachments" do
 
     end
     #verify initial conditions
-    att_doc_ids = {}
-    att_docs = {}
+    #att_doc_ids = {}
+    #att_docs = {}
     test_basename1 = File.basename(test_filename1)
     test_basename2 = File.basename(test_filename2)
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_id = basic_docs[user_class].model_metadata[:_id]
-      db_doc = docClass.get(doc_id)
-      att_doc_ids[user_class] = db_doc.attachment_doc_id
-      db = db_doc.my_GlueEnv.db
-      att_docs[user_class] = db.get(att_doc_ids[user_class])
-      docClass.get(doc_id).attachment_doc_id.should == att_docs[user_class][:_id]
-      att_docs[user_class]['_attachments'].keys.should include BufsEscape.escape(test_basename1)
-      att_docs[user_class]['_attachments'].keys.should include BufsEscape.escape(test_basename2) 
-      att_docs[user_class]['md_attachments'][BufsEscape.escape(test_basename1)]['file_modified'].should == File.mtime(test_filename1).to_s
-      att_docs[user_class]['md_attachments'][BufsEscape.escape(test_basename2)]['file_modified'].should == File.mtime(test_filename2).to_s
+      db_doc = user_class.get(doc_id)
+      db_doc.attached_files.size.should == 2
+      #db_doc.attached_files.first.should == BufsEscape.escape(test_basename)
     end
     #test
     attachment_name1 = BufsEscape.escape(test_basename1)
     attachment_name2 = BufsEscape.escape(test_basename2)
-    @docClasses.each do |user_class|
-      doc = docClass.get(basic_docs[user_class].model_metadata[:_id])
+    @user_classes.each do |user_class|
+      doc = user_class.get(basic_docs[user_class].model_metadata[:_id])
       doc.files_subtract(attachment_name1)
     end
     #check results
-    @docClasses.each do |user_class|
-      att_docs[user_class] = docClass.user_attachClass.get(att_doc_ids[user_class])
+    @user_classes.each do |user_class|
+      #att_docs[user_class] = user_class.user_attachClass.get(att_doc_ids[user_class])
       doc_id = basic_docs[user_class].model_metadata[:_id]
-      db_doc = docClass.get(doc_id)
-      db_doc.attachment_doc_id.should == att_docs[user_class][:_id]   #reference to attachment doc from user doc
-      att_docs[user_class]['_attachments'].keys.size.should == 1
-      att_docs[user_class]['_attachments'].keys.first.should == BufsEscape.escape(attachment_name2)
+      db_doc = user_class.get(doc_id)
+      db_doc.attached_files.size.should == 1
+      db_doc.attached_files.first.should == BufsEscape.escape(attachment_name2)
     end
     #delete again so that all attachments are deleted
-    @docClasses.each do |user_class|
-      doc = docClass.get(basic_docs[user_class].model_metadata[:_id])
+    @user_classes.each do |user_class|
+      doc = user_class.get(basic_docs[user_class].model_metadata[:_id])
       doc.files_subtract(attachment_name2)
     end
     #check results
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_id = basic_docs[user_class].model_metadata[:_id]
-      db_doc = docClass.get(doc_id)
-      lambda {db_doc.attachment_doc_id}.should raise_error NoMethodError   #reference to attachment doc from user doc
-      #db_doc.attachment_doc_id.should == nil
-      att_docs[user_class] = docClass.get(att_doc_ids[user_class])  #attachment doc
-      att_docs[user_class].should == nil
+      db_doc = user_class.get(doc_id)
+      db_doc.attached_files.size.should == 0
     end
-
   end
+
 
   it "should list attachment list" do
     #initial conditions
@@ -609,7 +699,7 @@ describe UserNode, "Document Operations with Attachments" do
     parent_cats = {}
     doc_params = {}
     basic_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = ['docs with attachments']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_class]})
 
@@ -619,29 +709,25 @@ describe UserNode, "Document Operations with Attachments" do
     att_doc_ids = {}
     att_docs = {}
     test_basename = File.basename(test_filename)
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_id = basic_docs[user_class].model_metadata[:_id]
-      db_doc = docClass.get(doc_id)
-      att_doc_ids[user_class] = db_doc.attachment_doc_id
-      att_docs[user_class] = docClass.user_attachClass.get(att_doc_ids[user_class])
-      docClass.get(doc_id).attachment_doc_id.should == att_docs[user_class][:_id]
-      att_docs[user_class]['_attachments'].keys.should include BufsEscape.escape(test_basename) #
-      att_docs[user_class]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
+      db_doc = user_class.get(doc_id)
+      db_doc.attached_files.size.should == 1
+      db_doc.attached_files.first.should == BufsEscape.escape(test_basename)
     end
     #test
     attachment_names = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_id = basic_docs[user_class].model_metadata[:_id]
-      db_doc = docClass.get(doc_id)
-      attachment_names[user_class] = db_doc.get_attachment_names
+      db_doc = user_class.get(doc_id)
+      attachment_names[user_class] = db_doc.attached_files
     end
     #check results
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       attachment_names[user_class].size.should == 1
       attachment_names[user_class].first.should == BufsEscape.escape(test_basename)
     end
   end
-
 
   it "should avoid creating hellish names when escaping and unescaping" do
     #initial conditions (attachment file)
@@ -653,26 +739,21 @@ describe UserNode, "Document Operations with Attachments" do
     parent_cats = {}
     doc_params = {}
     basic_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = ['text file', 'test file']
       doc_params[user_class] = get_default_params.merge({:my_category => 'strange_characters', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
       basic_docs[user_class].save #doc must be saved before we can attach
     end
     #test
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       basic_docs[user_class].files_add(:src_filename => test_filename)
     end
     #check results
-    att_doc_ids = {}
-    att_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc_id = basic_docs[user_class].model_metadata[:_id]
-      db_doc = docClass.get(doc_id)
-      att_doc_ids[user_class] = db_doc.attachment_doc_id
-      att_docs[user_class] = docClass.user_attachClass.get(att_doc_ids[user_class])
-      att_docs[user_class]['_attachments'].keys.should include BufsEscape.escape(test_basename) #URI.escape(test_basename)
-      att_docs[user_class]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
+      db_doc = user_class.get(doc_id)
+      db_doc.attached_files.first.should == BufsEscape.escape(test_basename)
     end
   end
 
@@ -690,10 +771,10 @@ describe UserNode, "Document Operations with Attachments" do
     metadata = {}
     att_doc_ids = {}
     att_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = ['docs with attachments']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_raw_data_att', :parent_categories => parent_cats[user_class]})
-      basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params)
+      basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
       basic_docs[user_class].save
       #test
       #metadata[user_class] = basic_docs[user_class].add_raw_data(attach_name, binary_data_content_type, binary_data)
@@ -701,20 +782,17 @@ describe UserNode, "Document Operations with Attachments" do
       basic_docs[user_class].add_raw_data(attach_name, binary_data_content_type, binary_data)
       #verify results
       doc_id = basic_docs[user_class].model_metadata[:_id]
-      db_doc = docClass.get(doc_id)
-      att_doc_ids[user_class] = db_doc.my_attachment_doc_id
-      att_docs[user_class] = docClass.user_attachClass.get(att_doc_ids[user_class])
-      esc_att_name = BufsEscape.escape(attach_name)
-      att_docs[user_class].should_not == nil
-      att_docs[user_class]['_attachments'].keys.should include esc_att_name
-      file_mod_time = att_docs[user_class]['md_attachments'][esc_att_name]['file_modified']
-      Time.parse(file_mod_time).should > (Time.now - 4) #4 seconds should be enough time
-      att_docs[user_class]['_attachments'][esc_att_name]['content_type'].should == binary_data_content_type
+      db_doc = user_class.get(doc_id)
+      db_doc.attached_files.size.should == 1
+      att_file = db_doc.attached_files.first
+      att_file.should == BufsEscape.escape(attach_name)
+      #TODO: More rigorous testing of attached data from raw data
     end
   end
-
+end
+=begin
 #recomment out
-#=begin
+=begin
 #creatding a db doc from a directory entry
   it "should create a full doc from a node object without files" do
     NodeMock = Struct.new(:my_category, :parent_categories, :description, :list_attached_files)
@@ -723,8 +801,8 @@ describe UserNode, "Document Operations with Attachments" do
                                           'mock description')
 
     docs = {}
-    @docClasses.each do |user_class|
-      docs[user_class] = docClass.create_from_file_node(node_obj_mock_no_files)
+    @user_classes.each do |user_class|
+      docs[user_class] = user_class.create_from_file_node(node_obj_mock_no_files)
       docs[user_class].my_category.should == node_obj_mock_no_files.my_category
       docs[user_class].parent_categories.should == node_obj_mock_no_files.parent_categories
       docs[user_class].description.should == node_obj_mock_no_files.description
@@ -743,15 +821,15 @@ describe UserNode, "Document Operations with Attachments" do
     docs = {}
     att_doc_ids = {}
     att_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       #test
-      docs[user_class] = docClass.create_from_file_node(node_obj_mock_with_files)
+      docs[user_class] = user_class.create_from_file_node(node_obj_mock_with_files)
       #check results
       docs[user_class].my_category.should == node_obj_mock_with_files.my_category
       docs[user_class].parent_categories.should == node_obj_mock_with_files.parent_categories
       docs[user_class].description.should == node_obj_mock_with_files.description
-      att_doc_ids[user_class] = docClass.get(docs[user_class]['_id']).attachment_doc_id
-      att_docs[user_class] = docClass.get(att_doc_ids[user_class])
+      att_doc_ids[user_class] = user_class.get(docs[user_class]['_id']).attachment_doc_id
+      att_docs[user_class] = user_class.get(att_doc_ids[user_class])
       att_docs[user_class]['_attachments'].keys.should include BufsEscape.escape(test_basename)
       att_docs[user_class]['md_attachments'][BufsEscape.escape(test_basename)]['file_modified'].should == File.mtime(test_filename).to_s
     end
@@ -762,7 +840,7 @@ describe UserNode, "Document Operations with Attachments" do
     parent_cats = {}
     doc_params = {}
     basic_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = ['category testing']
       doc_params[user_class]  = get_default_params.merge({:my_category => 'my_cat1', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
@@ -774,9 +852,9 @@ describe UserNode, "Document Operations with Attachments" do
     end
   
     test_nodes = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       find_cat = 'my_cat1'
-      test_nodes[user_class] = docClass.call_view(:my_category, find_cat)
+      test_nodes[user_class] = user_class.call_view(:my_category, find_cat)
       test_nodes[user_class].each do |node|
         node.my_category.should == find_cat
       end
@@ -785,10 +863,10 @@ describe UserNode, "Document Operations with Attachments" do
 
   it "should only have a single entry for each doc category" do
     all_nodes = {}
-    @docClasses.each do |user_class|
-      all_nodes[user_class] = docClass.all
+    @user_classes.each do |user_class|
+      all_nodes[user_class] = user_class.all
       all_nodes[user_class].each do |doc|
-        docClass.call_view(:my_category, doc.my_category).size.should == 1
+        user_class.call_view(:my_category, doc.my_category).size.should == 1
       end
     end
   end
@@ -798,7 +876,7 @@ describe UserNode, "Document Operations with Attachments" do
     doc_params = {}
     basic_docs = {}
     #set initial conditions (doc with attachment)
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = ['deletion testing']
       doc_params[user_class] = get_default_params.merge({:my_category => 'delete_test1', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
@@ -811,26 +889,26 @@ describe UserNode, "Document Operations with Attachments" do
     docs = {}
     doc_att_ids = {}
     doc_atts = {}
-    @docClasses.each do |user_class|
-      docs[user_class] = docClass.call_view(:my_category, 'delete_test1')
+    @user_classes.each do |user_class|
+      docs[user_class] = user_class.call_view(:my_category, 'delete_test1')
       docs[user_class].size.should == 1
       doc = docs[user_class].first
-      doc_att_ids[user_class] = docClass.get(doc.model_metadata[:_id]).attachment_doc_id
-      doc_atts[user_class] = docClass.user_attachClass.get(doc_att_ids[user_class])
+      doc_att_ids[user_class] = user_class.get(doc.model_metadata[:_id]).attachment_doc_id
+      doc_atts[user_class] = user_class.user_attachClass.get(doc_att_ids[user_class])
       doc_atts[user_class].should_not == nil
     end
     #test
-    @docClasses.each do |user_class|
-      doc_latest = docClass.get(basic_docs[user_class].model_metadata[:_id])
+    @user_classes.each do |user_class|
+      doc_latest = user_class.get(basic_docs[user_class].model_metadata[:_id])
       doc_latest.destroy_node
     end
     #verify results
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       doc = docs[user_class].first
       doc.my_category.should == 'delete_test1'
-      docClass.call_view(:my_category, doc.my_category).size.should == 0
+      user_class.call_view(:my_category, doc.my_category).size.should == 0
       doc_att_ids[user_class].should_not == nil
-      doc_atts[user_class] = docClass.user_attachClass.get(doc_att_ids[user_class])
+      doc_atts[user_class] = user_class.user_attachClass.get(doc_att_ids[user_class])
       doc_atts[user_class].should == nil
     end
   end
@@ -849,13 +927,13 @@ describe UserNode, "Document Operations with Links" do
     #Need to query each user database (how do we know the names?)
     # => need to enforce database naming convention.
     #query for couchrest-type that matches /UserNode::UserNode*/
-    UserNode.docClasses.each do |docClass|
-      #linkClass = docClass.user_linkClass
+    UserNode.user_classes.each do |user_class|
+      #linkClass = user_class.user_linkClass
       #all_link_docs = linkClass.all
       #all_link_docs.each do |link_doc|
       #  link_doc.destroy
       #end
-      all_user_docs = docClass.all
+      all_user_docs = user_class.all
       all_user_docs.each do |user_doc|
         puts "WARNING: this doc has :_id of nil" unless user_doc.model_metadata[:_id] #{user_
         puts "WARNING this doc has valid :_id but nil '_rev" if (user_doc.model_metadata[:_id] && user_doc.model_metadata["_rev"].nil?)
@@ -874,7 +952,7 @@ describe UserNode, "Document Operations with Links" do
     parent_cats = {}
     doc_params = {}
     basic_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = ['docs with links']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_links', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params)
@@ -889,7 +967,7 @@ describe UserNode, "Document Operations with Links" do
         basic_docs[user_class].respond_to?(meth).should == true
       end
       basic_docs[user_class].save
-      doc_latest = docClass.get(basic_docs[user_class].model_metadata[:_id])
+      doc_latest = user_class.get(basic_docs[user_class].model_metadata[:_id])
       doc_latest.links.should == {}
     end
   end
@@ -902,30 +980,30 @@ describe UserNode, "Document Operations with Links" do
     parent_cats = {}
     doc_params = {}
     basic_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = ['docs with links']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_link1', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
       basic_docs[user_class].save #doc must be saved before we can add links
     end
-    @docClasses.each do |user_class|
-      doc_latest = docClass.get(basic_docs[user_class].model_metadata[:_id])
+    @user_classes.each do |user_class|
+      doc_latest = user_class.get(basic_docs[user_class].model_metadata[:_id])
       doc_latest.links.should == nil
     end
     #test
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       basic_docs[user_class].links_add(test_links)
     end
     #check results
     #link_doc_ids = {}
     #link_docs = {}
-    @docClasses.each do |user_class|
-      #link_doc_ids[user_class] = docClass.get(basic_docs[user_class]['_id']).my_link_doc_id
-      #link_docs[user_class] = docClass.get(link_doc_ids[user_class])
-      user_doc_from_db = docClass.get(basic_docs[user_class].model_metadata[:_id])
-      #docClass.get(basic_docs[user_class]['_id'])['links_doc_id'].should == link_docs[user_class]['_id']
+    @user_classes.each do |user_class|
+      #link_doc_ids[user_class] = user_class.get(basic_docs[user_class]['_id']).my_link_doc_id
+      #link_docs[user_class] = user_class.get(link_doc_ids[user_class])
+      user_doc_from_db = user_class.get(basic_docs[user_class].model_metadata[:_id])
+      #user_class.get(basic_docs[user_class]['_id'])['links_doc_id'].should == link_docs[user_class]['_id']
       #user_doc_from_db.links_doc_id.should == link_docs[user_class]['_id']
-      #links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
+      #links_in_user_doc = user_class.user_linkClass.get(user_doc_from_db.links_doc_id)
       #links_in_user_doc.uris.should == test_links
       user_doc_from_db.links.should == test_links
     end
@@ -940,28 +1018,28 @@ describe UserNode, "Document Operations with Links" do
     parent_cats = {}
     doc_params = {}
     basic_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = ['docs with links']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_link1', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
       basic_docs[user_class].save #doc must be saved before we can add links
     end
-    @docClasses.each do |user_class|
-      doc_latest = docClass.get(basic_docs[user_class].model_metadata[:_id])
+    @user_classes.each do |user_class|
+      doc_latest = user_class.get(basic_docs[user_class].model_metadata[:_id])
       doc_latest.links.should == nil
     end
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       basic_docs[user_class].links_add(test_links)
     end
     #verify initial conditions
-    @docClasses.each do |user_class|
-      user_doc_from_db = docClass.get(basic_docs[user_class].model_metadata[:_id])
+    @user_classes.each do |user_class|
+      user_doc_from_db = user_class.get(basic_docs[user_class].model_metadata[:_id])
       user_doc_from_db.links.should == test_links
     end
     #test
     link_to_get = "Google"
-    @docClasses.each do |user_class|
-      user_doc_from_db = docClass.get(basic_docs[user_class].model_metadata[:_id])
+    @user_classes.each do |user_class|
+      user_doc_from_db = user_class.get(basic_docs[user_class].model_metadata[:_id])
       user_doc_from_db.links_get(link_to_get).should == "http://www.google.com"
     end
 
@@ -978,46 +1056,46 @@ end
     parent_cats = {}
     doc_params = {}
     basic_docs = {}
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       parent_cats[user_class] = ['docs with links']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_link2', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
       basic_docs[user_class].save #doc must be saved before we can add links
     end
     #check initial conditions
-    @docClasses.each do |user_class|
-      #docClass.get(basic_docs[user_class]['_id']['links_doc_id']).should == nil
-      doc_latest = docClass.get(basic_docs[user_class].model_metadata['_id'])
+    @user_classes.each do |user_class|
+      #user_class.get(basic_docs[user_class]['_id']['links_doc_id']).should == nil
+      doc_latest = user_class.get(basic_docs[user_class].model_metadata['_id'])
       doc_latest.link.should == nil
     end
     #add links
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       basic_docs[user_class].link_add(test_links)
     end
    #check initial conditions
     #link_doc_ids = {}
     #link_docs = {}
-    @docClasses.each do |user_class|
-      #link_doc_ids[user_class] = docClass.get(basic_docs[user_class]['_id']).my_link_doc_id
-      #link_docs[user_class] = docClass.get(link_doc_ids[user_class])
-      user_doc_from_db = docClass.get(basic_docs[user_class]['_id'])
-      #docClass.get(basic_docs[user_class]['_id'])['links_doc_id'].should == link_docs[user_class]['_id']
+    @user_classes.each do |user_class|
+      #link_doc_ids[user_class] = user_class.get(basic_docs[user_class]['_id']).my_link_doc_id
+      #link_docs[user_class] = user_class.get(link_doc_ids[user_class])
+      user_doc_from_db = user_class.get(basic_docs[user_class]['_id'])
+      #user_class.get(basic_docs[user_class]['_id'])['links_doc_id'].should == link_docs[user_class]['_id']
       #user_doc_from_db.links_doc_id.should == link_docs[user_class]['_id']
-      #links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
+      #links_in_user_doc = user_class.user_linkClass.get(user_doc_from_db.links_doc_id)
       user_doc_from_db.link.should == test_links
     end
     #test
-    @docClasses.each do |user_class|
+    @user_classes.each do |user_class|
       basic_docs[user_class].link_subtract(remove_link)
     end
     #verify
-    @docClasses.each do |user_class|
-      link_doc_ids[user_class] = docClass.get(basic_docs[user_class]['_id']).my_link_doc_id
-      link_docs[user_class] = docClass.get(link_doc_ids[user_class])
-      user_doc_from_db = docClass.get(basic_docs[user_class]['_id'])
-      #docClass.get(basic_docs[user_class]['_id'])['links_doc_id'].should == link_d
+    @user_classes.each do |user_class|
+      link_doc_ids[user_class] = user_class.get(basic_docs[user_class]['_id']).my_link_doc_id
+      link_docs[user_class] = user_class.get(link_doc_ids[user_class])
+      user_doc_from_db = user_class.get(basic_docs[user_class]['_id'])
+      #user_class.get(basic_docs[user_class]['_id'])['links_doc_id'].should == link_d
       user_doc_from_db.links_doc_id.should == link_docs[user_class]['_id']
-      links_in_user_doc = docClass.user_linkClass.get(user_doc_from_db.links_doc_id)
+      links_in_user_doc = user_class.user_linkClass.get(user_doc_from_db.links_doc_id)
       links_in_user_doc.uris.should == remaining_link
     end
   end

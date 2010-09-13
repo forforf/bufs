@@ -24,19 +24,20 @@ module BufsBaseNodeSpecHelpers
   end
 end
 
-  ModelDir = 'BufsFileSystem_DefaultModel'
+  ModelDir = "tmp_test" #'BufsFileSystem_DefaultModel'
   DummyUserID = 'StubID1'
   BufsFileIncludes = [:FileSystemEnv]
   FileEnvironment = {:bufs_file_system_env => {:path => File.join(TestFSModelBaseDir,ModelDir),
                                                :user_id => DummyUserID},
                         :requires => BufsFileLibs,
-                        :includes => BufsFileIncludes }  #may not be final form
+                        :includes => BufsFileIncludes,
+                        :glue_name => "BufsFileSystemEnv" }  #may not be final form
 
 
 #TODO Tesing CouchRest implementation, need generic spec
 #invoked this way for spec since we're testing the abstract class
 #BufsBaseNode.__send__(:include, BufsInfoDocEnvMethods)
-BufsBaseNode.set_environment(FileEnvironment)
+BufsBaseNode.set_environment(FileEnvironment, FileEnvironment[:glue_name])
 
 describe BufsBaseNode, "Basic Document Operations (no attachments)" do
   include BufsBaseNodeSpecHelpers
@@ -128,6 +129,22 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     BufsBaseNode.all.size.should == orig_db_size + 1
   end
 
+  #TODO Can my_cat handle slashes???
+  #TODO Add to couchrest too
+  it "should handle strange characters in my_cat" do
+    #set initial conditions
+    orig_db_size = BufsBaseNode.all.size
+    orig_db_size.should == 0
+    #TODO: characters -> :: cause my_cat to fail
+    doc_params = get_default_params.merge({:my_category => 'save::test'})
+    doc_to_save = make_doc_no_attachment(doc_params.dup)
+    #test
+    doc_to_save.save
+    #verify results
+    saved_doc = BufsBaseNode.get(doc_to_save.model_metadata[:_id])
+    doc_to_save.my_category.should == saved_doc.my_category
+  end
+
   it "dynamic operations shouldn't modify my_category (the primary key)" do
     #set initial conditions
     my_cat = 'cat_test1'
@@ -171,7 +188,12 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     doc_with_new_parent_cat.parent_categories.should include new_cat
     #check database
     doc_params.keys.each do |param|
-      db_param = doc_with_new_parent_cat.class.get(doc_with_new_parent_cat.model_metadata[:_id]).__send__(param.to_sym)
+      node = doc_with_new_parent_cat
+      node_id = node.model_metadata[:_id]
+      persistent_node = node.class.get(node_id)
+      puts "Node Id: #{node_id.inspect}\n All: #{node.class.all.inspect}"
+      db_param = persistent_node.__send__(param.to_sym)
+      #db_param = doc_with_new_parent_cat.class.get(doc_with_new_parent_cat.model_metadata[:_id]).__send__(param.to_sym)
       #doc_with_new_parent_cat[param].should == db_param
       #test accessor method
       doc_with_new_parent_cat.__send__(param).should == db_param

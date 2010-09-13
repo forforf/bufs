@@ -62,12 +62,14 @@ class BufsBaseNode
   #Class Methods
   #Setting up the Class Environment - The class environment holds all
   # model-specific implementation details
-  def self.set_environment(env)
+  def self.set_environment(env, glue_name)
     reqs = env[:requires]  #Typically nil, since it's set at the factory
-    incs = env[:includes] 
+    #incs = env[:includes] 
     reqs.each {|r| require r} if reqs   #load software libraries needed
-    incs.each {|mod| include Module.const_get(mod)} if incs  #include the modules to mix in to the node
-    @myGlueEnv = GlueEnv.new(env)
+    #incs.each {|mod| include Module.const_get(mod)} if incs  #include the modules to mix in to the node
+    glueModule = Object.const_get(glue_name)
+    glueClass = glueModule::GlueEnv
+    @myGlueEnv = glueClass.new(env)
     @metadata_keys = @myGlueEnv.metadata_keys 
   end
 
@@ -352,6 +354,7 @@ class BufsBaseNode
   end
 
   def files_subtract(file_basenames)
+    file_basenames = [file_basenames].flatten
     @files_mgr.subtract_files(self, file_basenames)
     self.attached_files -= file_basenames
     self.save

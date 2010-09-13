@@ -70,7 +70,10 @@ module BufsFileSystemViews
   end
 end 
 
+
+module BufsFileSystemEnv
 class GlueEnv
+
 #TODO: Rather than using File class directly, should a special class be used?
 #=begin
 attr_accessor :fs_user_id,
@@ -98,7 +101,9 @@ attr_accessor :fs_user_id,
 
   def initialize(env)
     env_name = :bufs_file_system_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
+    puts "GlueFileSys env keys: #{env.keys.inspect}" 
     fs_path = env[env_name][:path]
+    FileUtils.mkdir_p(fs_path) unless File.exists?(fs_path)
     fs_user_id = env[env_name][:user_id]
 
     #@collection_namespace = FileSystemEnv.set_collection_namespace(fs_path, fs_user_id)
@@ -128,11 +133,12 @@ attr_accessor :fs_user_id,
 
   def query_all  #TODO move to ViewsMgr
     unless File.exists?(@user_datastore_selector)
-      raise "Can't get all. The File System Directory to work from does not exist: #{@user_datastore_selector}"
+      puts "Warning: Can't query records. The File System Directory to work from does not exist: #{@user_datastore_selector}"
     end
     all_nodes = []
     my_dir = @user_datastore_selector + '/' #TODO: Can this be removed?
     all_entries = Dir.working_entries(my_dir)
+    return all_entries || []
   end
 
   def get(id)
@@ -180,12 +186,14 @@ attr_accessor :fs_user_id,
   end
 
   def destroy_bulk(list_of_native_records)
+    return nil unless list_of_native_records
     list_of_native_records.each do |r|
       #puts "Dir: #{File.dirname(r)}"
       r = File.join(@user_datastore_selector, r) if File.dirname(r) == "."
       #puts "Removing: #{r.inspect}"
       FileUtils.rm_rf(r)
     end
-    nil #TODO ok to return nil if all docs destroyed? also, not verifying
+    [] #TODO ok to return nil if all docs destroyed? also, not verifying
   end
 end 
+end

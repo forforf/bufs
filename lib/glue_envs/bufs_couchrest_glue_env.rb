@@ -71,7 +71,10 @@ module BufsCouchRestViews
 
 end
 
+module BufsCouchRestEnv
+
 class GlueEnv
+
   attr_accessor :db_user_id,
                                :db,
                                :user_datastore_selector,
@@ -149,7 +152,8 @@ class GlueEnv
   def get(id)
     #maybe put in some validations to ensure its from the proper collection namespace?
     rtn = begin
-      @db.get(id)
+      node = @db.get(id)
+      node = HashKeys.str_to_sym(node)
     rescue RestClient::ResourceNotFound => e
       nil
     end
@@ -185,4 +189,4 @@ class GlueEnv
     nil #TODO ok to return nil if all docs destroyed? also, not verifying
   end
 end 
-
+end
