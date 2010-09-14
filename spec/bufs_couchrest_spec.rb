@@ -490,5 +490,146 @@ describe BufsBaseNode, "Attachment Operations" do
     att_node.attached_files.size.should == 1
     att_node.attached_files.first.should == BufsEscape.escape(attach_name)
   end
-end
 
+  it "should find the attachment record for the node (internal)" do
+    list = []
+    test_filename = @test_files['binary_data_spaces_in_fname_pptx']
+    test_basename = File.basename(test_filename)
+    list << BufsEscape.escape(test_basename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    parent_cats = ['nodes with attachments']
+    my_cat = 'doc_w_att1'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    basic_node.files_add(:src_filename => test_filename)
+    #check initial conditions
+    attached_basenames = basic_node.attached_files
+    attached_basenames.size.should == 1
+    attached_basenames.first.should == BufsEscape.escape(test_basename)
+    #test
+    att_doc = basic_node.files_mgr.moab_interface.class.get_att_doc(basic_node)
+    #moab specific internal test 
+    att_doc['md_attachments'].keys.first.should == BufsEscape.escape(test_basename)
+  end
+
+  it "should be able to retrieve the metadata for all attachments" do
+    test_filename = @test_files['simple_text_file']
+    test_basename = File.basename(test_filename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    parent_cats = ['nodes with attachments']
+    my_cat = 'doc_w_att1'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    basic_node.files_add(:src_filename => test_filename)
+    #check initial conditions
+    attached_basenames = basic_node.attached_files
+    attached_basenames.size.should == 1
+    attached_basename = attached_basenames.first
+    attached_basename.should == BufsEscape.escape(test_basename)
+    #test
+    moab_att_metadata = basic_node.get_attachments_metadata
+    #file_raw_data = File.open(test_filename, "r"){|f| f.read}
+    md = moab_att_metadata[test_basename.to_sym]
+    md[:file_modified].should == File.mtime(test_filename).to_s
+    #TODO Test for content type match too
+  end
+
+  it "should be able to retrieve the metadata for a single attachments" do
+    test_filename = @test_files['simple_text_file']
+    test_basename = File.basename(test_filename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    parent_cats = ['nodes with attachments']
+    my_cat = 'doc_w_att1'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    basic_node.files_add(:src_filename => test_filename)
+    #check initial conditions
+    attached_basenames = basic_node.attached_files
+    attached_basenames.size.should == 1
+    attached_basename = attached_basenames.first
+    attached_basename.should == BufsEscape.escape(test_basename)
+    #test
+    moab_att_metadata = basic_node.get_attachment_metadata(test_basename)
+    #file_raw_data = File.open(test_filename, "r"){|f| f.read}
+    moab_att_metadata[:file_modified].should == File.mtime(test_filename).to_s
+    moab_att_metadata[:content_type].should =~ /text\/plain/
+    #TODO Test for content type match too
+  end
+
+  it "should be able to retrieve the raw data for an attachment" do
+    test_filename = @test_files['simple_text_file']
+    test_basename = File.basename(test_filename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    parent_cats = ['nodes with attachments']
+    my_cat = 'doc_w_att1'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    basic_node.files_add(:src_filename => test_filename)
+    #check initial conditions
+    attached_basenames = basic_node.attached_files
+    attached_basenames.size.should == 1
+    attached_basename = attached_basenames.first
+    attached_basename.should == BufsEscape.escape(test_basename)
+    #test
+    moab_raw_data = basic_node.get_raw_data(attached_basename)
+    file_raw_data = File.open(test_filename, "r"){|f| f.read}
+    moab_raw_data.should == file_raw_data
+  end
+
+  it "should have an import function for attachments" do
+    test_filename = @test_files['simple_text_file']
+    test_basename = File.basename(test_filename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    parent_cats = ['nodes with attachments']
+    my_cat = 'doc_w_att1'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    file_modified = File.mtime(test_filename).to_s
+    content_type = MimeNew.for_ofc_x(test_filename)
+    metadata = {:file_modified => file_modified, :content_type => content_type}
+    raw_data = File.open(test_filename, "r"){|f| f.read}
+    import_format = {:data => raw_data, :metadata => metadata}
+    att_name = BufsEscape.escape(test_basename)
+    #test
+    basic_node.import_attachment(att_name, import_format)
+    #verify results
+    basic_node.attached_files.size.should == 1
+    basic_node.attached_files.first.should == att_name
+  end
+
+=begin
+  it "should retrieve data from the attached file" do
+    test_filename = @test_files['simple_text_file']
+    test_basename = File.basename(test_filename)
+    #set initial conditions
+    parent_cats = ['node with attachments']
+    my_cat = 'doc_w_att3'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.save
+    basic_node.files_add(:src_filename => test_filename)
+    #check initial conditions
+    attached_basenames = basic_node.attached_files
+    #test
+    bufs_data = basic_node.get_file_data(test_basename)
+    file_data = File.open(test_filename, "r"){|f| f.read}
+    bufs_data.should == file_data
+  end
+=end
+end

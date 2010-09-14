@@ -41,11 +41,44 @@ module CouchRestEnv
       #                 }
       #
       # filename_key = model_filenames to delete
+  class BIDStub
+    attr_accessor :model_metadata
+    def self.attachment_base_id
+      "_attachments"
+    end
+   
+    def initialize(id)
+      @model_metadata = {}
+      @model_metadata[:_id] = id
+    end
+  end
+  class FilesMgrInterface
 
-  class FilesMgr
+    attr_accessor :attachment_location, :attachment_packages
+
+    def self.get_att_doc(node)
+      #FIXME: This is a hack that doesn't require changing the attachment class
+      #id = node_env.generate_model_key(node_env.user_datastore_id, node_key)
+      #stub_bid = BIDStub.new(id)
+      #@attachment_doc_id = @attachment_doc_class.uniq_att_doc_id(stub_bid)
+      attachment_doc_id = node.my_GlueEnv.attachClass.uniq_att_doc_id(node)
+      att_doc = node.my_GlueEnv.db.get(attachment_doc_id)
+      if att_doc
+        return att_doc
+      else
+        return nil #self.new(node_env, node_key) #, node_key)
+      end
+    end
+
+
+    def initialize(node_env,node_key) #, node_key)
+      #for bufs node_key is the value of :my_category
+      #TODO move from glue to moab
+      @attachment_doc_class = node_env.attachClass
+    end
 
     def add_files(node, file_datas)
-      bia_class = node.my_GlueEnv.attachClass
+      bia_class = @attachment_doc_class #node.my_GlueEnv.attachClass
       attachment_package = {}
       file_datas = [file_datas].flatten
       stored_basenames = []
@@ -126,21 +159,46 @@ module CouchRestEnv
       end
     end
 
-    def list_files(node)
-      return nil unless node.attachment_doc_id
-      bia_class = @model_actor[:attachment_actor_class]
-      rtn = if node.attachment_doc_id
-        bia_doc = bia_class.get(node.attachment_doc_id)
-        bia_doc.get_attachments
-      end
-      rtn
+    def get_raw_data(node, model_basename)
+      bia_class = node.my_GlueEnv.attachClass
+      bia_doc_id = bia_class.uniq_att_doc_id(node)
+      bia_doc = bia_class.get(bia_doc_id)
+      bia_doc.fetch_attachment(model_basename)
     end
 
-    def list_file_keys(node)
-       return nil unless node.attachment_doc_id
-       atts = list_files(node)
-       rtn = atts.keys
-    end
+    def get_attachments_metadata(node)
+      bia_class = node.my_GlueEnv.attachClass
+      bia_doc_id = bia_class.uniq_att_doc_id(node)
+      bia_doc = bia_class.get(bia_doc_id)
+      bia_doc.get_attachments
+    end 
+
+    #def get_attachment_metadata(node, model_basename)
+    #  atts = get_attachments_metadata(node)
+    #  atts[BufsEscape.escape(model_basename)]  #TODO This will break when filename is not the key field
+    #end
+
+    #def list_files(node)
+    #  return nil unless node.attachment_doc_id
+    #  bia_class = @model_actor[:attachment_actor_class]
+    #  rtn = if node.attachment_doc_id
+    #    bia_doc = bia_class.get(node.attachment_doc_id)
+    #    bia_doc.get_attachments
+    #  end
+    #  rtn
+    #end
+
+    #def get_file_data(node, basename)
+    #  bia_class = node.my_GlueEnv.attachClass
+    #  data = bia_doc.fetch_attachment(basename)
+    #end
+
+    #def list_file_keys(node)
+    #   return nil unless node.attachment_doc_id
+    #   atts = list_files(node)
+    #   rtn = atts.keys
+    #end
+
     #TODO: make private
     def subtract_some(node, model_basenames, bia_class)
       if node.attachment_doc_id

@@ -35,9 +35,35 @@ class GlueEnv
 end
 
 class FilesMgr
-  def method_missing(name)
-    raise NameError,"#{name} not found in #{self.class}. Has it been"\
-                    " overwritten to support file/attachment management yet?"
+  #def method_missing(name)
+  #  raise NameError,"#{name} not found in #{self.class}. Has it been"\
+  #                  " overwritten to support file/attachment management yet?"
+  #end
+  attr_accessor :moab_interface
+
+  def initialize(moab_interface)
+    @moab_interface = moab_interface
+  end
+
+  #TODO: Move common file management functions from base node to here
+  def add_files(node, file_datas)
+    @moab_interface.add_files(node, file_datas)
+  end
+
+  def add_raw_data(node, attach_name, content_type, raw_data, file_modified_at = nil)
+    @moab_interface.add_raw_data(node, attach_name, content_type, raw_data, file_modified_at = nil)
+  end
+
+  def subtract_files(node, params)
+    @moab_interface.subtract_files(node, params)
+  end
+
+  def get_raw_data(node, basename)
+    @moab_interface.get_raw_data(node, basename)
+  end
+
+  def get_attachments_metadata(node)
+    @moab_interface.get_attachments_metadata(node)
   end
 end
 
@@ -150,7 +176,6 @@ class BufsBaseNode
     #setting the class accessor to also be an instance accessor
     #for convenience and hopefully doesn't create confusion
     @my_GlueEnv = self.class.myGlueEnv
-    @files_mgr = @my_GlueEnv.files_mgr_class.new
     raise "init_params cannot be nil" unless init_params
     @saved_to_model = nil #TODO rename to sychronized_to_model
     #make sure keys are symbols
@@ -158,6 +183,8 @@ class BufsBaseNode
     @user_data, @model_metadata = filter_user_from_model_data(init_params)
     instance_data_validations(@user_data)
     node_key = get_user_data_id(@user_data)
+    moab_file_mgr = @my_GlueEnv.files_mgr_class.new(@my_GlueEnv, node_key)
+    @files_mgr = FilesMgr.new(moab_file_mgr)
     @model_metadata = update_model_metadata(@model_metadata, node_key)
     
     init_params.each do |attr_name, attr_value|
@@ -365,6 +392,10 @@ class BufsBaseNode
     self.attached_files = nil
     self.save
   end
+  
+  def get_raw_data(attachment_name)
+    @files_mgr.get_raw_data(self, attachment_name)
+  end
 
 
 #TODO: Add to spec (currently not used)  I think used by web server, need to genericize (use FilesMgr?)
@@ -375,17 +406,45 @@ class BufsBaseNode
     current_node_attachment_doc.attachment_url(attachment_name)
   end
 
-  def attachment_data(attachment_name)
-    current_node_doc = self.class.get(self['_id'])
-    att_doc_id = current_node_doc['attachment_doc_id']
-    current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
-    current_node_attachment_doc.read_attachment(attachment_name)
+  def get_file_data(attachment_name)
+    @files_mgr.get_file_data(self, attachment_name)
+    #current_node_doc = self.class.get(self['_id'])
+    #att_doc_id = current_node_doc['attachment_doc_id']
+    #current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
+    #current_node_attachment_doc.read_attachment(attachment_name)
   end
 
-  def get_attachment_metadata
-    current_node_doc = self.class.get(self['_id'])
-    att_doc_id = current_node_doc['attachment_doc_id']
-    current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
+  def get_attachments_metadata
+    md = @files_mgr.get_attachments_metadata(self)
+    md = HashKeys.str_to_sym(md)
+    md.each do |fbn, fmd|
+      md[fbn] = HashKeys.str_to_sym(fmd)
+    end
+    md
+    #md = HashKeys.str_to_sym(md)
+    #current_node_doc = self.class.get(self['_id'])
+    #att_doc_id = current_node_doc['attachment_doc_id']
+    #current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
+  end
+
+  def get_attachment_metadata(attachment_name)
+    all_md = get_attachments_metadata
+    index_name = BufsEscape.escape(attachment_name)
+    all_md[index_name.to_sym]
+  end
+
+  def export_attachment(attachment_name)
+    md = get_attachment_metadata(attachment_name)
+    data = get_raw_data(attachment_name)
+    export = {:metadata => md, :data => data}
+  end
+
+  def import_attachment(attach_name, att_xfer_format)
+    #transfer format is the format of the export method
+    content_type = att_xfer_format[:metadata][:content_type]
+    file_modified_at = att_xfer_format[:metadata][:file_modified]
+    raw_data = att_xfer_format[:raw_data]
+    add_raw_data(attach_name, content_type, raw_data, file_modified_at)
   end
 
   def inject_node_metadata
@@ -407,26 +466,36 @@ class BufsBaseNode
     @my_GlueEnv.destroy_node(self)
   end
  
-  #Last to be fixed
-  def self.create_from_file_node(node_obj)
-    #TODO Update this to support the new dynamic architecture once
-    #file node is updated to the new architecture
-    init_params = {}
-    init_params['my_category'] = node_obj.my_category
-    init_params['description'] = node_obj.description if (node_obj.respond_to?(:description) && node_obj.description)
-    new_bid = self.new(init_params)
-    new_bid.add_parent_categories(node_obj.parent_categories)
-    new_bid.save
-    new_bid.add_data_file(node_obj.list_attached_files) if node_obj.list_attached_files
-    #TODO Add to spec test for links
-    if node_obj.respond_to?(:list_links) && (node_obj.list_links.nil? || node_obj.list_links.empty?)
-      #do nothing, no link data
-    elsif node_obj.respond_to?(:list_links)
-      new_bid.add_links(node_obj.list_links)
-    else
-      #do nothing, no link mehtod
+  def self.create_from_other_node(other_node)
+    #TODO: How to deal with differently defined data structures?
+    #currently assume transfers are between models of identical data structures
+    #either enforce that, or figure out generic solution
+
+    #create new node
+    new_basic_node = self.new(other_node.user_data)
+
+    #transfer attachments
+    other_node.attached_files.each do |att_file|
+      new_basic_node.import_attachment(att_file, other_node.export_attachment(att_file))
     end
-    return new_bid.class.get(new_bid['_id'])
+
+    new_basic_node
+    #init_params = {}
+    #init_params['my_category'] = node_obj.my_category
+    #init_params['description'] = node_obj.description if (node_obj.respond_to?(:description) && node_obj.description)
+    #new_bid = self.new(init_params)
+    #new_bid.add_parent_categories(node_obj.parent_categories)
+    #new_bid.save
+    #new_bid.add_data_file(node_obj.list_attached_files) if node_obj.list_attached_files
+    #TODO Add to spec test for links
+    #if node_obj.respond_to?(:list_links) && (node_obj.list_links.nil? || node_obj.list_links.empty?)
+      #do nothing, no link data
+    #elsif node_obj.respond_to?(:list_links)
+    #  new_bid.add_links(node_obj.list_links)
+    #else
+      #do nothing, no link mehtod
+    #end
+    #return new_bid.class.get(new_bid['_id'])
   end
 
 end

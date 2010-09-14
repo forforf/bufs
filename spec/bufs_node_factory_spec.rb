@@ -534,7 +534,8 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
   end
 
   it "has a file manager associated with its nodes" do
-     files_mgr_methods = [:add_files, :add_raw_data, :list_files, :subtract_files, :subtract_all]
+     files_mgr_methods = [:add_files, :add_raw_data, :subtract_files, 
+                          :subtract_all]
     #set initial conditions
     orig_parent_cats = {}
     node_params = {}
@@ -546,11 +547,16 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       node_params[user_class] = new_params
       nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
     end
-
+     
+     responds_to_method = {}
+     should_respond_to_method = {}
      @user_classes.each do |user_class|
        files_mgr_methods.each do |meth|
-         nodes[user_class].files_mgr.respond_to?(meth).should == true
+         responds_to_method[meth] = nodes[user_class].files_mgr.respond_to?(meth)
+         should_respond_to_method[meth] = true
+         #nodes[user_class].files_mgr.respond_to?(meth).should == true
        end
+       responds_to_method.should == should_respond_to_method
      end
    end
 
@@ -789,11 +795,195 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       #TODO: More rigorous testing of attached data from raw data
     end
   end
+
+  it "should be able to retrieve the metadata for a single attachment" do
+    test_filename = @test_files['simple_text_file']
+    test_basename = File.basename(test_filename)
+    parent_cats = {}
+    node_params = {}
+    basic_nodes = {}
+    attached_basenames = {}
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    @user_classes.each do |user_class|
+      parent_cats[user_class] = ['nodes with attachments']
+      my_cat = 'doc_w_att1'
+      params = {:my_category => my_cat, :parent_categories => parent_cats[user_class]}
+      node_params[user_class] = get_default_params.merge(params)
+      basic_nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
+      basic_nodes[user_class].save
+      basic_nodes[user_class].files_add(:src_filename => test_filename)
+    end
+    #check initial conditions
+    @user_classes.each do |user_class|
+      attached_basenames[user_class] = basic_nodes[user_class].attached_files
+      attached_basenames[user_class].size.should == 1
+      attached_basename= attached_basenames[user_class].first
+      attached_basename.should == BufsEscape.escape(test_basename)
+      #test
+      moab_att_metadata = basic_nodes[user_class].get_attachment_metadata(attached_basename)
+      md = moab_att_metadata
+      md[:file_modified].should == File.mtime(test_filename).to_s
+      md[:content_type].should =~ /text\/plain/
+      #TODO Test for content type match too
+    end
+  end
+
+  it "should be able to retrieve the metadata for an attachment" do
+    test_filename = @test_files['simple_text_file']
+    test_basename = File.basename(test_filename)
+    parent_cats = {}
+    node_params = {}
+    basic_nodes = {}
+    attached_basenames = {}
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    @user_classes.each do |user_class|
+      parent_cats[user_class] = ['nodes with attachments']
+      my_cat = 'doc_w_att1'
+      params = {:my_category => my_cat, :parent_categories => parent_cats[user_class]}
+      node_params[user_class] = get_default_params.merge(params)
+      basic_nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
+      basic_nodes[user_class].save
+      basic_nodes[user_class].files_add(:src_filename => test_filename)
+    end
+    #check initial conditions
+    @user_classes.each do |user_class|
+      attached_basenames[user_class] = basic_nodes[user_class].attached_files
+      attached_basenames[user_class].size.should == 1
+      attached_basename= attached_basenames[user_class].first
+      attached_basename.should == BufsEscape.escape(test_basename)
+      #test
+      moab_att_metadata = basic_nodes[user_class].get_attachments_metadata
+      md = moab_att_metadata[test_basename.to_sym]
+      md[:file_modified].should == File.mtime(test_filename).to_s
+      #TODO Test for content type match too
+    end
+  end
+
+
+  it "should be able to retrieve the raw data for an attachment" do
+    test_filename = @test_files['simple_text_file']
+    test_basename = File.basename(test_filename)
+    parent_cats = {}
+    node_params = {}
+    basic_nodes = {}
+    attached_basenames = {}
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    @user_classes.each do |user_class|
+      parent_cats[user_class] = ['nodes with attachments']
+      my_cat = 'doc_w_att1'
+      params = {:my_category => my_cat, :parent_categories => parent_cats[user_class]}
+      node_params[user_class] = get_default_params.merge(params)
+      basic_nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
+      basic_nodes[user_class].save
+      basic_nodes[user_class].files_add(:src_filename => test_filename)
+    end
+    #check initial conditions
+    @user_classes.each do |user_class|
+      attached_basenames[user_class] = basic_nodes[user_class].attached_files
+      attached_basenames[user_class].size.should == 1
+      attached_basename = attached_basenames[user_class].first
+      attached_basename.should == BufsEscape.escape(test_basename)
+    #test
+      moab_raw_data = basic_nodes[user_class].get_raw_data(attached_basename)
+      file_raw_data = File.open(test_filename, "r"){|f| f.read}
+      moab_raw_data.should == file_raw_data
+    end
+  end
+
+  it "should have an export function for attachments" do
+    test_filename = @test_files['simple_text_file']
+    test_basename = File.basename(test_filename)
+    parent_cats = {}
+    node_params = {}
+    basic_nodes = {}
+    attached_basenames = {}
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    @user_classes.each do |user_class|
+      parent_cats[user_class] = ['nodes with attachments']
+      my_cat = 'doc_w_att1'
+      params = {:my_category => my_cat, :parent_categories => parent_cats[user_class]}
+      node_params[user_class] = get_default_params.merge(params)
+      basic_nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
+      basic_nodes[user_class].save
+      basic_nodes[user_class].files_add(:src_filename => test_filename)
+    end
+    #check initial conditions
+    @user_classes.each do |user_class|
+      attached_basenames[user_class] = basic_nodes[user_class].attached_files
+      attached_basenames[user_class].size.should == 1
+      attached_basename = attached_basenames[user_class].first
+      attached_basename.should == BufsEscape.escape(test_basename)
+    #test
+      exported_att_data = basic_nodes[user_class].export_attachment(attached_basename)
+      exported_att_data[:metadata].should == basic_nodes[user_class].get_attachment_metadata(attached_basename)
+      exported_att_data[:data].should == basic_nodes[user_class].get_raw_data(attached_basename)
+    end
+  end
+
+  it "should have an import function for attachments" do
+    test_filename = @test_files['simple_text_file']
+    test_basename = File.basename(test_filename)
+    parent_cats = {}
+    node_params = {}
+    basic_nodes = {}
+    attached_basenames = {}
+    att_names = {}
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    @user_classes.each do |user_class|
+      parent_cats[user_class] = ['nodes with attachments']
+      my_cat = 'doc_w_att1'
+      params = {:my_category => my_cat, :parent_categories => parent_cats[user_class]}
+      node_params[user_class] = get_default_params.merge(params)
+      basic_nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
+      basic_nodes[user_class].save
+      file_modified = File.mtime(test_filename).to_s
+      content_type = MimeNew.for_ofc_x(test_filename)
+      metadata = {:file_modified => file_modified, :content_type => content_type}
+      raw_data = File.open(test_filename, "r"){|f| f.read}
+      import_format = {:data => raw_data, :metadata => metadata}
+      att_names[user_class] = BufsEscape.escape(test_basename)
+    #test
+      basic_nodes[user_class].import_attachment(att_names[user_class], import_format)
+    end
+    #verify results
+    @user_classes.each do |user_class|
+      basic_nodes[user_class].attached_files.size.should == 1
+      basic_nodes[user_class].attached_files.first.should == att_names[user_class]
+    end
+  end
+
+  it "should be able to create a node from another node" do
+    #other node is from the first user class
+    test_filename = @test_files['simple_text_file']
+    test_basename = File.basename(test_filename)
+    raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
+    #set initial conditions
+    parent_cats = ['nodes from other nodes']
+    my_cat = 'doc_w_att1_xfer'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    #here is where we create the node from the first user class
+    other_node = make_doc_no_attachment(@user_classes[0], node_params)
+    other_node.save
+    other_node.files_add(:src_filename => test_filename)
+    #check initial conditions
+    other_node.my_category.should == my_cat
+    other_node.attached_files.first.should == BufsEscape.escape(test_basename)
+    #test
+    this_node = @user_classes[2].create_from_other_node(other_node)
+    #verify results
+    this_node.my_category.should == my_cat
+    this_node.attached_files.first.should == BufsEscape.escape(test_basename)
+  end
 end
+
+#TODO:  Need to test boundary conditions
 =begin
-#recomment out
-=begin
-#creatding a db doc from a directory entry
   it "should create a full doc from a node object without files" do
     NodeMock = Struct.new(:my_category, :parent_categories, :description, :list_attached_files)
     node_obj_mock_no_files = NodeMock.new('node_mock_category',
@@ -809,6 +999,8 @@ end
     end
   end
 
+end
+=begin
   it "should create a full doc from a node object with files" do
     #initial conditions
     test_filename = @test_files['strange_characters_in_file_name']

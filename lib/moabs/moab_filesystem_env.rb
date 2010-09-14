@@ -4,6 +4,7 @@ require 'cgi'
 require 'time'
 require 'json'
 
+require File.dirname(__FILE__) + '/../helpers/mime_types_new'
 require File.dirname(__FILE__) + '/files_manager_base'
 
 #File Node Helpers
@@ -67,7 +68,23 @@ module FileSystemEnv
 
 
   #TODO Make thread safe
-  class FilesMgr
+  class FilesMgrInterface
+    attr_accessor :attachment_location, :attachment_packages
+
+    def self.get_att_doc(node)
+      root_path = node.my_GlueEnv.user_datastore_selector
+      node_loc  = node.user_data[node.my_GlueEnv.node_key]
+      node_path = File.join(root_path, node_loc)
+      model_basenames = Dir.working_entries(node_path)
+      filenames = model_basenames.map{|b| File.join(node_path, BufsEscape.escape(b))}
+    end
+
+    def initialize(node_env, node_key)
+      #for bufs node_key is the value of :my_category
+      @attachment_location = File.join(node_env.user_datastore_selector, node_key)
+    end
+
+    #TODO: Is passing node in methods duplicative now that the moab FileMgr is bound to an env at initialization?
     
     def add_files(node, file_datas)
       filenames = []
@@ -77,7 +94,8 @@ module FileSystemEnv
       end
       filenames.each do |filename|
         my_dest_basename = BufsEscape.escape(File.basename(filename))
-        node_dir = File.join(node.my_GlueEnv.user_datastore_selector, node.my_category)  #TODO: this should be node id, not my cat
+        node_dir = @attachment_location
+         #File.join(node.my_GlueEnv.user_datastore_selector, node.my_category)  #TODO: this should be node id, not my cat
         my_dest = File.join(node_dir, my_dest_basename)
         #FIXME: obj.attached_files is broken, list_attached_files should work
         #@attached_files << my_dest
@@ -128,6 +146,26 @@ module FileSystemEnv
       else
         subtract_some(node, model_basenames)
       end
+    end
+
+    def get_raw_data(node, model_basename)
+      node_dir = @attachment_location
+      filename = File.join(node_dir, model_basename)
+      File.open(filename, "r"){|f| f.read}
+    end
+
+    def get_attachments_metadata(node)
+      att_md = {}
+      node_dir = @attachment_location
+      att_basenames = Dir.working_entries(node_dir)
+      att_basenames.each do |att|
+        file_md = {}
+        filename = File.join(node_dir, att)
+        file_md[:file_modified] = File.mtime(filename).to_s
+        file_md[:content_type] = MimeNew.for_ofc_x(filename)
+        att_md[att.to_sym] = file_md
+      end
+      att_md
     end
 
     def list_files(node)
