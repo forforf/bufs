@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/user_file_system'
+#require File.dirname(__FILE__) + '/user_file_system'
 
 
 
@@ -26,6 +26,7 @@ class BindUserFileSystem
   end 
 
   def self.make_nodeClass(user_id, home_dir)
+    raise "Need to rewrite for new architecture"
     UserFileNode.new(home_dir, user_id)
     UserFileNode.user_to_nodeClass[user_id]
   end
@@ -35,6 +36,7 @@ class BindUserFileSystem
   end
 
   def self.get_user_node(user_id, pw)
+    raise "Need to rewrite for new arch"
      #TODO check password
      nodeClass = nil
      if BindUserFileSystem.user_exists?(user_id)

@@ -37,9 +37,16 @@ class BufsJsvisData
 
   def make_json_vis_from_node(node, depth, current_model = nil)
     jsvis_model = {} #JsvisModel.new
+    #raise node.inspect
     return nil if depth < 0
-    jsvis_model['id'] = node['_id']
-    jsvis_model['name'] = node.my_category
+    #TODO: Figure out a better dummy node than this hack
+    node_id = node['_id']
+    begin
+      #node_id = node.model_metadata['_id']
+    rescue NoMethodError
+      #node_id = node['_id']
+    end
+    jsvis_model['id'] = node_id
     jsvis_model['data'] = {}#node.description
     jsvis_model['children'] = get_node_children(node).map {|cn| make_json_vis_from_node(cn, depth-1)}
     jsvis_model['children'].compact!
