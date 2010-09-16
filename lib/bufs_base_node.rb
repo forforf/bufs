@@ -241,7 +241,7 @@ class BufsBaseNode
                     it_changed = true
                     it_changed = false if (this == new_this) || !(rtn_data.has_key?(:update_this))
                     not_in_model = !@saved_to_model
-                    self.save if (not_in_model || it_changed)#unless (@saved_to_model && save) #don't save if the value hasn't changed
+                    self.__save if (not_in_model || it_changed)#unless (@saved_to_model && save) #don't save if the value hasn't changed
                     rtn = rtn_data[:return_value] || rtn_data[:update_this]
                     rtn
            }
@@ -253,7 +253,7 @@ class BufsBaseNode
   end
 
   #Save the object to the CouchDB database
-  def save
+  def __save
     save_data_validations(self._user_data)
     node_key = @my_GlueEnv.node_key
     node_id = self._model_metadata[node_key]
@@ -352,7 +352,7 @@ class BufsBaseNode
       self.__set_userdata_key(:attached_files, attached_basenames)
     end
 
-    self.save
+    self.__save
   end
 
   def files_add(file_datas)
@@ -365,20 +365,20 @@ class BufsBaseNode
     else
       self.__set_userdata_key(:attached_files, attached_basenames)
     end
-    self.save
+    self.__save
   end
 
   def files_subtract(file_basenames)
     file_basenames = [file_basenames].flatten
     @_files_mgr.subtract_files(self, file_basenames)
     self.attached_files -= file_basenames
-    self.save
+    self.__save
   end
 
   def files_remove_all
     @_files_mgr.subtract_files(self, :all)
     self.attached_files = nil
-    self.save
+    self.__save
   end
   
   def get_raw_data(attachment_name)

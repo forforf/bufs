@@ -127,7 +127,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     doc_to_save = make_doc_no_attachment(doc_params.dup)
 
     #test
-    doc_to_save.save
+    doc_to_save.__save
     
     #check results
     doc_params.keys.each do |param|
@@ -203,7 +203,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
                                            :parent_categories => orig_parent_cats})
     doc_with_new_parent_cat = make_doc_no_attachment(doc_params)
     new_cat = 'old parent cat'
-    doc_with_new_parent_cat.save
+    doc_with_new_parent_cat.__save
     initial_rev = doc_with_new_parent_cat._model_metadata[:_rev]
     #test
     doc_with_new_parent_cat.parent_categories_add(new_cat)
@@ -227,7 +227,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     orig_parent_cats = ['orig_cat1', 'orig_cat2']
     doc_params = get_default_params.merge({:my_category => 'cat_test2', :parent_categories => orig_parent_cats})
     doc_existing_new_parent_cat = make_doc_no_attachment(doc_params)
-    doc_existing_new_parent_cat.save
+    doc_existing_new_parent_cat.__save
     #verify initial conditions
     doc_params.keys.each do |param|
       db_param = CouchDB.get(doc_existing_new_parent_cat._model_metadata[:_id])[param]
@@ -240,7 +240,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     #test
     #doc_rev0 = doc_existing_new_parent_cat._model_metadata['_rev']
     doc_existing_new_parent_cat.add_parent_categories(new_cats)
-    #doc_existing_new_parent_cat.save
+    #doc_existing_new_parent_cat.__save
     #doc_rev1 = doc_existing_new_parent_cat._model_metadata['_rev']
     #doc_rev0.should_not == doc_rev1
     #check results
@@ -266,7 +266,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     orig_parent_cats = ['orig_cat3', 'orig_cat4', 'del_this_cat1', 'del_this_cat2']
     doc_params = get_default_params.merge({:my_category => 'cat_test3', :parent_categories => orig_parent_cats})
     doc_remove_parent_cat = make_doc_no_attachment(doc_params)
-    doc_remove_parent_cat.save
+    doc_remove_parent_cat.__save
     #verify initial conditions
     doc_params.keys.each do |param|
       db_param = CouchDB.get(doc_remove_parent_cat._model_metadata[:_id])[param]
@@ -300,7 +300,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     orig_parent_cats = ['dup cat1', 'dup cat2', 'uniq cat1']
     doc_params = get_default_params.merge({:my_category => 'cat_test3', :parent_categories => orig_parent_cats})
     doc_uniq_parent_cat = make_doc_no_attachment(doc_params)
-    doc_uniq_parent_cat.save
+    doc_uniq_parent_cat.__save
     orig_size = doc_uniq_parent_cat.parent_categories.size
     new_cats = ['dup cat1', 'dup cat2', 'uniq_cat2']
     expected_size = orig_size + 1 #uniq_cat2
@@ -337,7 +337,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     #check initial conditions
     BufsBaseNode.get(basic_node._model_metadata[:_id]).attached_files.should == nil
     #test (single file)
@@ -360,7 +360,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     basic_node.files_add(:src_filename => test_filename)
     #check initial conditions
     attached_basenames = basic_node.attached_files
@@ -385,7 +385,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     basic_node.files_add(:src_filename => test_filename)
     #check initial conditions
     attached_basenames = basic_node.attached_files
@@ -411,7 +411,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     basic_node.files_add(:src_filename => test_filename)
     #check initial conditions
     attached_basenames = basic_node.attached_files
@@ -438,7 +438,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     basic_node.files_add(:src_filename => test_filename)
     #check initial conditions
     attached_basenames = basic_node.attached_files
@@ -461,7 +461,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     #test
     basic_node.files_add(:src_filename => test_filename)
     #check results
@@ -481,7 +481,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     #test
     basic_node.add_raw_data(attach_name, binary_data_content_type, binary_data)
     #check results
@@ -503,7 +503,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     basic_node.files_add(:src_filename => test_filename)
     #check initial conditions
     attached_basenames = basic_node.attached_files
@@ -525,7 +525,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     basic_node.files_add(:src_filename => test_filename)
     #check initial conditions
     attached_basenames = basic_node.attached_files
@@ -550,7 +550,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     basic_node.files_add(:src_filename => test_filename)
     #check initial conditions
     attached_basenames = basic_node.attached_files
@@ -575,7 +575,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     basic_node.files_add(:src_filename => test_filename)
     #check initial conditions
     attached_basenames = basic_node.attached_files
@@ -598,7 +598,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     file_modified = File.mtime(test_filename).to_s
     content_type = MimeNew.for_ofc_x(test_filename)
     metadata = {:file_modified => file_modified, :content_type => content_type}
@@ -622,7 +622,7 @@ describe BufsBaseNode, "Attachment Operations" do
     params = {:my_category => my_cat, :parent_categories => parent_cats}
     node_params = get_default_params.merge(params)
     basic_node = make_doc_no_attachment(node_params)
-    basic_node.save
+    basic_node.__save
     basic_node.files_add(:src_filename => test_filename)
     #check initial conditions
     attached_basenames = basic_node.attached_files

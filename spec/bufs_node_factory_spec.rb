@@ -77,7 +77,7 @@ module NodeHelpers
     test_basename = File.basename(test_filename)
     raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
     new_doc = make_doc_no_attachment(user_class, override_defaults)
-    new_doc.save #doc must be saved before we can attach
+    new_doc.__save #doc must be saved before we can attach
     file_data = {:src_filename => test_filename}
     new_doc.files_add(file_data)
     #new_doc.add_data_file(test_filename)
@@ -232,10 +232,10 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     #user1_doc = @user1_class.new({:my_category => "user1_data"})
     #user2_doc = @user2_class.new({:my_category => "user2_data"})
     user_docs.each do |user_class, node|
-      node.save
+      node.__save
     end
-    #user1_doc.save
-    #user2_doc.save
+    #user1_doc.__save
+    #user2_doc.__save
     #@user1_class.all.first.my_category.should == "user1_data"  
     #@user2_class.all.first.my_category.should == "user2_data"
 
@@ -275,7 +275,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
 
     #test
     docs_to_save.each do |user_class, doc_to_save|
-      doc_to_save.save
+      doc_to_save.__save
     end
 
     #check results
@@ -377,7 +377,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
       doc_params[user_class] = get_default_params.merge({:my_category => "#{user_class.hash.to_s}-cat_test2",
                                                       :parent_categories => orig_parent_cats[user_class]})
       doc_existing_new_parent_cats[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      doc_existing_new_parent_cats[user_class].save
+      doc_existing_new_parent_cats[user_class].__save
     end
     #verify initial conditions
     @user_classes.each do |user_class|
@@ -427,7 +427,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
       orig_parent_cats[user_class]  = ['orig_cat3', 'orig_cat4', 'del_this_cat1', "del_this_cat2-#{user_class.to_s}"]
       doc_params[user_class] = get_default_params.merge({:my_category => 'cat_test3', :parent_categories => orig_parent_cats[user_class]})
       doc_remove_parent_cats[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      doc_remove_parent_cats[user_class].save
+      doc_remove_parent_cats[user_class].__save
     end
     #verify initial conditions
     @user_classes.each do |user_class|
@@ -488,7 +488,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
       orig_parent_cats[user_class] = ['dup cat1', 'dup cat2', 'uniq cat1']
       doc_params[user_class] = get_default_params.merge({:my_category => 'cat_test3', :parent_categories => orig_parent_cats[user_class]})
       doc_uniq_parent_cats[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      doc_uniq_parent_cats[user_class].save
+      doc_uniq_parent_cats[user_class].__save
       orig_sizes[user_class] = doc_uniq_parent_cats[user_class].parent_categories.size
       new_cats[user_class] = ['dup cat1', 'dup cat2', 'uniq_cat2']
       expected_sizes[user_class] = orig_sizes[user_class] + 1 #uniq_cat2
@@ -574,7 +574,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       parent_cats[user_class] = ['docs with attachments']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_att1', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      basic_docs[user_class].save #doc must be saved before we can attach
+      basic_docs[user_class].__save #doc must be saved before we can attach
     end
 
     #check initial conditions
@@ -749,7 +749,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       parent_cats[user_class] = ['text file', 'test file']
       doc_params[user_class] = get_default_params.merge({:my_category => 'strange_characters', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      basic_docs[user_class].save #doc must be saved before we can attach
+      basic_docs[user_class].__save #doc must be saved before we can attach
     end
     #test
     @user_classes.each do |user_class|
@@ -781,7 +781,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       parent_cats[user_class] = ['docs with attachments']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_raw_data_att', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      basic_docs[user_class].save
+      basic_docs[user_class].__save
       #test
       #metadata[user_class] = basic_docs[user_class].add_raw_data(attach_name, binary_data_content_type, binary_data)
       #metadata[user_class].should == ["should be the metadata for that user"]
@@ -811,7 +811,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       params = {:my_category => my_cat, :parent_categories => parent_cats[user_class]}
       node_params[user_class] = get_default_params.merge(params)
       basic_nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
-      basic_nodes[user_class].save
+      basic_nodes[user_class].__save
       basic_nodes[user_class].files_add(:src_filename => test_filename)
     end
     #check initial conditions
@@ -844,7 +844,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       params = {:my_category => my_cat, :parent_categories => parent_cats[user_class]}
       node_params[user_class] = get_default_params.merge(params)
       basic_nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
-      basic_nodes[user_class].save
+      basic_nodes[user_class].__save
       basic_nodes[user_class].files_add(:src_filename => test_filename)
     end
     #check initial conditions
@@ -877,7 +877,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       params = {:my_category => my_cat, :parent_categories => parent_cats[user_class]}
       node_params[user_class] = get_default_params.merge(params)
       basic_nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
-      basic_nodes[user_class].save
+      basic_nodes[user_class].__save
       basic_nodes[user_class].files_add(:src_filename => test_filename)
     end
     #check initial conditions
@@ -908,7 +908,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       params = {:my_category => my_cat, :parent_categories => parent_cats[user_class]}
       node_params[user_class] = get_default_params.merge(params)
       basic_nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
-      basic_nodes[user_class].save
+      basic_nodes[user_class].__save
       basic_nodes[user_class].files_add(:src_filename => test_filename)
     end
     #check initial conditions
@@ -940,7 +940,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       params = {:my_category => my_cat, :parent_categories => parent_cats[user_class]}
       node_params[user_class] = get_default_params.merge(params)
       basic_nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
-      basic_nodes[user_class].save
+      basic_nodes[user_class].__save
       file_modified = File.mtime(test_filename).to_s
       content_type = MimeNew.for_ofc_x(test_filename)
       metadata = {:file_modified => file_modified, :content_type => content_type}
@@ -969,7 +969,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     node_params = get_default_params.merge(params)
     #here is where we create the node from the first user class
     other_node = make_doc_no_attachment(@user_classes[0], node_params)
-    other_node.save
+    other_node.__save
     other_node.files_add(:src_filename => test_filename)
     #check initial conditions
     other_node.my_category.should == my_cat
@@ -1036,11 +1036,11 @@ end
       parent_cats[user_class] = ['category testing']
       doc_params[user_class]  = get_default_params.merge({:my_category => 'my_cat1', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      basic_docs[user_class].save
+      basic_docs[user_class].__save
       parent_cats[user_class] = ['category testing']
       doc_params[user_class] = get_default_params.merge({:my_category => 'my_cat2', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      basic_docs[user_class].save
+      basic_docs[user_class].__save
     end
   
     test_nodes = {}
@@ -1072,7 +1072,7 @@ end
       parent_cats[user_class] = ['deletion testing']
       doc_params[user_class] = get_default_params.merge({:my_category => 'delete_test1', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      basic_docs[user_class].save
+      basic_docs[user_class].__save
       test_filename = @test_files['strange_characters_in_file_name']
       test_basename = File.basename(test_filename)
       basic_docs[user_class].files_add(:src_filename => test_filename)
@@ -1158,7 +1158,7 @@ describe UserNode, "Document Operations with Links" do
       dyn_methods.each do |meth|
         basic_docs[user_class].respond_to?(meth).should == true
       end
-      basic_docs[user_class].save
+      basic_docs[user_class].__save
       doc_latest = user_class.get(basic_docs[user_class]._model_metadata[:_id])
       doc_latest.links.should == {}
     end
@@ -1176,7 +1176,7 @@ describe UserNode, "Document Operations with Links" do
       parent_cats[user_class] = ['docs with links']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_link1', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      basic_docs[user_class].save #doc must be saved before we can add links
+      basic_docs[user_class].__save #doc must be saved before we can add links
     end
     @user_classes.each do |user_class|
       doc_latest = user_class.get(basic_docs[user_class]._model_metadata[:_id])
@@ -1214,7 +1214,7 @@ describe UserNode, "Document Operations with Links" do
       parent_cats[user_class] = ['docs with links']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_link1', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      basic_docs[user_class].save #doc must be saved before we can add links
+      basic_docs[user_class].__save #doc must be saved before we can add links
     end
     @user_classes.each do |user_class|
       doc_latest = user_class.get(basic_docs[user_class]._model_metadata[:_id])
@@ -1252,7 +1252,7 @@ end
       parent_cats[user_class] = ['docs with links']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_link2', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      basic_docs[user_class].save #doc must be saved before we can add links
+      basic_docs[user_class].__save #doc must be saved before we can add links
     end
     #check initial conditions
     @user_classes.each do |user_class|

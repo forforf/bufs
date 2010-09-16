@@ -217,7 +217,7 @@ module CouchRestEnv
         attach_doc = doc_db.get(node.attachment_doc_id)
         doc_db.delete_doc(attach_doc)
         node.__unset_userdata_key(:attachment_doc_id)
-        node.save
+        node.__save
       else
         puts "Warning: Attempted to delete attachments when none existed"
       end
