@@ -73,7 +73,7 @@ module FileSystemEnv
 
     def self.get_att_doc(node)
       root_path = node.my_GlueEnv.user_datastore_selector
-      node_loc  = node.user_data[node.my_GlueEnv.node_key]
+      node_loc  = node._user_data[node.my_GlueEnv.node_key]
       node_path = File.join(root_path, node_loc)
       model_basenames = Dir.working_entries(node_path)
       filenames = model_basenames.map{|b| File.join(node_path, BufsEscape.escape(b))}
@@ -118,7 +118,7 @@ module FileSystemEnv
       attachment_package = {}
       esc_attach_name = BufsEscape.escape(attach_name)
       root_path = node.my_GlueEnv.user_datastore_selector
-      node_loc  = node.user_data[node.my_GlueEnv.node_key]
+      node_loc  = node._user_data[node.my_GlueEnv.node_key]
       node_path = File.join(root_path, node_loc)
       FileUtils.mkdir_p(node_path) unless File.exist?(node_path)
       raw_data_filename = File.join(node_path, esc_attach_name)
@@ -188,7 +188,7 @@ module FileSystemEnv
       if node.attached_files
         #TODO: replace the duplicative namespaces with path to the node dir
         root_path = node.my_GlueEnv.user_datastore_selector
-        node_loc  = node.user_data[node.my_GlueEnv.node_key]
+        node_loc  = node._user_data[node.my_GlueEnv.node_key]
         node_path = File.join(root_path, node_loc)
         filenames = model_basenames.map{|b| File.join(node_path, BufsEscape.escape(b))}
         #raise filenames.inspect
@@ -199,7 +199,7 @@ module FileSystemEnv
     #TODO: make private
     def subtract_all(node)
       root_path = node.my_GlueEnv.user_datastore_selector
-      node_loc  = node.user_data[node.my_GlueEnv.node_key]
+      node_loc  = node._user_data[node.my_GlueEnv.node_key]
       node_path = File.join(root_path, node_loc)
       attached_entries = Dir.working_entries(node_path)
       #alternate approach would be to use node.files_attached
@@ -312,13 +312,13 @@ module FileSystemEnv
         self.destroy(node)
       rescue ArgumentError => e
         puts "Rescued Error: #{e} while trying to destroy #{node.my_category} node"
-        node = node.class.get(node.model_metadata['_id'])
+        node = node.class.get(node._model_metadata['_id'])
         self.destroy(node)
       end
     end
 
     def self.destroy(node)
-      node.class.class_env.db.delete_doc('_id' => node.model_metadata[ModelKey], '_rev' => node.model_metadata[VersionKey])
+      node.class.class_env.db.delete_doc('_id' => node._model_metadata[ModelKey], '_rev' => node._model_metadata[VersionKey])
     end
 
 end

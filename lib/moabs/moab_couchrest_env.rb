@@ -42,14 +42,14 @@ module CouchRestEnv
       #
       # filename_key = model_filenames to delete
   class BIDStub
-    attr_accessor :model_metadata
+    attr_accessor :_model_metadata
     def self.attachment_base_id
       "_attachments"
     end
    
     def initialize(id)
-      @model_metadata = {}
-      @model_metadata[:_id] = id
+      @_model_metadata = {}
+      @_model_metadata[:_id] = id
     end
   end
   class FilesMgrInterface
@@ -107,7 +107,7 @@ module CouchRestEnv
       #create the attachment record
       #TODO: What if the attachment already exists?
       user_id = node.my_GlueEnv.db_user_id
-      node_id = node.model_metadata[:_id]
+      node_id = node._model_metadata[:_id]
       record = bia_class.add_attachment_package(node, attachment_package)
       if node.respond_to? :attachment_doc_id
         if node.attachment_doc_id && (node.attachment_doc_id != record['_id'] )
@@ -367,14 +367,14 @@ module CouchRestEnv
       self.destroy(node)
     rescue ArgumentError => e
       puts "Rescued Error: #{e} while trying to destroy #{node.my_category} node"
-      node = node.class.get(node.model_metadata['_id'])
+      node = node.class.get(node._model_metadata['_id'])
       self.destroy(node)
     end
   end
 
   def self.destroy(node)
-    node.my_GlueEnv.db.delete_doc('_id' => node.model_metadata[ModelKey], 
-				  '_rev' => node.model_metadata[VersionKey])
+    node.my_GlueEnv.db.delete_doc('_id' => node._model_metadata[ModelKey], 
+				  '_rev' => node._model_metadata[VersionKey])
   end
 
 end

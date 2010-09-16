@@ -163,7 +163,7 @@ attr_accessor :fs_user_id,
 
   def destroy_node(node)
     root_dir = @user_datastore_selector
-    node_dir_name = node.user_data[@node_key]
+    node_dir_name = node._user_data[@node_key]
     node_dir = File.join(root_dir, node_dir_name)
     FileUtils.rm_rf(node_dir)
     node = nil

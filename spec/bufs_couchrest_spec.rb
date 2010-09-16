@@ -74,7 +74,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     my_params = [:my_category, :parent_categories, :description]
     my_params.each do |my_param|
       default_bid.__send__(my_param).should == get_default_params[my_param]
-      default_bid.user_data[my_param].should == get_default_params[my_param]
+      default_bid._user_data[my_param].should == get_default_params[my_param]
     end
     #we haven't saved it to the database yet
     BufsBaseNode.all.size.should == 0
@@ -93,7 +93,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     default_bid.my_category.should == get_default_params[:my_category]
     default_bid.parent_categories.should == get_default_params[:parent_categories]
     lambda {default_bid.description}.should raise_error(NameError)
-    default_bid.user_data[:description].should == nil
+    default_bid._user_data[:description].should == nil
   end
 
   it "should not save if required fields don't exist" do
@@ -137,7 +137,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
       db_param = CouchDB.get(doc_id)[param]
       bufs_param = BufsBaseNode.get(doc_id).__send__(param.to_sym)
       db_param.should == bufs_param
-      doc_to_save.user_data[param].should == db_param
+      doc_to_save._user_data[param].should == db_param
       #test accessor method
       doc_to_save.__send__(param).should == db_param
     end
@@ -178,16 +178,16 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     doc_params = get_default_params.merge({:my_category => 'cat_test1', :parent_categories => orig_parent_cats})
     doc_with_new_parent_cat = make_doc_no_attachment(doc_params)
     new_cat = 'new parent cat'
-    initial_rev = doc_with_new_parent_cat.model_metadata[:_rev]
+    initial_rev = doc_with_new_parent_cat._model_metadata[:_rev]
     #test
     doc_with_new_parent_cat.parent_categories_add(new_cat)
-    after_save_rev = doc_with_new_parent_cat.model_metadata[:_rev]
+    after_save_rev = doc_with_new_parent_cat._model_metadata[:_rev]
     #check results
     #check doc in memory
     doc_with_new_parent_cat.parent_categories.should include new_cat
     #check database
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_with_new_parent_cat.model_metadata[:_id])[param]
+      db_param = CouchDB.get(doc_with_new_parent_cat._model_metadata[:_id])[param]
       #doc_with_new_parent_cat[param].should == db_param
       #test accessor method
       doc_with_new_parent_cat.__send__(param).should == db_param
@@ -204,16 +204,16 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     doc_with_new_parent_cat = make_doc_no_attachment(doc_params)
     new_cat = 'old parent cat'
     doc_with_new_parent_cat.save
-    initial_rev = doc_with_new_parent_cat.model_metadata[:_rev]
+    initial_rev = doc_with_new_parent_cat._model_metadata[:_rev]
     #test
     doc_with_new_parent_cat.parent_categories_add(new_cat)
-    after_save_rev = doc_with_new_parent_cat.model_metadata[:_rev]
+    after_save_rev = doc_with_new_parent_cat._model_metadata[:_rev]
     #check results
     #check doc in memory
     doc_with_new_parent_cat.parent_categories.should include new_cat
     #check database
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_with_new_parent_cat.model_metadata[:_id])[param]
+      db_param = CouchDB.get(doc_with_new_parent_cat._model_metadata[:_id])[param]
       #doc_with_new_parent_cat[param].should == db_param
       #test accessor method
       doc_with_new_parent_cat.__send__(param).should == db_param
@@ -230,7 +230,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     doc_existing_new_parent_cat.save
     #verify initial conditions
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_existing_new_parent_cat.model_metadata[:_id])[param]
+      db_param = CouchDB.get(doc_existing_new_parent_cat._model_metadata[:_id])[param]
       #doc_existing_new_parent_cat[param].should == db_param
       #test accessor method
       doc_existing_new_parent_cat.__send__(param).should == db_param
@@ -238,10 +238,10 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     #continue with initial conditions
     new_cats = ['new_cat1', 'new cat2', 'orig_cat2']
     #test
-    #doc_rev0 = doc_existing_new_parent_cat.model_metadata['_rev']
+    #doc_rev0 = doc_existing_new_parent_cat._model_metadata['_rev']
     doc_existing_new_parent_cat.add_parent_categories(new_cats)
     #doc_existing_new_parent_cat.save
-    #doc_rev1 = doc_existing_new_parent_cat.model_metadata['_rev']
+    #doc_rev1 = doc_existing_new_parent_cat._model_metadata['_rev']
     #doc_rev0.should_not == doc_rev1
     #check results
     #check doc in memory
@@ -252,7 +252,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
       #ex_cats.should include new_cat
     end
     #check database
-    parent_cats = CouchDB.get(doc_existing_new_parent_cat.model_metadata[:_id])[:parent_categories]
+    parent_cats = CouchDB.get(doc_existing_new_parent_cat._model_metadata[:_id])[:parent_categories]
     new_cats.each do |cat|
       parent_cats.should include cat
     end
@@ -269,7 +269,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     doc_remove_parent_cat.save
     #verify initial conditions
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_remove_parent_cat.model_metadata[:_id])[param]
+      db_param = CouchDB.get(doc_remove_parent_cat._model_metadata[:_id])[param]
       #doc_remove_parent_cat[param].should == db_param
       #test accessor method
       doc_remove_parent_cat.__send__(param).should == db_param
@@ -287,7 +287,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     remove_multi_cats.each do |cat|
       doc_remove_parent_cat.parent_categories.should_not include cat
     end
-    cats_in_db = CouchDB.get(doc_remove_parent_cat.model_metadata[:_id])['parent_categories']
+    cats_in_db = CouchDB.get(doc_remove_parent_cat._model_metadata[:_id])['parent_categories']
     remove_multi_cats.each do |removed_cat|
       cats_in_db.should_not include removed_cat
     end
@@ -308,7 +308,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     doc_uniq_parent_cat.add_parent_categories(new_cats)
     #verify results
     expected_size.should == doc_uniq_parent_cat.parent_categories.size
-    CouchDB.get(doc_uniq_parent_cat.model_metadata[:_id])['parent_categories'].sort.should == doc_uniq_parent_cat.parent_categories.sort
+    CouchDB.get(doc_uniq_parent_cat._model_metadata[:_id])['parent_categories'].sort.should == doc_uniq_parent_cat.parent_categories.sort
     #"can't query on :my_category".should == "test should have way to query based on :my_category"
     records = BufsBaseNode.call_view(:my_category , doc_uniq_parent_cat.my_category)
     records = [records].flatten
@@ -339,14 +339,14 @@ describe BufsBaseNode, "Attachment Operations" do
     basic_node = make_doc_no_attachment(node_params)
     basic_node.save
     #check initial conditions
-    BufsBaseNode.get(basic_node.model_metadata[:_id]).attached_files.should == nil
+    BufsBaseNode.get(basic_node._model_metadata[:_id]).attached_files.should == nil
     #test (single file)
     basic_node.files_add(:src_filename => test_filename)
     #check results
-    att_node_id = basic_node.model_metadata[:_id]
+    att_node_id = basic_node._model_metadata[:_id]
     att_node = BufsBaseNode.get(att_node_id)
     att_node.attached_files.size.should == 1
-    att_node.user_data.should == basic_node.user_data
+    att_node._user_data.should == basic_node._user_data
     att_node.attached_files.should == basic_node.attached_files
   end
 
@@ -370,7 +370,7 @@ describe BufsBaseNode, "Attachment Operations" do
     basic_node.files_subtract(attached_basenames)
     #check_results
     basic_node.attached_files.size.should == 0
-    att_node_id = basic_node.model_metadata[:_id]
+    att_node_id = basic_node._model_metadata[:_id]
     att_node = BufsBaseNode.get(att_node_id)
     att_node.attached_files.size.should == 0 
   end
@@ -394,7 +394,7 @@ describe BufsBaseNode, "Attachment Operations" do
     #test
     basic_node.destroy_node
     #check results
-    att_node_id = basic_node.model_metadata[:_id]
+    att_node_id = basic_node._model_metadata[:_id]
     att_node = BufsBaseNode.get(att_node_id)
     att_node.should == nil
     atts = basic_node.my_GlueEnv.attachClass.get(basic_node.attachment_doc_id)
@@ -421,7 +421,7 @@ describe BufsBaseNode, "Attachment Operations" do
     basic_node.files_remove_all
     #verify results
     basic_node.attached_files.should == nil
-    att_node_id = basic_node.model_metadata[:_id]
+    att_node_id = basic_node._model_metadata[:_id]
     att_node = BufsBaseNode.get(att_node_id)
     att_node.attached_files.should == nil
   end
@@ -485,7 +485,7 @@ describe BufsBaseNode, "Attachment Operations" do
     #test
     basic_node.add_raw_data(attach_name, binary_data_content_type, binary_data)
     #check results
-    att_node_id = basic_node.model_metadata[:_id]
+    att_node_id = basic_node._model_metadata[:_id]
     att_node = BufsBaseNode.get(att_node_id)
     att_node.attached_files.size.should == 1
     att_node.attached_files.first.should == BufsEscape.escape(attach_name)

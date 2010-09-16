@@ -81,7 +81,7 @@ class BufsBaseNode
   end
 
   ##Instance Accessors
-  attr_accessor :user_data, :model_metadata, :attached_files, 
+  attr_accessor :_user_data, :_model_metadata, :attached_files, 
                 :my_GlueEnv,  #note the "_" to differentiate from class accessor
                 :files_mgr
 
@@ -154,7 +154,7 @@ class BufsBaseNode
     #TODO: add to spec
     #TODO: what about node id collisions? currently ignoring it
     #and letting the persistence model work it out
-    this_node = self.new(other_node.user_data)
+    this_node = self.new(other_node._user_data)
     this_node.import_attachments(other_node.export_attachments) if other_node.attached_files
   end
 
@@ -180,12 +180,12 @@ class BufsBaseNode
     @saved_to_model = nil #TODO rename to sychronized_to_model
     #make sure keys are symbols
     init_params = HashKeys.str_to_sym(init_params)
-    @user_data, @model_metadata = filter_user_from_model_data(init_params)
-    instance_data_validations(@user_data)
-    node_key = get_user_data_id(@user_data)
+    @_user_data, @_model_metadata = filter_user_from_model_data(init_params)
+    instance_data_validations(@_user_data)
+    node_key = get__user_data_id(@_user_data)
     moab_file_mgr = @my_GlueEnv.files_mgr_class.new(@my_GlueEnv, node_key)
     @files_mgr = FilesMgr.new(moab_file_mgr)
-    @model_metadata = update_model_metadata(@model_metadata, node_key)
+    @_model_metadata = update__model_metadata(@_model_metadata, node_key)
     
     init_params.each do |attr_name, attr_value|
       iv_set(attr_name.to_sym, attr_value)
@@ -193,40 +193,40 @@ class BufsBaseNode
   end
 
   def filter_user_from_model_data(init_params)
-    model_metadata_keys = @my_GlueEnv.metadata_keys
-    #model_metadata_keys = @my_GlueEnv.base_metadata_keys
-    model_metadata = {}
-    model_metadata_keys.each do |k|
-      model_metadata[k] = init_params.delete(k) if init_params[k] #delete returns deleted value
+    _model_metadata_keys = @my_GlueEnv.metadata_keys
+    #_model_metadata_keys = @my_GlueEnv.base_metadata_keys
+    _model_metadata = {}
+    _model_metadata_keys.each do |k|
+      _model_metadata[k] = init_params.delete(k) if init_params[k] #delete returns deleted value
     end
-    [init_params, model_metadata]
+    [init_params, _model_metadata]
   end
 
-  def instance_data_validations(user_data)
+  def instance_data_validations(_user_data)
     #Check for Required Keys
     required_keys = @my_GlueEnv.required_instance_keys
     required_keys.each do |rk|
       err_str = "The key #{rk.inspect} must be associated with a"\
                 " value for instantiation"
-      raise ArgumentError, err_str unless user_data[rk]
+      raise ArgumentError, err_str unless _user_data[rk]
     end
   end
 
-  def save_data_validations(user_data)
+  def save_data_validations(_user_data)
     required_keys = @my_GlueEnv.required_save_keys
     required_keys.each do |rk|
       err_str = "The key #{rk.inspect} must be associated with a"\
                 " value before saving"
-      raise ArgumentError, err_str unless user_data[rk]
+      raise ArgumentError, err_str unless _user_data[rk]
     end
   end
 
-  def get_user_data_id(user_data)
+  def get__user_data_id(_user_data)
     user_node_key = @my_GlueEnv.node_key
-    user_data[user_node_key]
+    _user_data[user_node_key]
   end
 
-  def update_model_metadata(metadata, node_key)
+  def update__model_metadata(metadata, node_key)
     #updates @saved_to_model (make a method instead)?
     model_key = @my_GlueEnv.model_key
     version_key = @my_GlueEnv.version_key
@@ -260,18 +260,18 @@ class BufsBaseNode
     #incorporates predefined methods
     add_op_method(attr_var, ops[attr_var]) if ops[attr_var]
     unless self.class.metadata_keys.include? attr_var.to_sym
-      @user_data[attr_var] = attr_value
+      @_user_data[attr_var] = attr_value
     else
-      raise "Key match: #{attr_var.to_sym.inspect} UserData: #{@user_data.inspect}"
+      raise "Key match: #{attr_var.to_sym.inspect} UserData: #{@_user_data.inspect}"
     end
     #manually setting instance variable (rather than using instance_variable_set),
     # so @node_data_hash can be updated
     #dynamic method acting like an instance variable getter
     self.class.__send__(:define_method, "#{attr_var}".to_sym,
-       lambda {@user_data[attr_var]} )
+       lambda {@_user_data[attr_var]} )
     #dynamic method acting like an instance variable setter
     self.class.__send__(:define_method, "#{attr_var}=".to_sym,
-       lambda {|new_val| @user_data[attr_var] = new_val} )
+       lambda {|new_val| @_user_data[attr_var] = new_val} )
   end
      
   def add_op_method(param, ops)
@@ -312,7 +312,7 @@ class BufsBaseNode
 
   def iv_unset(param)
     self.class.__send__(:remove_method, param.to_sym)
-    @user_data.delete(param)
+    @_user_data.delete(param)
   end
 
   #some object convenience methods for accessing class methods
@@ -323,9 +323,9 @@ class BufsBaseNode
 
   #Save the object to the CouchDB database
   def save
-    save_data_validations(self.user_data)
+    save_data_validations(self._user_data)
     node_key = @my_GlueEnv.node_key 
-    node_id = self.model_metadata[node_key]
+    node_id = self._model_metadata[node_key]
     model_data = inject_node_metadata
     #raise model_data.inspect
     res = @my_GlueEnv.save(model_data) 
@@ -448,15 +448,15 @@ class BufsBaseNode
   end
 
   def inject_node_metadata
-    inject_metadata(@user_data)
+    inject_metadata(@_user_data)
   end
 
   def inject_metadata(node_data)
-    node_data.merge(@model_metadata)
+    node_data.merge(@_model_metadata)
   end
 
   def update_self(rev_data)
-    self.model_metadata.merge!(rev_data)
+    self._model_metadata.merge!(rev_data)
     version_key = @my_GlueEnv.version_key 
     @saved_to_model = rev_data[version_key]
   end
@@ -472,7 +472,7 @@ class BufsBaseNode
     #either enforce that, or figure out generic solution
 
     #create new node
-    new_basic_node = self.new(other_node.user_data)
+    new_basic_node = self.new(other_node._user_data)
 
     #transfer attachments
     other_node.attached_files.each do |att_file|

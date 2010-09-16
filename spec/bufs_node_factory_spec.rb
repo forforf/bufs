@@ -281,10 +281,10 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     #check results
     @user_classes.each do |user_class|
       docs_params[user_class].keys.each do |param|
-        doc_id = docs_to_save[user_class].model_metadata[:_id]
+        doc_id = docs_to_save[user_class]._model_metadata[:_id]
         doc_from_db = user_class.get(doc_id)
         db_param = doc_from_db.__send__(param)
-        docs_to_save[user_class].user_data[param].should == db_param
+        docs_to_save[user_class]._user_data[param].should == db_param
         #test accessor method
         docs_to_save[user_class].__send__(param).should == db_param
       end
@@ -307,7 +307,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
       new_params = get_default_params.merge({:my_category => "cat_test#{(user_class.hash).to_s}", :parent_categories => orig_parent_cats[user_class]})
       doc_params[user_class] = new_params
       docs_with_new_parent_cat[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      initial_revs[user_class] = docs_with_new_parent_cat[user_class].model_metadata[:_rev]
+      initial_revs[user_class] = docs_with_new_parent_cat[user_class]._model_metadata[:_rev]
       #puts "#{user_class.inspect} rev: #{initial_revs[user_class].inspect}"
     end
     new_cat = 'new parent cat'
@@ -315,7 +315,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     #test
     @user_classes.each do |user_class|
      docs_with_new_parent_cat[user_class].parent_categories_add(new_cat)
-     aftersave_revs[user_class] = docs_with_new_parent_cat[user_class].model_metadata[:_rev]
+     aftersave_revs[user_class] = docs_with_new_parent_cat[user_class]._model_metadata[:_rev]
      #puts "AS: #{user_class.inspect} rev: #{aftersave_revs[user_class].inspect}"
     end
     
@@ -326,10 +326,10 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
       #check database
       doc_params[user_class].keys.each do |param|
         node = docs_with_new_parent_cat[user_class]
-        node_id = node.model_metadata[:_id]
+        node_id = node._model_metadata[:_id]
         model_node = node.class.get(node_id)
         db_param = model_node.__send__(param.to_sym)
-        docs_with_new_parent_cat[user_class].user_data[param].should == db_param
+        docs_with_new_parent_cat[user_class]._user_data[param].should == db_param
         #test accessor method
         docs_with_new_parent_cat[user_class].__send__(param).should == db_param
       end
@@ -355,9 +355,9 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     #verify initial conditions
     @user_classes.each do |user_class|
       doc_params[user_class].keys.each do |param|
-        doc_id = doc_existing_new_parent_cats[user_class].model_metadata['_id']
+        doc_id = doc_existing_new_parent_cats[user_class]._model_metadata['_id']
         db_doc = user_class.get(doc_id)
-        #raise db_doc.model_metadata.inspect
+        #raise db_doc._model_metadata.inspect
         db_param = db_doc.node_data_hash[param]
         doc_existing_new_parent_cats[user_class].node_data_hash[param].should == db_param
         #test accessor method
@@ -382,11 +382,11 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     #verify initial conditions
     @user_classes.each do |user_class|
       doc_params[user_class].keys.each do |param|
-        doc_id = doc_existing_new_parent_cats[user_class].model_metadata[:_id]
+        doc_id = doc_existing_new_parent_cats[user_class]._model_metadata[:_id]
         db_doc = user_class.get(doc_id)
-        #raise doc_id unless db_doc #.model_metadata.inspect
-        db_param = db_doc.user_data[param]
-        doc_existing_new_parent_cats[user_class].user_data[param].should == db_param
+        #raise doc_id unless db_doc #._model_metadata.inspect
+        db_param = db_doc._user_data[param]
+        doc_existing_new_parent_cats[user_class]._user_data[param].should == db_param
         #test accessor method
         doc_existing_new_parent_cats[user_class].__send__(param).should == db_param
       end
@@ -407,7 +407,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     #check database
     parent_cats = {}
     @user_classes.each do |user_class|
-      parent_cats[user_class] = user_class.get(doc_existing_new_parent_cats[user_class].model_metadata[:_id]).parent_categories
+      parent_cats[user_class] = user_class.get(doc_existing_new_parent_cats[user_class]._model_metadata[:_id]).parent_categories
       new_cats.each do |cat|
         parent_cats[user_class].should include cat
       end
@@ -432,8 +432,8 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     #verify initial conditions
     @user_classes.each do |user_class|
       doc_params[user_class].keys.each do |param|
-        db_param = user_class.get(doc_remove_parent_cats[user_class].model_metadata[:_id]).user_data[param]
-        doc_remove_parent_cats[user_class].user_data[param].should == db_param
+        db_param = user_class.get(doc_remove_parent_cats[user_class]._model_metadata[:_id])._user_data[param]
+        doc_remove_parent_cats[user_class]._user_data[param].should == db_param
         #test accessor method
         doc_remove_parent_cats[user_class].__send__(param).should == db_param
       end
@@ -461,9 +461,9 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
 
     cats_in_db = {}
     @user_classes.each do |user_class|
-      doc_id = doc_remove_parent_cats[user_class].model_metadata[:_id]
+      doc_id = doc_remove_parent_cats[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
-      cats_in_db[user_class] = db_doc.user_data[:parent_categories].inspect
+      cats_in_db[user_class] = db_doc._user_data[:parent_categories].inspect
       remove_multi_cats[user_class].each do |removed_cat|
         cats_in_db[user_class].should_not include removed_cat
       end
@@ -503,10 +503,10 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     records = {}
     @user_classes.each do |user_class|
       expected_sizes[user_class].should == doc_uniq_parent_cats[user_class].parent_categories.size
-      doc_id = doc_uniq_parent_cats[user_class].model_metadata[:_id]
+      doc_id = doc_uniq_parent_cats[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
       puts "Doc ID searched: #{doc_id.inspect}"
-      db_doc.user_data[:parent_categories].sort.should == doc_uniq_parent_cats[user_class].parent_categories.sort
+      db_doc._user_data[:parent_categories].sort.should == doc_uniq_parent_cats[user_class].parent_categories.sort
       records[user_class] = user_class.call_view(:parent_categories, 'dup cat2')
       records[user_class].size.should == 1
       records[user_class].first.parent_categories.should include 'dup cat2'
@@ -579,10 +579,10 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
 
     #check initial conditions
     @user_classes.each do |user_class|
-      doc_id = basic_docs[user_class].model_metadata[:_id]
+      doc_id = basic_docs[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
-      db_doc.model_metadata['attachment_doc_id'].should == nil
-      #(user_class.get(basic_docs[user_class].model_metadata['_id'])['attachment_doc_id']).should == nil
+      db_doc._model_metadata['attachment_doc_id'].should == nil
+      #(user_class.get(basic_docs[user_class]._model_metadata['_id'])['attachment_doc_id']).should == nil
     end
     #test
     #using just the filename
@@ -595,10 +595,10 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     att_doc_ids = {}
     att_docs = {}
     @user_classes.each do |user_class|
-      id_of_doc_w_att = basic_docs[user_class].model_metadata[:_id]
+      id_of_doc_w_att = basic_docs[user_class]._model_metadata[:_id]
       doc_w_att = user_class.get(id_of_doc_w_att)
       doc_w_att.attached_files.size.should == 1
-      doc_w_att.user_data.should == basic_docs[user_class].user_data
+      doc_w_att._user_data.should == basic_docs[user_class]._user_data
       doc_w_att.attached_files.should == basic_docs[user_class].attached_files
     end
   end
@@ -620,7 +620,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     att_files = {}
     test_basename = File.basename(test_filename)
     @user_classes.each do |user_class|
-      doc_id = basic_docs[user_class].model_metadata[:_id]
+      doc_id = basic_docs[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
       #raise db_doc.attachment_doc_id.inspect
       att_files[user_class] = db_doc.attached_files
@@ -630,13 +630,13 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     #test
     attachment_name = test_basename
     @user_classes.each do |user_class|
-      doc = user_class.get(basic_docs[user_class].model_metadata[:_id])
+      doc = user_class.get(basic_docs[user_class]._model_metadata[:_id])
       doc.files_remove_all
     end
     #check results
     #TODO: Highlight the fact that basic doc still has attachments in memory?
     @user_classes.each do |user_class|
-      doc_id = basic_docs[user_class].model_metadata[:_id]
+      doc_id = basic_docs[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
       db_doc.attached_files.should == nil
     end
@@ -664,7 +664,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     test_basename1 = File.basename(test_filename1)
     test_basename2 = File.basename(test_filename2)
     @user_classes.each do |user_class|
-      doc_id = basic_docs[user_class].model_metadata[:_id]
+      doc_id = basic_docs[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
       db_doc.attached_files.size.should == 2
       #db_doc.attached_files.first.should == BufsEscape.escape(test_basename)
@@ -673,25 +673,25 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     attachment_name1 = BufsEscape.escape(test_basename1)
     attachment_name2 = BufsEscape.escape(test_basename2)
     @user_classes.each do |user_class|
-      doc = user_class.get(basic_docs[user_class].model_metadata[:_id])
+      doc = user_class.get(basic_docs[user_class]._model_metadata[:_id])
       doc.files_subtract(attachment_name1)
     end
     #check results
     @user_classes.each do |user_class|
       #att_docs[user_class] = user_class.user_attachClass.get(att_doc_ids[user_class])
-      doc_id = basic_docs[user_class].model_metadata[:_id]
+      doc_id = basic_docs[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
       db_doc.attached_files.size.should == 1
       db_doc.attached_files.first.should == BufsEscape.escape(attachment_name2)
     end
     #delete again so that all attachments are deleted
     @user_classes.each do |user_class|
-      doc = user_class.get(basic_docs[user_class].model_metadata[:_id])
+      doc = user_class.get(basic_docs[user_class]._model_metadata[:_id])
       doc.files_subtract(attachment_name2)
     end
     #check results
     @user_classes.each do |user_class|
-      doc_id = basic_docs[user_class].model_metadata[:_id]
+      doc_id = basic_docs[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
       db_doc.attached_files.size.should == 0
     end
@@ -716,7 +716,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     att_docs = {}
     test_basename = File.basename(test_filename)
     @user_classes.each do |user_class|
-      doc_id = basic_docs[user_class].model_metadata[:_id]
+      doc_id = basic_docs[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
       db_doc.attached_files.size.should == 1
       db_doc.attached_files.first.should == BufsEscape.escape(test_basename)
@@ -724,7 +724,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     #test
     attachment_names = {}
     @user_classes.each do |user_class|
-      doc_id = basic_docs[user_class].model_metadata[:_id]
+      doc_id = basic_docs[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
       attachment_names[user_class] = db_doc.attached_files
     end
@@ -757,7 +757,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     end
     #check results
     @user_classes.each do |user_class|
-      doc_id = basic_docs[user_class].model_metadata[:_id]
+      doc_id = basic_docs[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
       db_doc.attached_files.first.should == BufsEscape.escape(test_basename)
     end
@@ -787,7 +787,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       #metadata[user_class].should == ["should be the metadata for that user"]
       basic_docs[user_class].add_raw_data(attach_name, binary_data_content_type, binary_data)
       #verify results
-      doc_id = basic_docs[user_class].model_metadata[:_id]
+      doc_id = basic_docs[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
       db_doc.attached_files.size.should == 1
       att_file = db_doc.attached_files.first
@@ -1085,13 +1085,13 @@ end
       docs[user_class] = user_class.call_view(:my_category, 'delete_test1')
       docs[user_class].size.should == 1
       doc = docs[user_class].first
-      doc_att_ids[user_class] = user_class.get(doc.model_metadata[:_id]).attachment_doc_id
+      doc_att_ids[user_class] = user_class.get(doc._model_metadata[:_id]).attachment_doc_id
       doc_atts[user_class] = user_class.user_attachClass.get(doc_att_ids[user_class])
       doc_atts[user_class].should_not == nil
     end
     #test
     @user_classes.each do |user_class|
-      doc_latest = user_class.get(basic_docs[user_class].model_metadata[:_id])
+      doc_latest = user_class.get(basic_docs[user_class]._model_metadata[:_id])
       doc_latest.destroy_node
     end
     #verify results
@@ -1127,8 +1127,8 @@ describe UserNode, "Document Operations with Links" do
       #end
       all_user_docs = user_class.all
       all_user_docs.each do |user_doc|
-        puts "WARNING: this doc has :_id of nil" unless user_doc.model_metadata[:_id] #{user_
-        puts "WARNING this doc has valid :_id but nil '_rev" if (user_doc.model_metadata[:_id] && user_doc.model_metadata["_rev"].nil?)
+        puts "WARNING: this doc has :_id of nil" unless user_doc._model_metadata[:_id] #{user_
+        puts "WARNING this doc has valid :_id but nil '_rev" if (user_doc._model_metadata[:_id] && user_doc._model_metadata["_rev"].nil?)
         user_doc.destroy_node #unless user_doc["_id"]
         #user_#doc.destroy
       end
@@ -1159,7 +1159,7 @@ describe UserNode, "Document Operations with Links" do
         basic_docs[user_class].respond_to?(meth).should == true
       end
       basic_docs[user_class].save
-      doc_latest = user_class.get(basic_docs[user_class].model_metadata[:_id])
+      doc_latest = user_class.get(basic_docs[user_class]._model_metadata[:_id])
       doc_latest.links.should == {}
     end
   end
@@ -1179,7 +1179,7 @@ describe UserNode, "Document Operations with Links" do
       basic_docs[user_class].save #doc must be saved before we can add links
     end
     @user_classes.each do |user_class|
-      doc_latest = user_class.get(basic_docs[user_class].model_metadata[:_id])
+      doc_latest = user_class.get(basic_docs[user_class]._model_metadata[:_id])
       doc_latest.links.should == nil
     end
     #test
@@ -1192,7 +1192,7 @@ describe UserNode, "Document Operations with Links" do
     @user_classes.each do |user_class|
       #link_doc_ids[user_class] = user_class.get(basic_docs[user_class]['_id']).my_link_doc_id
       #link_docs[user_class] = user_class.get(link_doc_ids[user_class])
-      user_doc_from_db = user_class.get(basic_docs[user_class].model_metadata[:_id])
+      user_doc_from_db = user_class.get(basic_docs[user_class]._model_metadata[:_id])
       #user_class.get(basic_docs[user_class]['_id'])['links_doc_id'].should == link_docs[user_class]['_id']
       #user_doc_from_db.links_doc_id.should == link_docs[user_class]['_id']
       #links_in_user_doc = user_class.user_linkClass.get(user_doc_from_db.links_doc_id)
@@ -1217,7 +1217,7 @@ describe UserNode, "Document Operations with Links" do
       basic_docs[user_class].save #doc must be saved before we can add links
     end
     @user_classes.each do |user_class|
-      doc_latest = user_class.get(basic_docs[user_class].model_metadata[:_id])
+      doc_latest = user_class.get(basic_docs[user_class]._model_metadata[:_id])
       doc_latest.links.should == nil
     end
     @user_classes.each do |user_class|
@@ -1225,13 +1225,13 @@ describe UserNode, "Document Operations with Links" do
     end
     #verify initial conditions
     @user_classes.each do |user_class|
-      user_doc_from_db = user_class.get(basic_docs[user_class].model_metadata[:_id])
+      user_doc_from_db = user_class.get(basic_docs[user_class]._model_metadata[:_id])
       user_doc_from_db.links.should == test_links
     end
     #test
     link_to_get = "Google"
     @user_classes.each do |user_class|
-      user_doc_from_db = user_class.get(basic_docs[user_class].model_metadata[:_id])
+      user_doc_from_db = user_class.get(basic_docs[user_class]._model_metadata[:_id])
       user_doc_from_db.links_get(link_to_get).should == "http://www.google.com"
     end
 
@@ -1257,7 +1257,7 @@ end
     #check initial conditions
     @user_classes.each do |user_class|
       #user_class.get(basic_docs[user_class]['_id']['links_doc_id']).should == nil
-      doc_latest = user_class.get(basic_docs[user_class].model_metadata['_id'])
+      doc_latest = user_class.get(basic_docs[user_class]._model_metadata['_id'])
       doc_latest.link.should == nil
     end
     #add links
