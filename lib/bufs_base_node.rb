@@ -188,7 +188,7 @@ class BufsBaseNode
     @_model_metadata = update__model_metadata(@_model_metadata, node_key)
     
     init_params.each do |attr_name, attr_value|
-      iv_set(attr_name.to_sym, attr_value)
+      __set_userdata_key(attr_name.to_sym, attr_value)
     end
   end
 
@@ -199,7 +199,7 @@ class BufsBaseNode
   # method_name = some value.  Additionally, any custom operations that have
   # been defined for that key name will be loaded in and assigned methods in
   # the form methodname_operation
-  def iv_set(attr_var, attr_value)
+  def __set_userdata_key(attr_var, attr_value)
     ops = NodeElementOperations::Ops
     #incorporates predefined methods
     add_op_method(attr_var, ops[attr_var]) if ops[attr_var]
@@ -218,6 +218,7 @@ class BufsBaseNode
        lambda {|new_val| @_user_data[attr_var] = new_val} )
   end
 
+  #TODO: Method Wrapper is not sufficiently tested
   #The method operations are completely decoupled from the object that they are bound to.
   #This creates a problem when operations act on themselves (for example adding x to
   #the current value requires the adder to determine the current value of x). To get
@@ -225,7 +226,7 @@ class BufsBaseNode
   #Essentially it takes the unbound two parameter (this, other) and binds the current value
   #to (this).  This allows a more natural form of calling these operations.  In other words
   # description_add(new_string) can be used, rather than description_add(current_string, new_string).
-  def method_wrapper(param, unbound_op)
+  def __method_wrapper(param, unbound_op)
     #What I want is to call obj.param_op(other)   example: obj.links_add(new_link)
     #which would then add new_link to obj.links
     #however, the predefined operation (add in the example) has no way of knowing
@@ -246,7 +247,7 @@ class BufsBaseNode
            }
   end
 
-  def iv_unset(param)
+  def __unset_userdata_key(param)
     self.class.__send__(:remove_method, param.to_sym)
     @_user_data.delete(param)
   end
@@ -348,7 +349,7 @@ class BufsBaseNode
     if self.attached_files
       self.attached_files += attached_basenames
     else
-      self.iv_set(:attached_files, attached_basenames)
+      self.__set_userdata_key(:attached_files, attached_basenames)
     end
 
     self.save
@@ -362,7 +363,7 @@ class BufsBaseNode
     if self.attached_files
       self.attached_files += attached_basenames
     else
-      self.iv_set(:attached_files, attached_basenames)
+      self.__set_userdata_key(:attached_files, attached_basenames)
     end
     self.save
   end
@@ -407,7 +408,7 @@ class BufsBaseNode
   def add_op_method(param, ops)
        ops.each do |op_name, op_proc|
          method_name = "#{param.to_s}_#{op_name.to_s}".to_sym
-         wrapped_op = method_wrapper(param, op_proc)
+         wrapped_op = __method_wrapper(param, op_proc)
          self.class.__send__(:define_method, method_name, wrapped_op)
        end
   end 

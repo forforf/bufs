@@ -1149,7 +1149,7 @@ describe UserNode, "Document Operations with Links" do
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_links', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_no_attachment(user_class, doc_params)
       basic_docs[user_class].respond_to?(:links).should == false
-      basic_docs[user_class].iv_set(:links, {})
+      basic_docs[user_class].__set_userdata_key(:links, {})
       #test - it should now have the link instance variable
       basic_docs[user_class].respond_to?(:links).should == true
       #it should also have the dynamically generated methods for add, subtracting and getting links

@@ -75,7 +75,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     default_bid.parent_categories.should == get_default_params[:parent_categories]
     default_bid.description.should == get_default_params[:description]
     #test
-    default_bid.iv_unset(:description)
+    default_bid.__unset_userdata_key(:description)
     #verify results
     default_bid.my_category.should == get_default_params[:my_category]
     default_bid.parent_categories.should == get_default_params[:parent_categories]

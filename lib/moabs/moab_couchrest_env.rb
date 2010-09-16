@@ -116,7 +116,7 @@ module CouchRestEnv
           node.attachment_doc_id = record['_id']  #TODO How is it nil?
         end
       else
-        node.iv_set(:attachment_doc_id,  record['_id'] )
+        node.__set_userdata_key(:attachment_doc_id,  record['_id'] )
       end
       #node.attachment_doc_id
       stored_basenames
@@ -143,7 +143,7 @@ module CouchRestEnv
           node.attachment_doc_id = record['_id']  #TODO How is it nil?
         end
       else
-        node.iv_set(:attachment_doc_id,  record['_id'] )
+        node.__set_userdata_key(:attachment_doc_id,  record['_id'] )
       end
       [attach_name]
       #@record_ref = record['_id']
@@ -216,7 +216,7 @@ module CouchRestEnv
       if node.attachment_doc_id
         attach_doc = doc_db.get(node.attachment_doc_id)
         doc_db.delete_doc(attach_doc)
-        node.iv_unset(:attachment_doc_id)
+        node.__unset_userdata_key(:attachment_doc_id)
         node.save
       else
         puts "Warning: Attempted to delete attachments when none existed"
