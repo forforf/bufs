@@ -192,62 +192,6 @@ class BufsBaseNode
     end
   end
 
-  def filter_user_from_model_data(init_params)
-    _model_metadata_keys = @my_GlueEnv.metadata_keys
-    #_model_metadata_keys = @my_GlueEnv.base_metadata_keys
-    _model_metadata = {}
-    _model_metadata_keys.each do |k|
-      _model_metadata[k] = init_params.delete(k) if init_params[k] #delete returns deleted value
-    end
-    [init_params, _model_metadata]
-  end
-
-  def instance_data_validations(_user_data)
-    #Check for Required Keys
-    required_keys = @my_GlueEnv.required_instance_keys
-    required_keys.each do |rk|
-      err_str = "The key #{rk.inspect} must be associated with a"\
-                " value for instantiation"
-      raise ArgumentError, err_str unless _user_data[rk]
-    end
-  end
-
-  def save_data_validations(_user_data)
-    required_keys = @my_GlueEnv.required_save_keys
-    required_keys.each do |rk|
-      err_str = "The key #{rk.inspect} must be associated with a"\
-                " value before saving"
-      raise ArgumentError, err_str unless _user_data[rk]
-    end
-  end
-
-  def get__user_data_id(_user_data)
-    user_node_key = @my_GlueEnv.node_key
-    _user_data[user_node_key]
-  end
-
-  def update__model_metadata(metadata, node_key)
-    #updates @saved_to_model (make a method instead)?
-    model_key = @my_GlueEnv.model_key
-    version_key = @my_GlueEnv.version_key
-    namespace_key = @my_GlueEnv.namespace_key
-    id = metadata[model_key] 
-    namespace = metadata[namespace_key] 
-    rev = metadata[version_key]
-    namespace = @my_GlueEnv.user_datastore_id unless namespace
-    id = @my_GlueEnv.generate_model_key(namespace, node_key)  unless id
-    updated_key_metadata = {model_key => id, namespace_key => namespace}
-    updated_key_metadata.delete(version_key) unless rev 
-    metadata.merge!(updated_key_metadata)
-    if rev 
-      @saved_to_model = rev 
-      metadata.merge!({version_key => rev}) 
-    else
-      metadata.delete(version_key)  #TODO  Is this too model specific?
-    end
-    metadata
-  end
-
   #This will take a key-value pair and create an instance variable (actually
   # it's a method)using key as the method name, and sets the return value to
   # the value associated with that key changes to the key's value are reflected
@@ -256,7 +200,7 @@ class BufsBaseNode
   # been defined for that key name will be loaded in and assigned methods in
   # the form methodname_operation
   def iv_set(attr_var, attr_value)
-    ops = NodeElementOperations::Ops 
+    ops = NodeElementOperations::Ops
     #incorporates predefined methods
     add_op_method(attr_var, ops[attr_var]) if ops[attr_var]
     unless self.class.metadata_keys.include? attr_var.to_sym
@@ -273,14 +217,6 @@ class BufsBaseNode
     self.class.__send__(:define_method, "#{attr_var}=".to_sym,
        lambda {|new_val| @_user_data[attr_var] = new_val} )
   end
-     
-  def add_op_method(param, ops)
-       ops.each do |op_name, op_proc|
-         method_name = "#{param.to_s}_#{op_name.to_s}".to_sym
-         wrapped_op = method_wrapper(param, op_proc)
-         self.class.__send__(:define_method, method_name, wrapped_op)
-       end
-  end  
 
   #The method operations are completely decoupled from the object that they are bound to.
   #This creates a problem when operations act on themselves (for example adding x to
@@ -302,7 +238,7 @@ class BufsBaseNode
                     new_this = rtn_data[:update_this]
                     self.__send__("#{param}=".to_sym, new_this)
                     it_changed = true
-                    it_changed = false if (this == new_this) || !(rtn_data.has_key?(:update_this)) 
+                    it_changed = false if (this == new_this) || !(rtn_data.has_key?(:update_this))
                     not_in_model = !@saved_to_model
                     self.save if (not_in_model || it_changed)#unless (@saved_to_model && save) #don't save if the value hasn't changed
                     rtn = rtn_data[:return_value] || rtn_data[:update_this]
@@ -315,25 +251,76 @@ class BufsBaseNode
     @_user_data.delete(param)
   end
 
-  #some object convenience methods for accessing class methods
-  #def _files_mgr
-  #  self.class._files_mgr
-  #end
-
-
   #Save the object to the CouchDB database
   def save
     save_data_validations(self._user_data)
-    node_key = @my_GlueEnv.node_key 
+    node_key = @my_GlueEnv.node_key
     node_id = self._model_metadata[node_key]
     model_data = inject_node_metadata
     #raise model_data.inspect
-    res = @my_GlueEnv.save(model_data) 
+    res = @my_GlueEnv.save(model_data)
     version_key = @my_GlueEnv.version_key
     rev_data = {version_key => res['rev']}
     update_self(rev_data)
     return self
   end
+
+
+  def export_attachment(attachment_name)
+    md = get_attachment_metadata(attachment_name)
+    data = get_raw_data(attachment_name)
+    export = {:metadata => md, :data => data}
+  end
+
+  def import_attachment(attach_name, att_xfer_format)
+    #transfer format is the format of the export method
+    content_type = att_xfer_format[:metadata][:content_type]
+    file_modified_at = att_xfer_format[:metadata][:file_modified]
+    raw_data = att_xfer_format[:raw_data]
+    add_raw_data(attach_name, content_type, raw_data, file_modified_at)
+  end
+
+  #Deletes the object
+  def destroy_node
+    @my_GlueEnv.destroy_node(self)
+  end
+
+  def self.create_from_other_node(other_node)
+    #TODO: How to deal with differently defined data structures?
+    #currently assume transfers are between models of identical data structures
+    #either enforce that, or figure out generic solution
+
+    #create new node
+    new_basic_node = self.new(other_node._user_data)
+
+    #transfer attachments
+    other_node.attached_files.each do |att_file|
+      new_basic_node.import_attachment(att_file, other_node.export_attachment(att_file))
+    end
+
+    new_basic_node
+  end
+
+  def get_attachments_metadata
+    md = @_files_mgr.get_attachments_metadata(self)
+    md = HashKeys.str_to_sym(md)
+    md.each do |fbn, fmd|
+      md[fbn] = HashKeys.str_to_sym(fmd)
+    end
+    md
+    #md = HashKeys.str_to_sym(md)
+    #current_node_doc = self.class.get(self['_id'])
+    #att_doc_id = current_node_doc['attachment_doc_id']
+    #current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
+  end
+
+  def get_attachment_metadata(attachment_name)
+    all_md = get_attachments_metadata
+    index_name = BufsEscape.escape(attachment_name)
+    all_md[index_name.to_sym]
+  end
+
+
 
   #Deprecated Methods
   #Adds parent categories, it can accept a single category or an array of categories
@@ -399,12 +386,12 @@ class BufsBaseNode
 
 
 #TODO: Add to spec (currently not used)  I think used by web server, need to genericize (use FilesMgr?)
-  def attachment_url(attachment_name)
-    current_node_doc = self.class.get(self['_id'])
-    att_doc_id = current_node_doc['attachment_doc_id']
-    current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
-    current_node_attachment_doc.attachment_url(attachment_name)
-  end
+  #def attachment_url(attachment_name)
+  #  current_node_doc = self.class.get(self['_id'])
+  #  att_doc_id = current_node_doc['attachment_doc_id']
+  #  current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
+  #  current_node_attachment_doc.attachment_url(attachment_name)
+  #end
 
   def get_file_data(attachment_name)
     @_files_mgr.get_file_data(self, attachment_name)
@@ -414,38 +401,74 @@ class BufsBaseNode
     #current_node_attachment_doc.read_attachment(attachment_name)
   end
 
-  def get_attachments_metadata
-    md = @_files_mgr.get_attachments_metadata(self)
-    md = HashKeys.str_to_sym(md)
-    md.each do |fbn, fmd|
-      md[fbn] = HashKeys.str_to_sym(fmd)
+#------------------------------------------------------------
+  private
+
+  def add_op_method(param, ops)
+       ops.each do |op_name, op_proc|
+         method_name = "#{param.to_s}_#{op_name.to_s}".to_sym
+         wrapped_op = method_wrapper(param, op_proc)
+         self.class.__send__(:define_method, method_name, wrapped_op)
+       end
+  end 
+
+  def filter_user_from_model_data(init_params)
+    _model_metadata_keys = @my_GlueEnv.metadata_keys
+    #_model_metadata_keys = @my_GlueEnv.base_metadata_keys
+    _model_metadata = {}
+    _model_metadata_keys.each do |k|
+      _model_metadata[k] = init_params.delete(k) if init_params[k] #delete returns deleted value
     end
-    md
-    #md = HashKeys.str_to_sym(md)
-    #current_node_doc = self.class.get(self['_id'])
-    #att_doc_id = current_node_doc['attachment_doc_id']
-    #current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
+    [init_params, _model_metadata]
   end
 
-  def get_attachment_metadata(attachment_name)
-    all_md = get_attachments_metadata
-    index_name = BufsEscape.escape(attachment_name)
-    all_md[index_name.to_sym]
+  def instance_data_validations(_user_data)
+    #Check for Required Keys
+    required_keys = @my_GlueEnv.required_instance_keys
+    required_keys.each do |rk|
+      err_str = "The key #{rk.inspect} must be associated with a"\
+                " value for instantiation"
+      raise ArgumentError, err_str unless _user_data[rk]
+    end
   end
 
-  def export_attachment(attachment_name)
-    md = get_attachment_metadata(attachment_name)
-    data = get_raw_data(attachment_name)
-    export = {:metadata => md, :data => data}
+  def save_data_validations(_user_data)
+    required_keys = @my_GlueEnv.required_save_keys
+    required_keys.each do |rk|
+      err_str = "The key #{rk.inspect} must be associated with a"\
+                " value before saving"
+      raise ArgumentError, err_str unless _user_data[rk]
+    end
   end
 
-  def import_attachment(attach_name, att_xfer_format)
-    #transfer format is the format of the export method
-    content_type = att_xfer_format[:metadata][:content_type]
-    file_modified_at = att_xfer_format[:metadata][:file_modified]
-    raw_data = att_xfer_format[:raw_data]
-    add_raw_data(attach_name, content_type, raw_data, file_modified_at)
+  #TODO Rename to remove extra line space
+  def get__user_data_id(_user_data)
+    user_node_key = @my_GlueEnv.node_key
+    _user_data[user_node_key]
   end
+
+  def update__model_metadata(metadata, node_key)
+    #updates @saved_to_model (make a method instead)?
+    model_key = @my_GlueEnv.model_key
+    version_key = @my_GlueEnv.version_key
+    namespace_key = @my_GlueEnv.namespace_key
+    id = metadata[model_key] 
+    namespace = metadata[namespace_key] 
+    rev = metadata[version_key]
+    namespace = @my_GlueEnv.user_datastore_id unless namespace
+    id = @my_GlueEnv.generate_model_key(namespace, node_key)  unless id
+    updated_key_metadata = {model_key => id, namespace_key => namespace}
+    updated_key_metadata.delete(version_key) unless rev 
+    metadata.merge!(updated_key_metadata)
+    if rev 
+      @saved_to_model = rev 
+      metadata.merge!({version_key => rev}) 
+    else
+      metadata.delete(version_key)  #TODO  Is this too model specific?
+    end
+    metadata
+  end
+
 
   def inject_node_metadata
     inject_metadata(@_user_data)
@@ -459,43 +482,6 @@ class BufsBaseNode
     self._model_metadata.merge!(rev_data)
     version_key = @my_GlueEnv.version_key 
     @saved_to_model = rev_data[version_key]
-  end
-
-  #Deletes the object
-  def destroy_node
-    @my_GlueEnv.destroy_node(self)
-  end
- 
-  def self.create_from_other_node(other_node)
-    #TODO: How to deal with differently defined data structures?
-    #currently assume transfers are between models of identical data structures
-    #either enforce that, or figure out generic solution
-
-    #create new node
-    new_basic_node = self.new(other_node._user_data)
-
-    #transfer attachments
-    other_node.attached_files.each do |att_file|
-      new_basic_node.import_attachment(att_file, other_node.export_attachment(att_file))
-    end
-
-    new_basic_node
-    #init_params = {}
-    #init_params['my_category'] = node_obj.my_category
-    #init_params['description'] = node_obj.description if (node_obj.respond_to?(:description) && node_obj.description)
-    #new_bid = self.new(init_params)
-    #new_bid.add_parent_categories(node_obj.parent_categories)
-    #new_bid.save
-    #new_bid.add_data_file(node_obj.list_attached_files) if node_obj.list_attached_files
-    #TODO Add to spec test for links
-    #if node_obj.respond_to?(:list_links) && (node_obj.list_links.nil? || node_obj.list_links.empty?)
-      #do nothing, no link data
-    #elsif node_obj.respond_to?(:list_links)
-    #  new_bid.add_links(node_obj.list_links)
-    #else
-      #do nothing, no link mehtod
-    #end
-    #return new_bid.class.get(new_bid['_id'])
   end
 
 end
