@@ -268,7 +268,7 @@ class BufsBaseNode
 
 
   def __export_attachment(attachment_name)
-    md = get_attachment_metadata(attachment_name)
+    md = __get_attachment_metadata(attachment_name)
     data = get_raw_data(attachment_name)
     export = {:metadata => md, :data => data}
   end
@@ -302,21 +302,17 @@ class BufsBaseNode
     new_basic_node
   end
 
-  def get_attachments_metadata
+  def __get_attachments_metadata
     md = @_files_mgr.get_attachments_metadata(self)
     md = HashKeys.str_to_sym(md)
     md.each do |fbn, fmd|
       md[fbn] = HashKeys.str_to_sym(fmd)
     end
     md
-    #md = HashKeys.str_to_sym(md)
-    #current_node_doc = self.class.get(self['_id'])
-    #att_doc_id = current_node_doc['attachment_doc_id']
-    #current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
   end
 
-  def get_attachment_metadata(attachment_name)
-    all_md = get_attachments_metadata
+  def __get_attachment_metadata(attachment_name)
+    all_md = __get_attachments_metadata
     index_name = BufsEscape.escape(attachment_name)
     all_md[index_name.to_sym]
   end

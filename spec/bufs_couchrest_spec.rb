@@ -533,7 +533,7 @@ describe BufsBaseNode, "Attachment Operations" do
     attached_basename = attached_basenames.first
     attached_basename.should == BufsEscape.escape(test_basename)
     #test
-    moab_att_metadata = basic_node.get_attachments_metadata
+    moab_att_metadata = basic_node.__get_attachments_metadata
     #file_raw_data = File.open(test_filename, "r"){|f| f.read}
     md = moab_att_metadata[test_basename.to_sym]
     md[:file_modified].should == File.mtime(test_filename).to_s
@@ -558,7 +558,7 @@ describe BufsBaseNode, "Attachment Operations" do
     attached_basename = attached_basenames.first
     attached_basename.should == BufsEscape.escape(test_basename)
     #test
-    moab_att_metadata = basic_node.get_attachment_metadata(test_basename)
+    moab_att_metadata = basic_node.__get_attachment_metadata(test_basename)
     #file_raw_data = File.open(test_filename, "r"){|f| f.read}
     moab_att_metadata[:file_modified].should == File.mtime(test_filename).to_s
     moab_att_metadata[:content_type].should =~ /text\/plain/

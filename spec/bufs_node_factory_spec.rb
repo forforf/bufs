@@ -821,7 +821,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       attached_basename= attached_basenames[user_class].first
       attached_basename.should == BufsEscape.escape(test_basename)
       #test
-      moab_att_metadata = basic_nodes[user_class].get_attachment_metadata(attached_basename)
+      moab_att_metadata = basic_nodes[user_class].__get_attachment_metadata(attached_basename)
       md = moab_att_metadata
       md[:file_modified].should == File.mtime(test_filename).to_s
       md[:content_type].should =~ /text\/plain/
@@ -854,7 +854,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       attached_basename= attached_basenames[user_class].first
       attached_basename.should == BufsEscape.escape(test_basename)
       #test
-      moab_att_metadata = basic_nodes[user_class].get_attachments_metadata
+      moab_att_metadata = basic_nodes[user_class].__get_attachments_metadata
       md = moab_att_metadata[test_basename.to_sym]
       md[:file_modified].should == File.mtime(test_filename).to_s
       #TODO Test for content type match too
@@ -919,7 +919,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       attached_basename.should == BufsEscape.escape(test_basename)
     #test
       exported_att_data = basic_nodes[user_class].__export_attachment(attached_basename)
-      exported_att_data[:metadata].should == basic_nodes[user_class].get_attachment_metadata(attached_basename)
+      exported_att_data[:metadata].should == basic_nodes[user_class].__get_attachment_metadata(attached_basename)
       exported_att_data[:data].should == basic_nodes[user_class].get_raw_data(attached_basename)
     end
   end
