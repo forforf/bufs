@@ -155,7 +155,7 @@ class BufsBaseNode
     #TODO: what about node id collisions? currently ignoring it
     #and letting the persistence model work it out
     this_node = self.new(other_node._user_data)
-    this_node.import_attachments(other_node.export_attachments) if other_node.attached_files
+    this_node.__import_attachments(other_node.__export_attachments) if other_node.attached_files
   end
 
   #Returns the id that will be appended to the document ID to uniquely
@@ -267,13 +267,13 @@ class BufsBaseNode
   end
 
 
-  def export_attachment(attachment_name)
+  def __export_attachment(attachment_name)
     md = get_attachment_metadata(attachment_name)
     data = get_raw_data(attachment_name)
     export = {:metadata => md, :data => data}
   end
 
-  def import_attachment(attach_name, att_xfer_format)
+  def __import_attachment(attach_name, att_xfer_format)
     #transfer format is the format of the export method
     content_type = att_xfer_format[:metadata][:content_type]
     file_modified_at = att_xfer_format[:metadata][:file_modified]
@@ -296,7 +296,7 @@ class BufsBaseNode
 
     #transfer attachments
     other_node.attached_files.each do |att_file|
-      new_basic_node.import_attachment(att_file, other_node.export_attachment(att_file))
+      new_basic_node.__import_attachment(att_file, other_node.__export_attachment(att_file))
     end
 
     new_basic_node

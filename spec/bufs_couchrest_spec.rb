@@ -606,12 +606,13 @@ describe BufsBaseNode, "Attachment Operations" do
     import_format = {:data => raw_data, :metadata => metadata}
     att_name = BufsEscape.escape(test_basename)
     #test
-    basic_node.import_attachment(att_name, import_format)
+    basic_node.__import_attachment(att_name, import_format)
     #verify results
     basic_node.attached_files.size.should == 1
     basic_node.attached_files.first.should == att_name
   end
-
+ 
+  #TODO No export attachment test
 =begin
   it "should retrieve data from the attached file" do
     test_filename = @test_files['simple_text_file']

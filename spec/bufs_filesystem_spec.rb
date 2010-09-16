@@ -620,7 +620,7 @@ describe BufsBaseNode, "Attachment Operations" do
     attached_basename = attached_basenames.first
     attached_basename.should == BufsEscape.escape(test_basename)
     #test
-    exported_att_data = basic_node.export_attachment(attached_basename)
+    exported_att_data = basic_node.__export_attachment(attached_basename)
     exported_att_data[:metadata].should == basic_node.get_attachment_metadata(attached_basename)
     exported_att_data[:data].should == basic_node.get_raw_data(attached_basename)
   end
@@ -643,7 +643,7 @@ describe BufsBaseNode, "Attachment Operations" do
     import_format = {:data => raw_data, :metadata => metadata}
     att_name = BufsEscape.escape(test_basename)
     #test
-    basic_node.import_attachment(att_name, import_format)
+    basic_node.__import_attachment(att_name, import_format)
     #verify results
     basic_node.attached_files.size.should == 1
     basic_node.attached_files.first.should == att_name

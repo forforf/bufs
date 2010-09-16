@@ -918,7 +918,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       attached_basename = attached_basenames[user_class].first
       attached_basename.should == BufsEscape.escape(test_basename)
     #test
-      exported_att_data = basic_nodes[user_class].export_attachment(attached_basename)
+      exported_att_data = basic_nodes[user_class].__export_attachment(attached_basename)
       exported_att_data[:metadata].should == basic_nodes[user_class].get_attachment_metadata(attached_basename)
       exported_att_data[:data].should == basic_nodes[user_class].get_raw_data(attached_basename)
     end
@@ -948,7 +948,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       import_format = {:data => raw_data, :metadata => metadata}
       att_names[user_class] = BufsEscape.escape(test_basename)
     #test
-      basic_nodes[user_class].import_attachment(att_names[user_class], import_format)
+      basic_nodes[user_class].__import_attachment(att_names[user_class], import_format)
     end
     #verify results
     @user_classes.each do |user_class|
