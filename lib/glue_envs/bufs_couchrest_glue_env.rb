@@ -93,7 +93,7 @@ class GlueEnv
                                :version_key,
                                :namespace_key,
                                :namespace,
-                               :files_mgr_class,
+                               :_files_mgr_class,
                                :views,
                                :model_save_params,
                                :moab_data,
@@ -137,9 +137,9 @@ class GlueEnv
     @views.set_view_all(@db, @design_doc, @collection_namespace)
     attach_class_name = "MoabAttachmentHandler#{db_user_id}"
     @attachClass = CouchRestEnv.set_attach_class(@db.root, attach_class_name) 
-    @files_mgr_class = CouchRestEnv::FilesMgrInterface
-    #@files_mgr_class.model_params = {:attachment_actor_class => @user_attachClass}
-    #@files_mgr_class = CouchRestEnv::FilesMgr.new(:attachment_actor_class => @user_attachClass)
+    @_files_mgr_class = CouchRestEnv::FilesMgrInterface
+    #@_files_mgr_class.model_params = {:attachment_actor_class => @user_attachClass}
+    #@_files_mgr_class = CouchRestEnv::FilesMgr.new(:attachment_actor_class => @user_attachClass)
     #@views_mgr = DataStoreModels::CouchRest::ViewsMgr.new(:db => @db, :design_doc => @design_doc)
   end
 

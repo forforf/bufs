@@ -534,7 +534,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
   end
 
   it "has a file manager associated with its nodes" do
-     files_mgr_methods = [:add_files, :add_raw_data, :subtract_files, 
+     _files_mgr_methods = [:add_files, :add_raw_data, :subtract_files, 
                           :subtract_all]
     #set initial conditions
     orig_parent_cats = {}
@@ -551,10 +551,10 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
      responds_to_method = {}
      should_respond_to_method = {}
      @user_classes.each do |user_class|
-       files_mgr_methods.each do |meth|
-         responds_to_method[meth] = nodes[user_class].files_mgr.respond_to?(meth)
+       _files_mgr_methods.each do |meth|
+         responds_to_method[meth] = nodes[user_class]._files_mgr.respond_to?(meth)
          should_respond_to_method[meth] = true
-         #nodes[user_class].files_mgr.respond_to?(meth).should == true
+         #nodes[user_class]._files_mgr.respond_to?(meth).should == true
        end
        responds_to_method.should == should_respond_to_method
      end

@@ -93,7 +93,7 @@ attr_accessor :fs_user_id,
 			     :model_key,
 			     :version_key,
 			     :namespace_key,
-			     :files_mgr_class,
+			     :_files_mgr_class,
                              :views,
 			     :model_save_params,
                              :moab_data
@@ -125,7 +125,7 @@ attr_accessor :fs_user_id,
     #@user_attachClass = attachClass  
     @data_file_name = FileSystemEnv.set_data_file_name
     @model_save_params = {:nodes_save_path => @user_datastore_selector, :data_file => @data_file_name}
-    @files_mgr_class = FileSystemEnv::FilesMgrInterface
+    @_files_mgr_class = FileSystemEnv::FilesMgrInterface
     @views = BufsFileSystemViews
     @moab_data = {:data_file_name => @data_file_name}
     #@views_mgr = ViewsMgr.new({:data_file => @data_file_name})

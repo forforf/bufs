@@ -510,7 +510,7 @@ describe BufsBaseNode, "Attachment Operations" do
     attached_basenames.size.should == 1
     attached_basenames.first.should == BufsEscape.escape(test_basename)
     #test
-    att_doc = basic_node.files_mgr.moab_interface.class.get_att_doc(basic_node)
+    att_doc = basic_node._files_mgr.moab_interface.class.get_att_doc(basic_node)
     #moab specific internal test 
     att_doc['md_attachments'].keys.first.should == BufsEscape.escape(test_basename)
   end

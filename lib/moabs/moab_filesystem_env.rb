@@ -45,7 +45,7 @@ module FileSystemEnv
   #The file handling is bound to the model, and can't be abstracted away. This means files can't be handled
   #via the dynamic methods used for other data structures.
   #models that will handle data files (whether filesystem files or attachments)
-  #must provide a method called files_mgr that provides an object that can add from a file, add from raw data
+  #must provide a method called _files_mgr that provides an object that can add from a file, add from raw data
   #and subtract (i.e.) delete the file from the model. These functions must be implemented
   #by the following named methods.
       # .add_file(add_file_hashes)      -> adds file data from a file on the local file system (to this program)

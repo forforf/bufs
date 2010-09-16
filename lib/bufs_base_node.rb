@@ -24,7 +24,7 @@ require File.dirname(__FILE__) + '/bufs_escape'
 #   raw_all - retreive all records in native persistence model format
 #   destroy_bulk - destroy records in native persistence model format
 # Important Accessors
-#   :files_mgr - points to the FilesMgr object that handles
+#   :_files_mgr - points to the FilesMgr object that handles
 #    files
 
 class GlueEnv
@@ -83,7 +83,7 @@ class BufsBaseNode
   ##Instance Accessors
   attr_accessor :_user_data, :_model_metadata, :attached_files, 
                 :my_GlueEnv,  #note the "_" to differentiate from class accessor
-                :files_mgr
+                :_files_mgr
 
   #Class Methods
   #Setting up the Class Environment - The class environment holds all
@@ -183,8 +183,8 @@ class BufsBaseNode
     @_user_data, @_model_metadata = filter_user_from_model_data(init_params)
     instance_data_validations(@_user_data)
     node_key = get__user_data_id(@_user_data)
-    moab_file_mgr = @my_GlueEnv.files_mgr_class.new(@my_GlueEnv, node_key)
-    @files_mgr = FilesMgr.new(moab_file_mgr)
+    moab_file_mgr = @my_GlueEnv._files_mgr_class.new(@my_GlueEnv, node_key)
+    @_files_mgr = FilesMgr.new(moab_file_mgr)
     @_model_metadata = update__model_metadata(@_model_metadata, node_key)
     
     init_params.each do |attr_name, attr_value|
@@ -316,8 +316,8 @@ class BufsBaseNode
   end
 
   #some object convenience methods for accessing class methods
-  #def files_mgr
-  #  self.class.files_mgr
+  #def _files_mgr
+  #  self.class._files_mgr
   #end
 
 
@@ -351,13 +351,13 @@ class BufsBaseNode
   end  
 
   def get_attachment_names
-    @files_mgr.list_file_keys(self)
+    @_files_mgr.list_file_keys(self)
   end
 
   #Get attachment content.  Note that the data is read in as a complete block, this may be something that needs optimized.
   #TODO: add_raw_data parameters to a hash?
   def add_raw_data(attach_name, content_type, raw_data, file_modified_at = nil)
-    attached_basenames = @files_mgr.add_raw_data(self, attach_name, content_type, raw_data, file_modified_at = nil)
+    attached_basenames = @_files_mgr.add_raw_data(self, attach_name, content_type, raw_data, file_modified_at = nil)
     if self.attached_files
       self.attached_files += attached_basenames
     else
@@ -371,7 +371,7 @@ class BufsBaseNode
     file_datas = [file_datas].flatten
     #TODO keep original names, and have model abstract character issues
     #TODO escaping is spread all over, do it in one place
-    attached_basenames = @files_mgr.add_files(self, file_datas)
+    attached_basenames = @_files_mgr.add_files(self, file_datas)
     if self.attached_files
       self.attached_files += attached_basenames
     else
@@ -382,19 +382,19 @@ class BufsBaseNode
 
   def files_subtract(file_basenames)
     file_basenames = [file_basenames].flatten
-    @files_mgr.subtract_files(self, file_basenames)
+    @_files_mgr.subtract_files(self, file_basenames)
     self.attached_files -= file_basenames
     self.save
   end
 
   def files_remove_all
-    @files_mgr.subtract_files(self, :all)
+    @_files_mgr.subtract_files(self, :all)
     self.attached_files = nil
     self.save
   end
   
   def get_raw_data(attachment_name)
-    @files_mgr.get_raw_data(self, attachment_name)
+    @_files_mgr.get_raw_data(self, attachment_name)
   end
 
 
@@ -407,7 +407,7 @@ class BufsBaseNode
   end
 
   def get_file_data(attachment_name)
-    @files_mgr.get_file_data(self, attachment_name)
+    @_files_mgr.get_file_data(self, attachment_name)
     #current_node_doc = self.class.get(self['_id'])
     #att_doc_id = current_node_doc['attachment_doc_id']
     #current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
@@ -415,7 +415,7 @@ class BufsBaseNode
   end
 
   def get_attachments_metadata
-    md = @files_mgr.get_attachments_metadata(self)
+    md = @_files_mgr.get_attachments_metadata(self)
     md = HashKeys.str_to_sym(md)
     md.each do |fbn, fmd|
       md[fbn] = HashKeys.str_to_sym(fmd)
