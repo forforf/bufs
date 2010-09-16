@@ -404,7 +404,7 @@ describe BufsBaseNode, "Attachment Operations" do
     attached_basenames.size.should == 1
     attached_basenames.first.should == BufsEscape.escape(test_basename)
     #test
-    basic_node.destroy_node
+    basic_node.__destroy_node
     #check results
     att_node_id = basic_node._model_metadata[:_id]
     att_node = BufsBaseNode.get(att_node_id)

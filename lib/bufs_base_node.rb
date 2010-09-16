@@ -146,7 +146,7 @@ class BufsBaseNode
 
   #TODO: Fix create from other node to work
   #Create the document in the BUFS node format from an existing node.
-  def self.create_from_other_node(other_node)
+  def self.__create_from_other_node(other_node)
     #TODO:Figure out data structure imports
     #Idea, for duplicates, this node takes precedence
     #for new data structures, other node operations (if they exist) are used
@@ -282,11 +282,11 @@ class BufsBaseNode
   end
 
   #Deletes the object
-  def destroy_node
+  def __destroy_node
     @my_GlueEnv.destroy_node(self)
   end
 
-  def self.create_from_other_node(other_node)
+  def self.__create_from_other_node(other_node)
     #TODO: How to deal with differently defined data structures?
     #currently assume transfers are between models of identical data structures
     #either enforce that, or figure out generic solution
