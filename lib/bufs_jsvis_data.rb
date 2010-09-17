@@ -2,12 +2,14 @@ require 'json'
 #require File.dirname(__FILE__) + '/bufs_info_doc'
 
 class DefaultNode < Hash
-  attr_accessor :parent_categories, :my_category, :description
+  #TODO This is a bit hackish and really dependent upon the underlying model, decouple if possible
+  attr_accessor :parent_categories, :my_category, :description, :_model_metadata
   def initialize(my_cat)
-    self['_id'] = 'dummy_' + my_cat
+    #self['_id'] = 'dummy_' + my_cat
     @parent_categories = nil
     @my_category = my_cat
     @description = 'This node is organizational only'
+    @_model_metadata = {:_id => 'dummy_' + my_cat}
   end
 end
 
@@ -16,10 +18,12 @@ class BufsJsvisData
     @all_nodes = node_list
     #This is duplicating some of the database functionality but
     #this may be better for responsiveness?
+    #Organize nodes by my_category
     @nodes_by_cat = {}
     @all_nodes.each do |node|
       @nodes_by_cat[node.my_category] = node
     end
+    #Organize nodes by parent categories
     @nodes_by_parent_cat = []
     @all_nodes.each do |node|
       node.parent_categories.each do |node_parent_cat|
@@ -32,7 +36,6 @@ class BufsJsvisData
     json_vis_nodes = nil
     top_node = @nodes_by_cat[top_node_parent_cat]||DefaultNode.new(top_node_parent_cat)
     jsm = make_json_vis_from_node(top_node, depth) 
-    #jsm.to_json
   end
 
   def make_json_vis_from_node(node, depth, current_model = nil)
@@ -40,13 +43,9 @@ class BufsJsvisData
     #raise node.inspect
     return nil if depth < 0
     #TODO: Figure out a better dummy node than this hack
-    node_id = node['_id']
-    begin
-      #node_id = node.model_metadata['_id']
-    rescue NoMethodError
-      #node_id = node['_id']
-    end
-    jsvis_model['id'] = node_id
+    node_id = node._model_metadata[:_id]
+    jsvis_model['id'] = node.my_category
+    jsvis_model['name'] = node.my_category
     jsvis_model['data'] = {}#node.description
     jsvis_model['children'] = get_node_children(node).map {|cn| make_json_vis_from_node(cn, depth-1)}
     jsvis_model['children'].compact!

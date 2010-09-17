@@ -245,7 +245,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     new_cats = ['new_cat1', 'new cat2', 'orig_cat2']
     #test
     #doc_rev0 = doc_existing_new_parent_cat._model_metadata['_rev']
-    doc_existing_new_parent_cat.add_parent_categories(new_cats)
+    doc_existing_new_parent_cat.parent_categories_add(new_cats)
     #doc_existing_new_parent_cat.__save
     #doc_rev1 = doc_existing_new_parent_cat._model_metadata['_rev']
     #doc_rev0.should_not == doc_rev1
@@ -287,7 +287,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     end
 
     #test
-    doc_remove_parent_cat.remove_parent_categories(remove_multi_cats)
+    doc_remove_parent_cat.parent_categories_subtract(remove_multi_cats)
 
     #verify results
     remove_multi_cats.each do |cat|
@@ -311,7 +311,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     new_cats = ['dup cat1', 'dup cat2', 'uniq_cat2']
     expected_size = orig_size + 1 #uniq_cat2
     #test
-    doc_uniq_parent_cat.add_parent_categories(new_cats)
+    doc_uniq_parent_cat.parent_categories_add(new_cats)
     #verify results
     expected_size.should == doc_uniq_parent_cat.parent_categories.size
     doc_uniq_parent_cat.class.get(doc_uniq_parent_cat._model_metadata[:_id]).__send__(:parent_categories).sort.should == doc_uniq_parent_cat.parent_categories.sort
@@ -319,6 +319,36 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     records = BufsBaseNode.call_view(:my_category , doc_uniq_parent_cat.my_category)
     records = [records].flatten
     records.size.should == 1
+  end
+
+  it "should allow new data fields to be added to the data structure" do
+    #set initial conditions
+    parent_cats = ['dynamic data structure']
+    my_cat = 'doc_dyndata'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.__save
+    new_key_field = :links
+    #new_data = "http:\\\\to.somewhere.blah"
+    #test for new field
+    basic_node.__set_userdata_key(new_key_field, nil)
+    #verify new field exists and works 
+    basic_node.respond_to?(new_key_field).should == true
+    basic_node.__send__(new_key_field).should == nil
+    #initial conditions for  adding data
+    #NOTE: :links has a special operations for add and subtract
+    #defined in the Node Operations (see midas directory)
+    new_data = {:link_name => "blah", :link_src =>"http:\\\\to.somewhere.blah"}
+    add_method = "#{new_key_field}_add".to_sym
+    LinkAddOp = NodeElementOperations::LinkAddOp
+    #test adding new data
+    basic_node.__send__(add_method, new_data)
+    #verify new data was added appropriately
+    updated_data = basic_node.__send__(new_key_field)
+    updated_data.should_not == new_data
+    magically_transformed_data = LinkAddOp.call(nil, new_data)[:update_this]
+    updated_data.should == magically_transformed_data
   end
 end
 

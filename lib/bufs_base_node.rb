@@ -27,6 +27,8 @@ require File.dirname(__FILE__) + '/bufs_escape'
 #   :_files_mgr - points to the FilesMgr object that handles
 #    files
 
+
+#TODO: Figure out what I was thinking with these method missing error messages
 class GlueEnv
   def method_missing(name)
     raise NameError,"#{name} not found in #{self.class}. Has it been"\
@@ -35,10 +37,16 @@ class GlueEnv
 end
 
 class FilesMgr
+
   #def method_missing(name)
   #  raise NameError,"#{name} not found in #{self.class}. Has it been"\
-  #                  " overwritten to support file/attachment management yet?"
+                    " overwritten to support file/attachment management yet?"
+
+    #Allow dynamically adding of user data
+    #TODO Add name checking to make sure its not misspelled or other clues that its not data
   #end
+
+
   attr_accessor :moab_interface
 
   def initialize(moab_interface)
@@ -85,6 +93,18 @@ class BufsBaseNode
                 :my_GlueEnv,  #note the "_" to differentiate from class accessor
                 :_files_mgr
 
+  #def method_missing(name, *otherstuff)
+    #raise NameError,"#{name} not found in #{self.class}. Has it been"\
+    #                " overwritten to support file/attachment management yet?"
+
+    #Allow dynamically adding of user data
+    #TODO Add name checking to make sure its not misspelled or other clues that its not data
+    #self.__set_userdata_key(name.to_sym, nil)
+  #end
+
+  
+
+
   #Class Methods
   #Setting up the Class Environment - The class environment holds all
   # model-specific implementation details
@@ -107,9 +127,22 @@ class BufsBaseNode
     @myGlueEnv.query_all
   end
 
-  def self.all
+  #TODO: Add the very cool feature to spec (creating new fields on the fly)
+  #TODO: Document the feature too!!
+  def self.all(data_structure_changes = {})
+    add_keys = data_structure_changes[:add]
+    remove_keys = data_structure_changes[:remove]
+    #TODO: test for proper format
+    #add_keys.each {|k,v|self.__set_userdata_key(k.to_sym, v)} if add_keys
+    #remove_keys.each {|k| self.__unset_userdata_key(k.to_sym)} if remove_keys
+
     raw_nodes = @myGlueEnv.raw_all
-    raw_nodes.map! {|n| self.new(n)}
+
+    raw_nodes.map! do |base_data| 
+      add_data = add_keys || {}
+      combined_data = add_data.merge(base_data)  #to prevent overwriting of exsing base data
+      self.new(combined_data)
+    end
   end
 
   def self.call_view(param, match_keys)
@@ -252,6 +285,9 @@ class BufsBaseNode
     @_user_data.delete(param)
   end
 
+  #NOTE: For ruby objects that are automatically added that collide with user data names
+  #that ruby functionality (currently) will be lost
+
   #Save the object to the CouchDB database
   def __save
     save_data_validations(self._user_data)
@@ -319,24 +355,23 @@ class BufsBaseNode
 
 
 
-  #Deprecated Methods
+  #Deprecated Methods------------------------
   #Adds parent categories, it can accept a single category or an array of categories
   #aliased for backwards compatibility, this method is dynamically defined and generated
   def add_parent_categories(new_cats)
-    puts "Warning:: add_parent_categories is being deprecated, use <param_name>_add instead ex: parent_categories_add(cats_to_add) "
+    raise "Warning:: add_parent_categories is being deprecated, use <param_name>_add instead ex: parent_categories_add(cats_to_add) "
     parent_categories_add(new_cats)
   end
 
   #Can accept a single category or an array of categories
   #aliased for backwards compatiblity the method is dynamically defined and generated
   def remove_parent_categories(cats_to_remove)
-    puts "Warning:: remove_parent_categories is being deprecated, use <param_name>_subtract instead ex: parent_categories_subtract(cats_to_remove)"
+    raise "Warning:: remove_parent_categories is being deprecated, use <param_name>_subtract instead ex: parent_categories_subtract(cats_to_remove)"
     parent_categories_subtract(cats_to_remove)
-  end  
-
-  def get_attachment_names
-    @_files_mgr.list_file_keys(self)
   end
+  #-------------------------------------------  
+
+  #Attachment File Operation Methods-------------------------------
 
   #Get attachment content.  Note that the data is read in as a complete block, this may be something that needs optimized.
   #TODO: add_raw_data parameters to a hash?
@@ -397,7 +432,7 @@ class BufsBaseNode
     #current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
     #current_node_attachment_doc.read_attachment(attachment_name)
   end
-
+#-----------------------------------------------------------
 #------------------------------------------------------------
   private
 

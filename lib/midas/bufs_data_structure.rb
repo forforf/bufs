@@ -40,14 +40,12 @@ module NodeElementOperations
                                             this[s] = [ other[s] ].flatten
                                            end
                                            this[s].uniq!
-                                           this[s].compact!
-                                  }
-                           Hash[:update_this => this]
-                         }
+                                           this[s].compact! }
+                           Hash[:update_this => this] }
   #if link_name is used besides other, then all link_names would need to be unique, so we use other
   LinkSubtractOp = lambda {|this, other| this = this || {}
                                          other = other || {}
-                                         srcs = other.keys
+                                         srcs = [other].flatten
                                          srcs.each { |s| 
                                                       other[s].each {|olnk| this[s].delete(olnk) if this[s]}
                                                       #this[s].delete(other[s]) if this[s]

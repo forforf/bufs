@@ -100,7 +100,7 @@ module FileSystemEnv
         #FIXME: obj.attached_files is broken, list_attached_files should work
         #@attached_files << my_dest
         same_file = filename == my_dest
-        FileUtils.cp(filename, my_dest, :preserve => true, :verbose => true ) unless same_file
+        FileUtils.cp(filename, my_dest, :preserve => true, :verbose => false ) unless same_file
         #self.file_metadata = {filename => {'file_modified' => File.mtime(filename).to_s}}
       end
       filenames.map {|f| BufsEscape.escape(File.basename(f))} #return basenames

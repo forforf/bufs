@@ -395,7 +395,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     new_cats = ['new_cat1', 'new cat2', 'orig_cat2']
     #test
     @user_classes.each do |user_class|
-      doc_existing_new_parent_cats[user_class].add_parent_categories(new_cats)
+      doc_existing_new_parent_cats[user_class].parent_categories_add(new_cats)
     end
     #check results
     #check doc in memory
@@ -449,7 +449,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
 
     #test
     @user_classes.each do |user_class|
-      doc_remove_parent_cats[user_class].remove_parent_categories(remove_multi_cats[user_class])
+      doc_remove_parent_cats[user_class].parent_categories_subtract(remove_multi_cats[user_class])
     end
 
     #verify results
@@ -496,7 +496,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
 
     #test
     @user_classes.each do |user_class|
-      doc_uniq_parent_cats[user_class].add_parent_categories(new_cats[user_class])
+      doc_uniq_parent_cats[user_class].parent_categories_add(new_cats[user_class])
     end
 
     #verify results
@@ -505,13 +505,51 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
       expected_sizes[user_class].should == doc_uniq_parent_cats[user_class].parent_categories.size
       doc_id = doc_uniq_parent_cats[user_class]._model_metadata[:_id]
       db_doc = user_class.get(doc_id)
-      puts "Doc ID searched: #{doc_id.inspect}"
+      #puts "Doc ID searched: #{doc_id.inspect}"
       db_doc._user_data[:parent_categories].sort.should == doc_uniq_parent_cats[user_class].parent_categories.sort
       records[user_class] = user_class.call_view(:parent_categories, 'dup cat2')
       records[user_class].size.should == 1
       records[user_class].first.parent_categories.should include 'dup cat2'
     end
   end
+
+  it "should allow new data fields to be added to the data structure" do
+    #set initial conditions
+    orig_parent_cats = {}
+    node_params = {}
+    nodes = {}
+    @user_classes.each do |user_class|
+      orig_parent_cats[user_class] = ['dyn data parent cat']
+      new_params = get_default_params.merge({:my_category => "cat_test#{(user_class.hash).to_s}",
+                                             :parent_categories => orig_parent_cats[user_class] })
+      node_params[user_class] = new_params
+      nodes[user_class] = make_doc_no_attachment(user_class, node_params[user_class])
+    end
+    new_key_field = :links
+    #test for new field
+    @user_classes.each do |user_class|
+      nodes[user_class].__set_userdata_key(new_key_field, nil)
+    end
+    @user_classes.each do |user_class|
+    #verify new field exists and works
+      nodes[user_class].respond_to?(new_key_field).should == true
+      nodes[user_class].__send__(new_key_field).should == nil
+    #initial conditions for  adding data
+    #NOTE: :links has a special operations for add and subtract
+    #defined in the Node Operations (see midas directory)
+      new_data = {:link_name => "blah", :link_src =>"http:\\\\to.somewhere.blah"}
+      add_method = "#{new_key_field}_add".to_sym
+      link_add_op = NodeElementOperations::LinkAddOp
+    #test adding new data
+      nodes[user_class].__send__(add_method, new_data)
+    #verify new data was added appropriately
+      updated_data = nodes[user_class].__send__(new_key_field)
+      updated_data.should_not == new_data
+      magically_transformed_data = link_add_op.call(nil, new_data)[:update_this]
+      updated_data.should == magically_transformed_data
+    end
+  end
+
 end
 
 describe BufsNodeFactory, "Document Operations with Attachments" do
@@ -533,9 +571,13 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     end
   end
 
+  #This spec may not be needed anymore. Originally the models were defining
+  #the files manager's methods, but that's been moved into the base node
+  #so this test really only is a flag to an interface change (which may be more 
+  #annoying than userful)
   it "has a file manager associated with its nodes" do
      _files_mgr_methods = [:add_files, :add_raw_data, :subtract_files, 
-                          :subtract_all]
+                          :get_raw_data, :get_attachments_metadata]
     #set initial conditions
     orig_parent_cats = {}
     node_params = {}
@@ -964,21 +1006,41 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
     #set initial conditions
     parent_cats = ['nodes from other nodes']
-    my_cat = 'doc_w_att1_xfer'
-    params = {:my_category => my_cat, :parent_categories => parent_cats}
-    node_params = get_default_params.merge(params)
+    my_cat1 = 'doc_w_att_xfer1'
+    my_cat2 = 'doc_w_att_xfer2'
+    params1 = {:my_category => my_cat1, :parent_categories => parent_cats}
+    params2 = {:my_category => my_cat2, :parent_categories => parent_cats}
+    node_params1 = get_default_params.merge(params1)
+    node_params2 = get_default_params.merge(params2)
     #here is where we create the node from the first user class
-    other_node = make_doc_no_attachment(@user_classes[0], node_params)
-    other_node.__save
-    other_node.files_add(:src_filename => test_filename)
+    user_class1 = @user_classes[0]
+    user_class2 = @user_classes[2]
+    other_node1 = make_doc_no_attachment(user_class1, node_params1)
+    #plus one from a different class
+    other_node2 = make_doc_no_attachment(user_class2, node_params2)
+    other_node1.__save
+    other_node2.__save
+    other_node1.files_add(:src_filename => test_filename)
+    other_node2.files_add(:src_filename => test_filename)
     #check initial conditions
-    other_node.my_category.should == my_cat
-    other_node.attached_files.first.should == BufsEscape.escape(test_basename)
+    other_node1.my_category.should == my_cat1
+    other_node1.attached_files.first.should == BufsEscape.escape(test_basename)
+    other_node2.my_category.should == my_cat2
+    other_node2.attached_files.first.should == BufsEscape.escape(test_basename)
     #test
-    this_node = @user_classes[2].__create_from_other_node(other_node)
+    this_node = user_class2.__create_from_other_node(other_node1)
+    #test_inverse
+    this_other_node = user_class1.__create_from_other_node(other_node2)
     #verify results
-    this_node.my_category.should == my_cat
+    this_node.class.should == other_node2.class
+    this_node.class.should_not == other_node1.class
+    this_node.my_category.should == my_cat1
     this_node.attached_files.first.should == BufsEscape.escape(test_basename)
+    #verify inverse
+    this_other_node.class.should == other_node1.class
+    this_other_node.class.should_not == other_node2.class
+    this_other_node.my_category.should == my_cat2
+    this_other_node.attached_files.first.should == BufsEscape.escape(test_basename)
   end
 end
 

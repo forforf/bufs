@@ -91,7 +91,6 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     default_bid.__unset_userdata_key(:description)
     #verify results
     default_bid.my_category.should == get_default_params[:my_category]
-    default_bid.parent_categories.should == get_default_params[:parent_categories]
     lambda {default_bid.description}.should raise_error(NameError)
     default_bid._user_data[:description].should == nil
   end
@@ -239,7 +238,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     new_cats = ['new_cat1', 'new cat2', 'orig_cat2']
     #test
     #doc_rev0 = doc_existing_new_parent_cat._model_metadata['_rev']
-    doc_existing_new_parent_cat.add_parent_categories(new_cats)
+    doc_existing_new_parent_cat.parent_categories_add(new_cats)
     #doc_existing_new_parent_cat.__save
     #doc_rev1 = doc_existing_new_parent_cat._model_metadata['_rev']
     #doc_rev0.should_not == doc_rev1
@@ -281,7 +280,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     end
 
     #test
-    doc_remove_parent_cat.remove_parent_categories(remove_multi_cats)
+    doc_remove_parent_cat.parent_categories_subtract(remove_multi_cats)
 
     #verify results
     remove_multi_cats.each do |cat|
@@ -305,7 +304,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     new_cats = ['dup cat1', 'dup cat2', 'uniq_cat2']
     expected_size = orig_size + 1 #uniq_cat2
     #test
-    doc_uniq_parent_cat.add_parent_categories(new_cats)
+    doc_uniq_parent_cat.parent_categories_add(new_cats)
     #verify results
     expected_size.should == doc_uniq_parent_cat.parent_categories.size
     CouchDB.get(doc_uniq_parent_cat._model_metadata[:_id])['parent_categories'].sort.should == doc_uniq_parent_cat.parent_categories.sort
@@ -314,6 +313,67 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     records = [records].flatten
     records.size.should == 1
   end
+
+  it "should allow new data fields to be added to the data structure" do
+    #set initial conditions
+    parent_cats = ['dynamic data structure']
+    my_cat = 'doc_dyndata'
+    params = {:my_category => my_cat, :parent_categories => parent_cats}
+    node_params = get_default_params.merge(params)
+    basic_node = make_doc_no_attachment(node_params)
+    basic_node.__save
+    new_key_field = :links
+    #test for new field
+    #all we have to do to set a new data field is to call all with some params
+    retrieved_nodes = basic_node.class.all :add => { new_key_field => nil }
+    retrieved_nodes.size.should == 1
+    basic_node = retrieved_nodes.first
+    #basic_node.__set_userdata_key(new_key_field, nil)
+    #verify new field exists and works
+    basic_node.respond_to?(new_key_field).should == true
+    basic_node.__send__(new_key_field).should == nil
+    #initial conditions for  adding data
+    #NOTE: :links has a special operations for add and subtract
+    #defined in the Node Operations (see midas directory)
+    new_data = {:link_name => "blah", :link_src =>"http:\\\\to.somewhere.blah"}
+    add_method = "#{new_key_field}_add".to_sym
+    LinkAddOp = NodeElementOperations::LinkAddOp
+    #test adding new data
+    basic_node.__send__(add_method, new_data)
+    #verify new data was added appropriately
+    updated_data = basic_node.__send__(new_key_field)
+    updated_data.should_not == new_data
+    magically_transformed_data = LinkAddOp.call(nil, new_data)[:update_this]
+    updated_data.should == magically_transformed_data
+  end
+
+  it "should be able to use the all method to change data structure" do
+    #set initial conditions
+    basic_nodes = {}
+    (1..3).each do |i|
+      parent_cats = ["dynamic data structure#{i}"]
+      my_cat = "doc_dyndata#{i}"
+      params = {:my_category => my_cat, :parent_categories => parent_cats}
+      node_params = get_default_params.merge(params)
+      basic_nodes[i] = make_doc_no_attachment(node_params)
+      basic_nodes[i].__save
+    end
+    #verify initial ocnditions
+    (1..3).each do |i|
+      basic_nodes[i].my_category.should == "doc_dyndata#{i}"
+    end
+    BufsBaseNode.all.size.should  == 3
+    new_key_field = :links
+    #test
+    new_records = BufsBaseNode.all :add => {new_key_field => nil}  #no parans for readability
+    #verify results
+    new_records.size.should == 3
+    new_records.each do |rcd|
+      rcd.respond_to?(new_key_field).should == true
+      rcd.__send__(new_key_field).should == nil
+    end
+  end
+
 end
 
 describe BufsBaseNode, "Attachment Operations" do
@@ -327,9 +387,12 @@ describe BufsBaseNode, "Attachment Operations" do
     BufsBaseNode.destroy_all
   end
 
+  #TODO: Need ttest for db duplication, how to do force duplication?
   it "should save data files with metadata" do
     test_filename = @test_files['binary_data_spaces_in_fname_pptx']
+    test_filename2 = @test_files['simple_text_file']
     test_basename = File.basename(test_filename)
+    test_basename2 = File.basename(test_filename2)
     raise "can't find file #{test_filename.inspect}" unless File.exists?(test_filename)
     #set initial conditions
     parent_cats = ['nodes with attachments']
@@ -348,6 +411,12 @@ describe BufsBaseNode, "Attachment Operations" do
     att_node.attached_files.size.should == 1
     att_node._user_data.should == basic_node._user_data
     att_node.attached_files.should == basic_node.attached_files
+    #test (adding another file)
+    att_node.files_add(:src_filename => test_filename2)
+    #check results
+    att_node_fresh = att_node = BufsBaseNode.get(att_node_id)
+    att_node_fresh.attached_files.size.should == 2
+    att_node_fresh.attached_files.should include test_basename2
   end
 
   it "should remove specified data files" do
