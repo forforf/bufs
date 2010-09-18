@@ -12,6 +12,12 @@ module HashKeys
   end
 end
 
+module HashOps
+  def self.remove_hash(other_hash)
+    delete_if { |k,v| other_hash[k] == v }
+  end
+end
+
 class MoreOpenStruct < OpenStruct
   def _to_hash
     h = @table

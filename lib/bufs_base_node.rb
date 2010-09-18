@@ -130,22 +130,26 @@ class BufsBaseNode
   #TODO: Add the very cool feature to spec (creating new fields on the fly)
   #TODO: Document the feature too!!
   def self.all(data_structure_changes = {})
-    add_keys = data_structure_changes[:add]
-    remove_keys = data_structure_changes[:remove]
+    #add_keys = data_structure_changes[:add]
+    #remove_keys = data_structure_changes[:remove]
     #TODO: test for proper format
-    #add_keys.each {|k,v|self.__set_userdata_key(k.to_sym, v)} if add_keys
-    #remove_keys.each {|k| self.__unset_userdata_key(k.to_sym)} if remove_keys
 
     raw_nodes = @myGlueEnv.raw_all
 
     raw_nodes.map! do |base_data| 
-      add_data = add_keys || {}
-      combined_data = add_data.merge(base_data)  #to prevent overwriting of exsing base data
+      combined_data = self.modify_data_structures(base_data, data_structure_changes)
       self.new(combined_data)
     end
   end
 
-  def self.call_view(param, match_keys)
+  def self.modify_data_structures(base_data, changes)
+    add_keys_values = changes[:add]||{}
+    remove_keys = changes[:remove]||[]  #note its an array
+    removed_data = base_data.delete_if {|k,v| remove_keys.include?(k)}
+    added_data = add_keys_values.merge(removed_data) #so that add doesn't overwrite existing keys
+  end
+
+  def self.call_view(param, match_keys, data_structure_changes = {})
     view_method_name = "by_#{param}".to_sym #using CouchDB style for now
     records = if @myGlueEnv.views.respond_to? view_method_name
       @myGlueEnv.views.__send__(view_method_name,
@@ -156,7 +160,10 @@ class BufsBaseNode
       #TODO: Think of a more elegant way to handle an unknown view
       raise "Unknown design view #{view_method_name} called for: #{param}"
     end
-    nodes = records.map{|r| self.new(r)}
+    nodes = records.map do |base_data|
+       combined_data = self.modify_data_structures(base_data, data_structure_changes)
+       self.new(combined_data)
+    end
   end
 
   def self.get(id)

@@ -374,6 +374,52 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     end
   end
 
+  it "should be able to use the call view  method to change data structure" do
+    #set initial conditions
+    basic_nodes = {}
+    my_cats = {}
+    (1..3).each do |i|
+      parent_cats = ["dynamic data structure#{i}"]
+      my_cats[i] = "doc_more_dyndata#{i}"
+      params = {:my_category => my_cats[i], :parent_categories => parent_cats}
+      node_params = get_default_params.merge(params)
+      basic_nodes[i] = make_doc_no_attachment(node_params)
+      basic_nodes[i].__save
+    end
+    #verify initial conditions
+    (1..3).each do |i|
+      basic_nodes[i].my_category.should == "doc_more_dyndata#{i}"
+    end
+    BufsBaseNode.all.size.should  == 3
+    new_key_field = :new_field
+    #test
+    changed_records = BufsBaseNode.call_view(:my_category,
+                                        "doc_more_dyndata2",
+                                         :add => {new_key_field => "hi!"})
+
+    changed_records.first.__send__(new_key_field).should == "hi!"
+    changed_records.each {|r| r.__save}
+    new_records = {}
+    (1..3).each do |i|
+      new_records[i] = BufsBaseNode.get(basic_nodes[i]._model_metadata[:_id])
+    end
+    #verify results
+    new_records.each do |i, rcd|
+      rcd.respond_to?(new_key_field).should == true
+      p rcd._user_data
+    end
+    new_records[2].my_category.should == my_cats[2]
+    new_records[2].__send__(new_key_field).should == "hi!"
+    new_records[1].__send__(new_key_field).should == nil
+    new_records[3].__send__(new_key_field).should == nil
+    new_records[1]._user_data.keys.should_not include new_key_field
+    new_records[2]._user_data.keys.should include new_key_field
+    new_records[3]._user_data.keys.should_not include new_key_field
+    new_records[3].respond_to?(:blah).should == false
+  end
+
+  #TODO More iterations on different combinations of 
+  #datastructure changes needed
 end
 
 describe BufsBaseNode, "Attachment Operations" do
