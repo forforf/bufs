@@ -135,6 +135,7 @@ class BufsBaseNode
     #TODO: test for proper format
 
     raw_nodes = @myGlueEnv.raw_all
+    puts "BufsBaseNode all size: #{raw_nodes.size}"
 
     raw_nodes.map! do |base_data| 
       combined_data = self.modify_data_structures(base_data, data_structure_changes)

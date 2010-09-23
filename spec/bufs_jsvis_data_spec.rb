@@ -1,52 +1,38 @@
+require File.join(File.dirname(__FILE__) , 'helpers/bufs_sample_dataset')
+require File.join(File.dirname(__FILE__), '../lib/bufs_jsvis_data')
 
-require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
 
-
-module BufsVizDataSpec
-  LibDir = File.dirname(__FILE__) + '/../lib/'
+describe BufsJsvisData do
+  before(:all) do
+    sample_data = PopulatePersistenceModels::Sample1::DataSet
+    ppm = PopulatePersistenceModels
+    @user_classes = ppm.add_data_set_to_model(sample_data)
+  end
+ 
+  it "should initialize from data provided by the persistence models" do
+    @user_classes.each do |user_class|
+      #puts "User Class: #{user_class.name}"
+      node_list = user_class.all
+      #puts "Node List: #{node_list.size}"
+      vis_data = BufsJsvisData.new(user_class.name, node_list)
+      vis_data.graph.class.should == RGL::DirectedAdjacencyGraph
+      vis_data.graph.acyclic?.should == false
+      p user_class.name
+      vis_data.graph.size.should == 14 #includes root
+      p vis_data.graph.vertices.map{|v| v.node_name}
+      no_parents = vis_data.graph_data[:no_parents]
+      no_parents.size.should == 2
+      no_parents.first.class.name.should =~ /^BufsNodeFactory::Bufs/
+      
+    end
+  end
+  
+  it "should provide nodes to a certain depth" do
+    @user_classes.each do |user_class|
+      node_list = user_class.all
+      vis_data = BufsJsvisData.new(user_class.name, node_list)
+      vis_data.json_vis(user_class.name, 4)
+    end
+  end
 end
 
-require 'pp'  
-
-require BufsVizDataSpec::LibDir + 'bufs_jsvis_data'
-require BufsVizDataSpec::LibDir + 'user_doc'
-
-#FSModelDir = BufsFixtures::ProjectLocation  + 'sandbox_for_specs/bufs_view_builder_spec/model/'
-#CreatedViewDir = BufsFixtures::ProjectLocation  + 'sandbox_for_specs/bufs_view_builder_spec/view_created'
-#StaticViewDir = BufsFixtures::ProjectLocation  + 'sandbox_for_specs/bufs_view_builder_spec/view_static'
-#BufsFileSystem.name_space = FSModelDir
-
-describe BufsJsvisData do 
-
-  before(:each) do
-    @user1_id = "JsvisDataUser01"
-  end
-
-  it "should return JSON structure of arbitrary depth from the data model" do
-    CouchDB = CouchRest.database!('http://127.0.0.1:5984/bufs_integration_test_spec')
-    #BufsInfoDoc.set_name_space(CouchDB)
-    user1_db = UserDB.new(CouchDB, @user1_id)
-    user1_docClass = UserDB.user_to_docClass[@user1_id]
-    #nodes = BufsInfoDoc.all
-    nodes = user1_docClass.all
-    jvis = BufsJsvisData.new(nodes)
-    top_cat= 'view' #top category
-    depth = 4
-    jvis_data = jvis.json_vis(top_cat, depth)   
-    #jvis_data.each do |k,v|
-    #  puts "Level: #{k}:"
-    #  v.each do |n|
-    #    p n.my_category
-    #  end
-    #end
-    #p [].to_json
-    puts "----"
-    puts jvis_data
-    default_json = '{"id":"dummy_view","name":"view","data":{},"children":[]}'
-    #JSON.parse(jvis_data)
-    jvis_data.should == default_json
-  end
-
-  #Build View
-  #Compare View
-end

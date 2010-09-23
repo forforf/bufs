@@ -5,42 +5,71 @@ require 'rgl/adjacency'
 require 'rgl/traversal'
 require 'rgl/topsort'
 require 'rgl/implicit'
+require 'pp'
 
 class TreeWrapper
   attr_accessor :assigned_to_tree, :normal_descendants,
                 :linked_descendants, :node_name, :node_content, :node_parents
+  attr_reader :is_root_node
                        
   
-  def initialize(node_name, node_content = nil, node_parents=[])
+  def initialize(node_name, node_content = nil, node_parents=[], is_root_node=false)
     @assigned_to_tree = false
     @normal_descendants = []
     @linked_descendants = []
     @node_name = node_name
     @node_content = node_content
     @node_parents = node_parents
+    @is_root_node = is_root_node
+  end
+  
+  #TODO: Needs spec
+  def unwrap
+    self.node_content
   end
   
 end
 
 #opening up tree node for new method for finding nodes
 class Grapher
-  attr_accessor :key, :parent_key,  :nodes_by_name, :graph,
+  attr_accessor :key, :parent_key,  :nodes_by_name, :graph, :graph_data,
                 :nodes_by_parent_cat, :nodes_by_parent_node
 
-  def initialize(root_data, node_data, keys, graph_type=:tree)
+  def initialize(root_node, node_data, keys, graph_type=:tree)
     @key = keys[:node_id_key]
     @parent_key = keys[:parent_key]
     @all_nodes = wrap_nodes(node_data, @key, @parent_key)
+    wroot_node = wrap_nodes(root_node, @key, @parent_key, true).first if root_node
+    #puts "Root Node: #{wroot_node.inspect}"
+    @graph_data = {}
     
     #organize nodes by key like this {node key => node, ... }
     # duplicates model structure, but faster
     @nodes_by_name = organize_by_name(@all_nodes)
     
     #organize by parents like this [ [par_cat, node] ... ]
-    @nodes_by_parent_cat = organize_by_parents(@all_nodes, nodes_by_name.keys)
+    @nodes_by_parent_cat = organize_by_parents(@all_nodes, @nodes_by_name.keys)
+   
+    #puts "All Nodes - Before"   
+    #pp @all_nodes.map{|n| [n.node_name, n.node_parents]}
     
     nodes_with_parents = @nodes_by_parent_cat.map {|pcat_nd_pr| pcat_nd_pr[1]}.uniq
     nodes_with_no_parents = @all_nodes - nodes_with_parents
+    #insert root node into node list
+    if wroot_node
+      puts "Wrapping Root Node and adding it to node list"
+      nodes_with_no_parents.each do |w_node|
+        w_node.node_parents = [wroot_node.node_name]
+      end
+      @all_nodes.push wroot_node
+      @nodes_by_name = organize_by_name(@all_nodes)
+      @nodes_by_parent_cat = organize_by_parents(@all_nodes, @nodes_by_name.keys)
+    end
+    
+     
+    #puts "All Nodes - After"
+    #pp @all_nodes.map{|n| [n.node_name, n.node_parents]}
+    
     #p nodes_with_no_parents.map {|n| n.node_name}
     #puts "NBP:"
     #@nodes_by_parent_cat.each do |par_node_pair|
@@ -56,7 +85,7 @@ class Grapher
     adj_list = make_adjacency(@nodes_by_parent_node)
     
     #only children and grandchildren are counted
-    ordered_by_descendant_size = order_nodes(adj_list, nodes_with_no_parents)
+    ordered_by_descendant_size = order_nodes(adj_list, nodes_with_no_parents, wroot_node)
     #if this is only used by the tree type, move to where the tree is made (and change the argument)
     #also there has to be a way to optimize this
     #wrapped_adj_list = wrap_nodes(ordered_by_descendant_size, adj_list, @key)
@@ -69,15 +98,18 @@ class Grapher
     #base_digraph = RGL::DirectedAdjacencyGraph.new
 		#@graph[:tree] = make_tree(base_graph, ordered_by_descendant_size, adj_list )
     #@graph[:digraph] = make_digraph(base_graph, adj_list)
-    @graph = case graph_type
+    @graph_data[:no_parents] = nodes_with_no_parents.map{|n| n.node_content}
+    @graph_data[:graph] = case graph_type
+      #
       when :tree
-        make_tree(base_graph, ordered_by_descendant_size, adj_list )
+        make_tree(base_graph, ordered_by_descendant_size, adj_list, root_data )
       #TODO: Digraph needs adding to spec in more robust way
       when :digraph
-        make_digraph(base_graph, adj_list)
+        make_digraph(base_graph, ordered_by_descendant_size, adj_list)
       else
         raise "Unknown graph type"
     end
+    @graph = @graph_data[:graph]  
   end
     
 # { node.node_name => node}
@@ -139,7 +171,20 @@ class Grapher
     weight
   end
 
-  def order_nodes(adj_list, no_parents)
+  def order_nodes(adj_list, no_parents, wroot_node)
+    puts "ON Root: #{wroot_node.node_name}" if wroot_node
+    #adj_list.each do |k,v|
+    #  puts "#{k.node_name} #{k.is_root_node} - > #{v.map{|c| c.node_name}}"
+    #end
+    adj_list.delete(wroot_node)
+    #puts "[]][[[[[[[[[[[[[[[["
+    #adj_list.each do |k,v|
+    #  puts "#{k.node_name} #{k.is_root_node} - > #{v.map{|c| c.node_name}}"
+    #end
+
+    #pp root_node.node_name 
+    #root_node = content_list.select{|class_node_pr| class_node_pr[0] == RootNode}[1]
+    #pp wroot_node.node_name
     weights = []  #[node, weight]
     adj_list.each do |node, children|
       node_weight = node_weighting(node, adj_list)
@@ -149,22 +194,25 @@ class Grapher
     order_wo_roots = node_order.map{|np| np[0]}
     no_parents.each{|r| order_wo_roots.delete(r)} 
     order = no_parents + order_wo_roots
-    #puts "Order: #{order.map{|n| n.my_category}.inspect}"
-    #order
+    order.unshift(wroot_node)
+    #puts "Order: #{order.map{|n| n.node_name}.inspect}"
+    order
   end
   
-  def wrap_nodes(nodes, name_key, parent_key)
+  def wrap_nodes(nodes, name_key, parent_key, is_root_node=false)
+    nodes = [nodes].flatten
+    raise "Can only be one root node: #{nodes.inspect}}" if is_root_node && nodes && nodes.size >1
     raise "node list must be unique!" if nodes.uniq.size != nodes.size
     raise "Node must have method or accessor named #{name_key} to identify the node" unless nodes.first.respond_to? name_key
     raise "Node must have method or accessor named #{parent_key} to identify parents of the node" unless nodes.first.respond_to? name_key
     wrapped_nodes = nodes.map do |n|
 			nk = n.__send__(name_key)
 			pk = n.__send__(parent_key)
-			TreeWrapper.new(nk, n, pk) unless n.class == TreeWrapper
+			TreeWrapper.new(nk, n, pk, is_root_node) unless n.class == TreeWrapper
 		end
   end
 
-  def make_tree(base_graph, ordered_nodes, adj_list)
+  def make_tree(base_graph, ordered_nodes, adj_list, root_data)
     #puts "Making Tree"
     tree = base_graph
     #puts "ON: #{ordered_nodes.map{|n| n.node_name}.inspect}"
@@ -205,8 +253,21 @@ class Grapher
     tree
   end #def
   
-  def make_digraph(base_graph, adj_list)
+  def make_digraph(base_graph, ordered_nodes, adj_list)
+    #assume root is first node
+    #puts "nodes"
+    #p ordered_nodes.map{|on| on.node_name}
+    root = ordered_nodes.shift
+    #p ordered_nodes.map{|on| on.node_name}
     digraph = base_graph
+    ordered_nodes.each do |node|
+      children = adj_list[node]
+      if digraph.has_vertex?(node)
+        #see if children are all there?
+      else
+        digraph.add_edge(root, node)
+      end
+    end
     adj_list.each do |node, children|
       children.each do |child|
         digraph.add_edge(node, child)

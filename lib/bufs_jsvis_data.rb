@@ -1,4 +1,5 @@
 require 'json'
+require File.join(File.dirname(__FILE__), 'grapher')
 #require File.dirname(__FILE__) + '/bufs_info_doc'
 
 class DefaultNode < Hash
@@ -13,30 +14,49 @@ class DefaultNode < Hash
   end
 end
 
+RootNode = Struct.new(:my_category, :parent_categories)
+
 class BufsJsvisData
-  def initialize(node_list)
+  attr_accessor :graph, :graph_data
+  
+  def initialize(user_id, node_list)
+    #user_id.gsub!(/BufsNodeFactory::Bufs(File|InfoNode)/, "") # A bit hacky
+    @root_node= RootNode.new(user_id, [])
     @all_nodes = node_list
-    #This is duplicating some of the database functionality but
-    #this may be better for responsiveness?
-    #Organize nodes by my_category
-    @nodes_by_cat = {}
-    @all_nodes.each do |node|
-      @nodes_by_cat[node.my_category] = node
-    end
-    #Organize nodes by parent categories
-    @nodes_by_parent_cat = []
-    @all_nodes.each do |node|
-      node.parent_categories.each do |node_parent_cat|
-	@nodes_by_parent_cat << [node_parent_cat, node]
-      end
-    end
+    keys = {:node_id_key => :my_category,
+              :parent_key => :parent_categories}
+    #TODO: To support multiple vis types, have this move to a parameter
+    graph_type = :digraph
+    @graph_data = Grapher.new(@root_node, @all_nodes, keys, graph_type).graph_data
+    @graph = @graph_data[:graph]
+    @no_parents = @graph_data[:no_parents]
   end
 
-  def json_vis(top_node_parent_cat, depth)
-    json_vis_nodes = nil
-    top_node = @nodes_by_cat[top_node_parent_cat]||DefaultNode.new(top_node_parent_cat)
-    jsm = make_json_vis_from_node(top_node, depth) 
+  def json_vis(top_node_name, depth)
+     puts "TODO: need to support setting user information to top node"
+     all_graph_nodes = {}
+     pp @graph.vertices.map {|v| v.node_name}
+    @graph.vertices.each do |v|
+        all_graph_nodes[v.node_name] = v
+    end
+     top_node = all_graph_nodes[top_node_name] #== @root_node.my_category #a bit hacky
+     puts "Top Node:"
+     pp top_node
+     puts "All Nodes:"
+     pp all_graph_nodes.map{|nn,nc| nn}
+     bfs = @graph.bfs_iterator(top_node)
+     puts "Hello from BFS Iterator"
+     bfs.attach_distance_map
+     #ts = @graph.topsort_iterator
+     bfs.each do |v|
+       puts "I'm on node #{v.node_name} at depth: #{bfs.distance_to_root(v)}"
+     end
   end
+  #def json_vis(top_node_parent_cat, depth)
+  #  json_vis_nodes = nil
+  #  top_node = @nodes_by_cat[top_node_parent_cat]||DefaultNode.new(top_node_parent_cat)
+  #  jsm = make_json_vis_from_node(top_node, depth) 
+  #end
 
   def make_json_vis_from_node(node, depth, current_model = nil)
     jsvis_model = {} #JsvisModel.new

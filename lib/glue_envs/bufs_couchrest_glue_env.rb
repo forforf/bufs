@@ -7,6 +7,11 @@ module BufsCouchRestViews
     #raise view_name if view_name == :parent_categories
     #TODO: Add options for custom maps, etc
     #creating view in design_doc
+    puts "-----"
+    puts
+    puts "setting design_doc #{design_doc['_id']} with view: #{view_name.inspect} with map:\n #{opts.inspect}"
+    puts
+    puts "-----"
     design_doc.view_by view_name.to_sym, opts
     db_view_name = "by_#{view_name}"
     views = design_doc['views'] || {}
@@ -16,11 +21,20 @@ module BufsCouchRestViews
     end
     begin
       view_rev_in_db = db.get(design_doc['_id'])['_rev']
-      res = design_doc.save unless design_doc['rev'] == view_rev_in_db
+      #TODO: See if this can be simplified, I had forgotten the underscore for rev and added a bunch of other stuff
+      #I also think I'm saving when it's not needed because I can't figure out how to detect if the saved view matches the
+      #current view I want to run yet
+      design_doc_uptodate = (design_doc['_rev'] == view_rev_in_db) && 
+                                       (design_doc['views'].keys.include? db_view_name)
+      design_doc['_rev'] = view_rev_in_db #unless design_doc_uptodate
+      res = design_doc.save #unless design_doc_uptodate
+      #puts "Save Design Doc Response: #{res.inspect}"
+      res
     rescue RestClient::RequestFailed
       puts "Warning: Request Failed, assuming because the design doc was already saved?"
       puts "doc_rev: #{design_doc['_rev'].inspect}"
       puts "db_rev: #{view_rev_in_db}"
+      puts "Code thinks doc is up to date? #{design_doc_uptodate.inspect}"
     end
   end
 
@@ -103,6 +117,11 @@ class GlueEnv
     env_name = :bufs_info_doc_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
     couch_db_host = env[env_name][:host]
     db_name_path = env[env_name][:path]
+    #FIXME: Major BUG!! when setting multiple environments in that this may cross-contaminate across users
+    #if those users share the same db.  Testing up to date has been users on different dbs, so not an issue to date
+    #also, one solution might be to force users to their own db? (what about sharing though?)
+    #The problem is that there is one "query_all" per database, and it gets set to the last user class
+    #that sets it.  
     db_user_id = env[env_name][:user_id] #TODO Change to "data_set_id at some point
     #user_attach_class_name = "UserAttach#{db_user_id}"
     #the rescue is so that testing works
@@ -144,6 +163,7 @@ class GlueEnv
   end
 
   def query_all  #TODO move to ViewsMgr and change the confusing accessor/method clash
+   #breaks everything -> self.set_view(@db, @design_doc, @collection_namespace)
    raw_res = @design_doc.view @define_query_all
    raw_data = raw_res["rows"]
    raw_data.map {|d| d['value']}

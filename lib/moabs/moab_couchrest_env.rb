@@ -350,7 +350,7 @@ module CouchRestEnv
         existing_doc = db.get(model_data['_id'])
         rev = existing_doc['_rev']
         data_with_rev = model_data.merge({'_rev' => rev})
-        res = db_save_doc(data_with_rev)
+        res = db.save_doc(data_with_rev)
 	#existing_doc['_attachments'] = existing_doc['attachments'].merge(self['_attachments']) if self[
 	#existing_doc['file_metadata'] = existing_doc['file_metadata'].merge(self['file_metadata']) if s
 	#existing_doc.save
