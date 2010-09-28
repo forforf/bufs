@@ -32,6 +32,7 @@ class BufsJsvisData
     @no_parents = @graph_data[:no_parents]
   end
 
+
   def json_vis(top_node_name, depth)
      puts "TODO: need to support setting user information to top node"
      all_graph_nodes = {}
@@ -48,16 +49,46 @@ class BufsJsvisData
      puts "Hello from BFS Iterator"
      bfs.attach_distance_map
      #ts = @graph.topsort_iterator
-     bfs.each do |v|
+     nodes_depths = []
+     data_bfs = {}  #what kind of data I don't know yet
+     jsm = bfs.each do |v|
        puts "I'm on node #{v.node_name} at depth: #{bfs.distance_to_root(v)}"
+       data_bfs[v.node_name] = Hash[*(@graph.adjacent_vertices(v).map{|v| v.node_name}.map{|_a| [_a,nil]}).flatten]
+       #push each node => children
      end
+     puts "BFS Data result"
+     pp data_bfs
+     jsm = hash_builder(data_bfs)
+     pp jsm
+     data_dfs = {}
+     dfs = @graph.dfs_iterator(top_node)
+     dfs.each do |v|
+       puts "I'm on node #{v.node_name}"
+       data_dfs[v.node_name] = @graph.adjacent_vertices(v).map{|v| v.node_name}
+     end
+     puts "DFS Data result"
+     pp data_dfs
+     #examine top
+     #populate top data
+     #get children
+     #for each child populate child data
+     #get children
+     #for each child
+     #populate child data
+     
+     #bfs.each do |v|
+     # id = v id
+     # children = v children( v iv, children)
+          
   end
   #def json_vis(top_node_parent_cat, depth)
   #  json_vis_nodes = nil
   #  top_node = @nodes_by_cat[top_node_parent_cat]||DefaultNode.new(top_node_parent_cat)
   #  jsm = make_json_vis_from_node(top_node, depth) 
   #end
-
+  
+  def make_jsvis_from_node(parent_node, current_node)
+=begin
   def make_json_vis_from_node(node, depth, current_model = nil)
     jsvis_model = {} #JsvisModel.new
     #raise node.inspect
@@ -71,7 +102,8 @@ class BufsJsvisData
     jsvis_model['children'].compact!
     return jsvis_model
   end
-
+=end
+  end
   def get_category_children_nodes(parent_cat)
     @nodes_by_parent_cat.select{|n| n[0] == parent_cat}.map{|i| i.last}
   end

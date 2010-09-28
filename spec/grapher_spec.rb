@@ -16,13 +16,14 @@ module MakeUserClasses
     node_env2 = CouchRestNodeHelpers.env_builder(node_class_id2, CouchDB2, @user2_id)
     node_env3 = FileSystemNodeHelpers.env_builder(node_class_id3, FileSystem1, @user3_id)
     node_env4 = FileSystemNodeHelpers.env_builder(node_class_id4, FileSystem2, @user4_id)
-    User1Class =  BufsNodeFactory.make(node_env1)
-    User2Class =  BufsNodeFactory.make(node_env2)
+    #User1Class =  BufsNodeFactory.make(node_env1)
+    #User2Class =  BufsNodeFactory.make(node_env2)
     User3Class =  BufsNodeFactory.make(node_env3)
-    User4Class =  BufsNodeFactory.make(node_env4)
+    #User4Class =  BufsNodeFactory.make(node_env4)
 end
 
 module GrapherSpecHelpers
+  RootNode = Struct.new(:my_category, :parent_categories)
   include NodeHelpers
   include MakeUserClasses
   
@@ -77,10 +78,10 @@ module GrapherSpecHelpers
   end
 
   def two_simple_trees_with_inf_loop(user_class)
-    simple_trees = two_simple_trees(user_class)
-    simple_trees[0].parent_categories_add 'child22'
-    simple_trees[2].parent_categories_add 'child11'
-    simple_trees
+    looped_trees = two_simple_trees(user_class)
+    looped_trees[0].parent_categories_add 'child22'
+    looped_trees[2].parent_categories_add 'child11'
+    looped_trees
   end
   
   def save_all(nodes)
@@ -91,12 +92,14 @@ module GrapherSpecHelpers
 end
 
 
+
 describe Grapher do
   include MakeUserClasses
   include GrapherSpecHelpers
 
   before(:each) do
     @user_classes = [User3Class]
+    @root_data = RootNode.new(:root, :root_data)
   end
 
   after(:each) do
@@ -123,10 +126,13 @@ describe Grapher do
                 :parent_key => :parent_categories }
     @user_classes.each do |user_class|
       nodes = user_class.all
-      root_data = {:tree_root_id => user_class.name,
-                         :tree_root_content => user_class}
+      #raise "test #{nodes.first.class}"
+      #nodes.each do |node|
+      #  raise "Bad Node? #{node.inspect}" if node.class == Hash
+      #end
+      #@root_data = RootNode.new(:root, :root_data)
       
-	    user_graph[user_class] = Grapher.new(root_data, nodes, keys, :tree)
+	    user_graph[user_class] = Grapher.new(@root_data, nodes, keys, :tree)
     end
     #verify results
     @user_classes.each do |user_class|
@@ -158,20 +164,24 @@ describe Grapher do
     @user_classes.each do |user_class|
       model_nodes = user_class.all
       model_nodes.size.should > 1
-      root_data = {:tree_root_id => user_class.name,
-                   :tree_root_content => user_class}
+      
       keys = {:node_id_key => :my_category,
               :parent_key => :parent_categories}
-      user_graph[user_class] = Grapher.new(root_data, model_nodes, keys, :tree)
+      user_graph[user_class] = Grapher.new(@root_data, model_nodes, keys, :tree)
     end
     #verify results
     @user_classes.each do |user_class|
       my_grapher = user_graph[user_class]
       tree = my_grapher.graph
-      bfs = tree.bfs_iterator(:root)
+      
+      root_id = Grapher::RootId
+      #raise "Root Nodes: #{root_node.inspect}"
+      #raise "Verts: #{tree.vertices.map{|v| v.node_content.class.name}.inspect}"
+      bfs = tree.bfs_iterator(root_id)
       tree_order = []
       bfs.each {|v| tree_order << v}
-      tree_order[0].should == :root
+      #tree_order.should == []
+      tree_order[0].should == root_id
       tree_order[1].node_name.should == 'top'
       tree_order[2].node_name.should == 'child2'
       tree_order[3].node_name.should == 'child1'
@@ -200,20 +210,24 @@ describe Grapher do
     @user_classes.each do |user_class|
       model_nodes = user_class.all
       model_nodes.size.should > 1
-      root_data = {:tree_root_id => user_class.name,
-                   :tree_root_content => user_class}
+      #root_data = {:tree_root_id => user_class.name,
+      #             :tree_root_content => user_class}
       keys = {:node_id_key => :my_category,
               :parent_key => :parent_categories}
-	    user_graph[user_class] = Grapher.new(root_data, model_nodes, keys, :tree)
+	    user_graph[user_class] = Grapher.new(@root_data, model_nodes, keys, :tree)
     end
     #verify results
     @user_classes.each do |user_class|
       my_grapher = user_graph[user_class]
       tree = my_grapher.graph
-      bfs = tree.bfs_iterator(:root)
+      root_nodes = tree.vertices.select{|v| v == Grapher::RootId}
+      #raise "vertex not found for #{@root_data.class.name}. Verts: #{tree.vertices.map{|v| v.node_content.class.name}.inspect}"
+      raise "Wrong number of root nodes: #{root_nodes.size}" unless root_nodes.size == 1
+      root_node = root_nodes.first
+      bfs = tree.bfs_iterator(root_node)
       tree_order = []
       bfs.each {|v| tree_order << v}
-      tree_order[0].should == :root
+      tree_order[0].should == root_node
       tree_order[1].node_name.should == 'top1'
       tree_order[2].node_name.should == 'top2'
       tree_order[3].node_name.should == 'child11'
@@ -252,16 +266,20 @@ describe Grapher do
                    :tree_root_content => user_class}
       keys = {:node_id_key => :my_category,
               :parent_key => :parent_categories}
-      user_graph[user_class] = Grapher.new(root_data, model_nodes, keys, :tree)
+      user_graph[user_class] = Grapher.new(@root_data, model_nodes, keys, :tree)
     end
     #verify results
     @user_classes.each do |user_class|
       my_grapher = user_graph[user_class]
       tree = my_grapher.graph
-      bfs = tree.bfs_iterator(:root)
+      root_nodes = tree.vertices.select{|v| v == Grapher::RootId}
+      #raise "vertex not found for #{@root_data.class.name}. Verts: #{tree.vertices.map{|v| v.node_content.class.name}.inspect}"
+      raise "Wrong number of root nodes: #{root_nodes.size}" unless root_nodes.size == 1
+      root_node = root_nodes.first
+      bfs = tree.bfs_iterator(root_node)
       tree_order = []
       bfs.each {|v| tree_order << v}
-      tree_order[0].should == :root
+      tree_order[0].should == root_node
       tree_order[1].node_name.should == 'top1'
       tree_order[2].node_name.should == 'top2'
       tree_order[3].node_name.should == 'child11'
@@ -281,7 +299,7 @@ describe Grapher do
     end
   end
   
-   it "should create a two simple trees with an looped link" do
+   it "should create a two simple trees with an infinitely looped link" do
     #initial conditions
     @user_classes.each do |user_class|
       save_all two_simple_trees_with_inf_loop(user_class) #saved to model
@@ -305,39 +323,23 @@ describe Grapher do
     @user_classes.each do |user_class|
       model_nodes = user_class.all
       model_nodes.size.should > 1
-      root_data = {:tree_root_id => user_class.name,
-                   :tree_root_content => user_class}
+      #root_data = {:tree_root_id => user_class.name,
+      #             :tree_root_content => user_class}
       keys = {:node_id_key => :my_category,
               :parent_key => :parent_categories}
-      user_tree[user_class] = Grapher.new(root_data, model_nodes, keys, :tree)
-      user_digraph[user_class] = Grapher.new(root_data, model_nodes, keys, :digraph)
+      user_tree[user_class] = Grapher.new(@root_data, model_nodes, keys, :tree)
     end
     #verify results
     @user_classes.each do |user_class|
       #rough verify of digraph
-      my_digraph = user_digraph[user_class]
-      digraph = my_digraph.graph
-      dg_node_names = digraph.vertices.map{|v| v.node_name}.sort
-      dg_node_names.should == ['top1', 'child21', 'top2',
-                                'child12', 'child11', 'child22'].sort
-      digraph.acyclic?.should == false
-      top1_node = my_digraph.nodes_by_name['top1']
-      nbrs = digraph.adjacent_vertices(top1_node)
-      nbrs.size.should == 2
-      p nbrs.map{|n| n.node_name}.inspect
-      nbrs.each do |node|
-        nbrs1 = digraph.adjacent_vertices(node)
-        p nbrs1.map{|n| n.node_name}.inspect
-      end
-     
-      #dgbfs = digraph.bfs_iterator[top1_node]
-      #dgbfs.attach_distance_map
-
-        
       
       my_grapher = user_tree[user_class]
       tree = my_grapher.graph
-      bfs = tree.bfs_iterator(:root)
+      root_nodes = tree.vertices.select{|v| v == Grapher::RootId}
+      #raise "vertex not found for #{@root_data.class.name}. Verts: #{tree.vertices.map{|v| v.node_content.class.name}.inspect}"
+      raise "Wrong number of root nodes: #{root_nodes.size}" unless root_nodes.size == 1
+      root_node = root_nodes.first
+      bfs = tree.bfs_iterator(root_node)
       tree_order = []
       bfs.each {|v| tree_order << v}
       tree_order[0].should == :root
@@ -361,5 +363,71 @@ describe Grapher do
       #linked_ds.should == 'blah'
     end
   end
-end
 
+   it "should create a directed graph with an infinitely looped link" do
+    #initial conditions
+    @user_classes.each do |user_class|
+      save_all two_simple_trees_with_inf_loop(user_class) #saved to model
+    end
+    #check initial conditions
+    @user_classes.each do |user_class|
+      top1 = user_class.call_view(:my_category, 'top1')
+      top1.size.should == 1
+      child1 = user_class.call_view(:parent_categories, 'top1')
+      child1.size.should == 2 
+      top2 = user_class.call_view(:my_category, 'top2')
+      top2.size.should == 1
+      child2 = user_class.call_view(:parent_categories, 'top2')
+      child2.size.should == 2       
+      top1.first.parent_categories.should include 'child22'
+      top2.first.parent_categories.should include 'child11'
+    end
+    #test
+    user_digraph = {}
+    @user_classes.each do |user_class|
+      model_nodes = user_class.all
+      model_nodes.size.should > 1
+      #root_data = {:tree_root_id => user_class.name,
+      #             :tree_root_content => user_class}
+      keys = {:node_id_key => :my_category,
+              :parent_key => :parent_categories}
+      user_digraph[user_class] = Grapher.new(@root_data, model_nodes, keys, :digraph)
+    end
+    #verify results
+    @user_classes.each do |user_class|
+      #rough verify of digraph
+      my_digraph = user_digraph[user_class]
+      digraph = my_digraph.graph
+      dg_node_names = digraph.vertices.map{|v| v.node_name}.sort
+      dg_node_names.should == ['top1', 'child21', 'top2',
+                                'child12', 'child11', 'child22'].sort
+      digraph.acyclic?.should == false
+      this_node = my_digraph.nodes_by_name['top1']
+      nbrs = digraph.adjacent_vertices(this_node)
+      nbrs.size.should == 2
+      nbrs.each do |nbr_node|
+        ['child11', 'child12'].should include nbr_node.node_name
+      end
+      this_node = my_digraph.nodes_by_name['top2']
+      nbrs = digraph.adjacent_vertices(this_node)
+      nbrs.size.should == 2
+      nbrs.each do |nbr_node|
+        ['child21', 'child22'].should include nbr_node.node_name
+      end
+      this_node = my_digraph.nodes_by_name['child22']
+      nbrs = digraph.adjacent_vertices(this_node)
+      nbrs.size.should == 1
+      nbrs.each do |nbr_node|
+        ['top1'].should include nbr_node.node_name
+      end
+      this_node = my_digraph.nodes_by_name['child11']
+      nbrs = digraph.adjacent_vertices(this_node)
+      nbrs.size.should == 1
+      nbrs.each do |nbr_node|
+        ['top2'].should include nbr_node.node_name
+      end
+      #dgbfs = digraph.bfs_iterator[top1_node]
+      #dgbfs.attach_distance_map
+    end
+  end
+end

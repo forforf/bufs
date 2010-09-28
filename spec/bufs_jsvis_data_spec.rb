@@ -18,7 +18,7 @@ describe BufsJsvisData do
       vis_data.graph.class.should == RGL::DirectedAdjacencyGraph
       vis_data.graph.acyclic?.should == false
       p user_class.name
-      vis_data.graph.size.should == 14 #includes root
+      vis_data.graph.size.should == 13
       p vis_data.graph.vertices.map{|v| v.node_name}
       no_parents = vis_data.graph_data[:no_parents]
       no_parents.size.should == 2
