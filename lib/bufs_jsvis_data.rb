@@ -23,19 +23,36 @@ class BufsJsvisData
     #user_id.gsub!(/BufsNodeFactory::Bufs(File|InfoNode)/, "") # A bit hacky
     @root_node= RootNode.new(user_id, [])
     @all_nodes = node_list
-    keys = {:node_id_key => :my_category,
+    @keys = {:node_id_key => :my_category,
               :parent_key => :parent_categories}
     #TODO: To support multiple vis types, have this move to a parameter
     graph_type = :digraph
-    @graph_data = Grapher.new(@root_node, @all_nodes, keys, graph_type).graph_data
+    @graph_data = Grapher.new(@all_nodes, @keys, graph_type, @root_node).graph_data
     @graph = @graph_data[:graph]
+    raise "Graph is nil!!!" unless @graph
     @no_parents = @graph_data[:no_parents]
+    parents_to_nodes = @graph.vertices.map{|v| [v.node_content.__send__(@keys[:parent_key]), v]}
+    @parent_to_nodes = []
+    parents_to_nodes.each do |ps, node|
+      ps.each do |p|
+        @parent_to_nodes << [p, node]
+      end
+    end
   end
 
 
-  def json_vis(top_node_name, depth)
-     puts "TODO: need to support setting user information to top node"
+  #Caller may not have access ruby object structure, so need to use the node_id
+  def json_vis_tree(top_node_id, depth)
      all_graph_nodes = {}
+     top_nodes_existing = @all_nodes.select{|n| n.__send__(@keys[:node_id_key]) == top_node_id}
+     raise "Key: #{@keys[:node_id_key]} is supposed to be unique, found #{top_nodes_existing.size} records" if top_nodes_existing.size > 1
+     top_node = top_nodes_existing.first || DefaultNode.new(top_node_id)
+     puts "=================="
+     p top_node_id
+     p top_nodes_existing.map{|n| n.my_category}
+     puts "=================="
+     make_jsvis_tree_from_node(top_node, depth)
+=begin
      pp @graph.vertices.map {|v| v.node_name}
     @graph.vertices.each do |v|
         all_graph_nodes[v.node_name] = v
@@ -79,7 +96,7 @@ class BufsJsvisData
      #bfs.each do |v|
      # id = v id
      # children = v children( v iv, children)
-          
+=end          
   end
   #def json_vis(top_node_parent_cat, depth)
   #  json_vis_nodes = nil
@@ -87,29 +104,42 @@ class BufsJsvisData
   #  jsm = make_json_vis_from_node(top_node, depth) 
   #end
   
-  def make_jsvis_from_node(parent_node, current_node)
-=begin
-  def make_json_vis_from_node(node, depth, current_model = nil)
+  def make_jsvis_tree_from_node(twnode, depth)
+    puts "about to make stuff"
+    #puts "node children: #{get_node_children(parent_node)}"
+   
+#=begin
+#  def make_json_vis_from_node(node, depth, current_model = nil)
     jsvis_model = {} #JsvisModel.new
     #raise node.inspect
+  
     return nil if depth < 0
-    #TODO: Figure out a better dummy node than this hack
-    node_id = node._model_metadata[:_id]
-    jsvis_model['id'] = node.my_category
-    jsvis_model['name'] = node.my_category
+    #TODO Implement a real node id, don't reuse the name
+    #node_id = node._model_metadata[:_id]
+    if twnode.class == TreeWrapper
+      node = twnode.unwrap
+    else
+      node = twnode
+    end
+    jsvis_model['id'] = node.__send__(@keys[:node_id_key])
+    jsvis_model['name'] = node.__send__(@keys[:node_id_key])
+    #TODO Complete the generalization of this so that custom data can be selected
     jsvis_model['data'] = {}#node.description
-    jsvis_model['children'] = get_node_children(node).map {|cn| make_json_vis_from_node(cn, depth-1)}
+    jsvis_model['children'] = get_node_children(node).map {|cn| make_jsvis_tree_from_node(cn, depth-1)}
     jsvis_model['children'].compact!
     return jsvis_model
+#  end
+#=end
   end
-=end
-  end
-  def get_category_children_nodes(parent_cat)
-    @nodes_by_parent_cat.select{|n| n[0] == parent_cat}.map{|i| i.last}
-  end
+  #def get_category_children_nodes(parent_node) #(parent_cat)
+    #p @graph.vertices.map{|v| v.node_name}
+    #@nodes_by_parent_cat.select{|n| n[0] == parent_cat}.map{|i| i.last}
+  #end
 
   def get_node_children(node)
-    childrens_parent_category = node.my_category  #I am my childrens' parent
-    @nodes_by_parent_cat.select {|n| n[0] == childrens_parent_category}.map{|i| i.last}
+     #p @graph.map{|v| v.node_name}
+     #p @parent_to_nodes.map{|pn| pn[0]}.first
+    childrens_parent = node.__send__(@keys[:node_id_key])  #I am my childrens' parent
+    ch_nodes = @parent_to_nodes.select {|n| n[0] == childrens_parent}.map{|i| i.last}
   end
 end

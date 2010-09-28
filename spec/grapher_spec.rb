@@ -132,7 +132,7 @@ describe Grapher do
       #end
       #@root_data = RootNode.new(:root, :root_data)
       
-	    user_graph[user_class] = Grapher.new(@root_data, nodes, keys, :tree)
+	    user_graph[user_class] = Grapher.new(nodes, keys, :tree, @root_data)
     end
     #verify results
     @user_classes.each do |user_class|
@@ -167,7 +167,7 @@ describe Grapher do
       
       keys = {:node_id_key => :my_category,
               :parent_key => :parent_categories}
-      user_graph[user_class] = Grapher.new(@root_data, model_nodes, keys, :tree)
+      user_graph[user_class] = Grapher.new(model_nodes, keys, :tree, @root_data)
     end
     #verify results
     @user_classes.each do |user_class|
@@ -214,7 +214,7 @@ describe Grapher do
       #             :tree_root_content => user_class}
       keys = {:node_id_key => :my_category,
               :parent_key => :parent_categories}
-	    user_graph[user_class] = Grapher.new(@root_data, model_nodes, keys, :tree)
+	    user_graph[user_class] = Grapher.new(model_nodes, keys, :tree, @root_data)
     end
     #verify results
     @user_classes.each do |user_class|
@@ -266,7 +266,7 @@ describe Grapher do
                    :tree_root_content => user_class}
       keys = {:node_id_key => :my_category,
               :parent_key => :parent_categories}
-      user_graph[user_class] = Grapher.new(@root_data, model_nodes, keys, :tree)
+      user_graph[user_class] = Grapher.new(model_nodes, keys, :tree, @root_data)
     end
     #verify results
     @user_classes.each do |user_class|
@@ -327,7 +327,7 @@ describe Grapher do
       #             :tree_root_content => user_class}
       keys = {:node_id_key => :my_category,
               :parent_key => :parent_categories}
-      user_tree[user_class] = Grapher.new(@root_data, model_nodes, keys, :tree)
+      user_tree[user_class] = Grapher.new(model_nodes, keys, :tree, @root_data)
     end
     #verify results
     @user_classes.each do |user_class|
@@ -391,7 +391,7 @@ describe Grapher do
       #             :tree_root_content => user_class}
       keys = {:node_id_key => :my_category,
               :parent_key => :parent_categories}
-      user_digraph[user_class] = Grapher.new(@root_data, model_nodes, keys, :digraph)
+      user_digraph[user_class] = Grapher.new(model_nodes, keys, :digraph, @root_data)
     end
     #verify results
     @user_classes.each do |user_class|

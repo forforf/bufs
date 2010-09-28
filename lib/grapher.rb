@@ -37,7 +37,7 @@ class Grapher
   attr_accessor :key, :parent_key,  :nodes_by_name, :graph, :graph_data,
                 :nodes_by_parent_cat, :nodes_by_parent_node
 
-  def initialize(root_node, node_data, keys, graph_type=:tree)
+  def initialize(node_data, keys, graph_type=:tree, root_node=nil)
     @key = keys[:node_id_key]
     @parent_key = keys[:parent_key]
     @all_nodes = wrap_nodes(node_data, @key, @parent_key)
