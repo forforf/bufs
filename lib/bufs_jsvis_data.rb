@@ -127,7 +127,15 @@ class BufsJsvisData
     jsvis_model['data'] = {}#node.description
     jsvis_model['children'] = get_node_children(node).map {|cn| make_jsvis_tree_from_node(cn, depth-1)}
     jsvis_model['children'].compact!
-    return jsvis_model
+    jsvis_model
+    puts "-----"
+    pp jsvis_model
+    puts "-----"
+     json_str = <<-EOS
+{"id":"dummy_view2","name":"bid_view","data":{},"children":[]}
+    EOS
+    jsvis_model
+
 #  end
 #=end
   end

@@ -77,6 +77,7 @@ class GlueEnv
 #TODO: Rather than using File class directly, should a special class be used?
 #=begin
 attr_accessor :fs_user_id,
+           :user_id,  #need to add to spec and mesh with fs_user_id
 			     :data_file_name,
 			     :collection_namespace,
 			     :user_datastore_selector,
@@ -105,6 +106,7 @@ attr_accessor :fs_user_id,
     fs_path = env[env_name][:path]
     FileUtils.mkdir_p(fs_path) unless File.exists?(fs_path)
     fs_user_id = env[env_name][:user_id]
+    @user_id = fs_user_id
 
     #@collection_namespace = FileSystemEnv.set_collection_namespace(fs_path, fs_user_id)
     @user_datastore_selector = FileSystemEnv.set_user_datastore_selector(fs_path, fs_user_id)

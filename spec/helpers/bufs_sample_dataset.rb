@@ -122,6 +122,11 @@ include NodeHelpers
       raise "Params Issue with :parent_categories #{params.inspect}" unless node_data[:parent_categories]
       @user_classes.each do |user_class|
         node = Dummy.new.make_doc_no_attachment(user_class, params)
+        #Another Hack to be able to find the user as root in a tree
+        user_id = user_class.myGlueEnv.user_id
+        if node.my_category == 'a'|| node.my_category == 'b'|| node.my_category == 'c'
+          node.parent_categories_add(user_id)
+        end
         node.__save
       end
     end

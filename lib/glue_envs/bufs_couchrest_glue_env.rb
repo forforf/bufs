@@ -90,6 +90,7 @@ module BufsCouchRestEnv
 class GlueEnv
 
   attr_accessor :db_user_id,
+                      :user_id, #need to add to spec and mesh with db_user_id
                                :db,
                                :user_datastore_selector,
                                :user_datastore_id,
@@ -123,6 +124,7 @@ class GlueEnv
     #The problem is that there is one "query_all" per database, and it gets set to the last user class
     #that sets it.  
     db_user_id = env[env_name][:user_id] #TODO Change to "data_set_id at some point
+    @user_id = db_user_id
     #user_attach_class_name = "UserAttach#{db_user_id}"
     #the rescue is so that testing works
     #begin
