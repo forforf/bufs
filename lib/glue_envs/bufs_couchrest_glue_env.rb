@@ -7,11 +7,7 @@ module BufsCouchRestViews
     #raise view_name if view_name == :parent_categories
     #TODO: Add options for custom maps, etc
     #creating view in design_doc
-    puts "-----"
-    puts
-    puts "setting design_doc #{design_doc['_id']} with view: #{view_name.inspect} with map:\n #{opts.inspect}"
-    puts
-    puts "-----"
+    #puts "setting design_doc #{design_doc['_id']} with view: #{view_name.inspect} with map:\n #{opts.inspect}"
     design_doc.view_by view_name.to_sym, opts
     db_view_name = "by_#{view_name}"
     views = design_doc['views'] || {}
