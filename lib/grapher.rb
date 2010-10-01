@@ -39,27 +39,30 @@ class Grapher
 
   def initialize(node_data, keys, graph_type=:tree, root_node=nil)
     
-    puts "Grapher Node Data: #{node_data.map{|n| n.my_category}.inspect}"
+    #puts "Grapher Node Data: #{node_data.map{|n| n.my_category}.inspect}"
     
     @key = keys[:node_id_key]
     @parent_key = keys[:parent_key]
     @all_nodes = wrap_nodes(node_data, @key, @parent_key)
-    puts "All Nodes Size: #{@all_nodes.size}"
+    
+    #puts "All Nodes Size: #{@all_nodes.size}"
+    
     #organize nodes by key like this {node key => node, ... }
     # duplicates model structure, but faster
     @nodes_by_name = organize_by_name(@all_nodes)
-    puts "Nodes by Name: #{@nodes_by_name.map{|nm_nd| [nm_nd[0], nm_nd[1].node_name]}.inspect}"
+    
+    #puts "Nodes by Name: #{@nodes_by_name.map{|nm_nd| [nm_nd[0], nm_nd[1].node_name]}.inspect}"
         
     #organize by parents like this [ [par_cat, node] ... ]
     @nodes_by_parent_cat = organize_by_parents(@all_nodes, @nodes_by_name.keys)
     
-    puts "Nodes by Parent Cat: #{@nodes_by_parent_cat.map{|pcat_nd| [pcat_nd[0], pcat_nd[1].node_name]}.inspect}"
+    #puts "Nodes by Parent Cat: #{@nodes_by_parent_cat.map{|pcat_nd| [pcat_nd[0], pcat_nd[1].node_name]}.inspect}"
    
     nodes_with_parents = @nodes_by_parent_cat.map {|pcat_nd_pr| pcat_nd_pr[1]}.uniq
     nodes_with_no_parents = @all_nodes - nodes_with_parents
     
-    puts "Grapher: Nodes with Parents: #{nodes_with_parents.map{|n| n.node_name}.inspect}"
-    puts "Grapher: Nodes with No Parents: #{nodes_with_no_parents.map{|n| [n.node_name, n.node_parents]}.inspect}"
+    #puts "Grapher: Nodes with Parents: #{nodes_with_parents.map{|n| n.node_name}.inspect}"
+    #puts "Grapher: Nodes with No Parents: #{nodes_with_no_parents.map{|n| [n.node_name, n.node_parents]}.inspect}"
 
     @nodes_by_parent_node = @nodes_by_parent_cat.map do |par_cat_node_pair|
       parent_node = @nodes_by_name[par_cat_node_pair[0]]
@@ -67,15 +70,15 @@ class Grapher
       [parent_node, par_cat_node_pair[1] ]
     end
     
-    puts "Graher: by Parent: #{@nodes_by_parent_node.inspect}"
+    #puts "Grapher: Nodes by Parent: #{@nodes_by_parent_node.inspect}"
     
     adj_list = make_adjacency(@nodes_by_parent_node)
     
-    puts "Graph Adj List Keys: #{adj_list.keys.inspect}"
+    #puts "Graph Adj List Keys: #{adj_list.keys.inspect}"
     #only children and grandchildren are counted
     ordered_by_descendant_size = order_nodes(adj_list, nodes_with_no_parents, wroot_node=nil)
     
-    puts "Ordered: #{ordered_by_descendant_size.map{|n| n.node_name}.inspect}"
+    #puts "Ordered: #{ordered_by_descendant_size.map{|n| n.node_name}.inspect}"
     
     #TODO: viw -> model -> graph -> view  OR   view => (graph & model) => view ... (I kinda like the first)
     base_graph = RGL::DirectedAdjacencyGraph.new

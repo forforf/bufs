@@ -24,19 +24,19 @@ class BufsJsvisData
     #user_id.gsub!(/BufsNodeFactory::Bufs(File|InfoNode)/, "") # A bit hacky
     root_node= RootNode.new(user_id, [])
     @all_nodes = node_list
-    puts "JSVIS All Nodes size: #{@all_nodes.size}"
+    #puts "JSVIS All Nodes size: #{@all_nodes.size}"
     @keys = {:node_id_key => :my_category,
               :parent_key => :parent_categories}
     #TODO: To support multiple vis types, have this move to a parameter
     graph_type = :digraph
-    puts "JSVIS Root Node: #{root_node.inspect}"
+    #puts "JSVIS Root Node: #{root_node.inspect}"
     
     nodes_with_root = @all_nodes
     nodes_with_root << root_node if root_node
     
     @graph_data = Grapher.new(@all_nodes, @keys, graph_type, root_node).graph_data
     @graph = @graph_data[:graph]
-    puts "JSVIS Graph Iteration #{@graph.vertices.map {|v| v.node_name }.inspect}"
+    #puts "JSVIS Graph Iteration #{@graph.vertices.map {|v| v.node_name }.inspect}"
     raise "Graph is nil!!!" unless @graph
     #@no_parents = @graph_data[:no_parents]
     parents_to_nodes = @graph.vertices.map{|v| [v.node_content.__send__(@keys[:parent_key]), v]}
@@ -54,9 +54,9 @@ class BufsJsvisData
      top_nodes_existing = @all_nodes.select{|n| n.__send__(@keys[:node_id_key]) == top_node_id}
      raise "Key: #{@keys[:node_id_key]} is supposed to be unique, found #{top_nodes_existing.size} records" if top_nodes_existing.size > 1
      top_node = top_nodes_existing.first || DefaultNode.new(top_node_id)
-     puts "Top Node #{top_node.inspect}"
+     #puts "Top Node #{top_node.inspect}"
      tree = make_jsvis_tree_from_node(top_node, depth)
-     puts "Jsvis Tree: #{tree.inspect}"
+     #puts "Jsvis Tree: #{tree.inspect}"
      tree
   end
   

@@ -1,8 +1,11 @@
-#require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
+require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
 require File.dirname(__FILE__) + '/../lib/bufs_base_node'
 
+CouchDB = BufsFixtures::CouchDB #CouchRest.database!(doc_db_name)
+CouchDB.compact!
+
 #BufsDoc Libraries
-#BufsDocLibs = [File.dirname(__FILE__) + '/../lib/bufs_info_libs_tmp']
+BufsDocLibs = [File.dirname(__FILE__) + '/../lib/bufs_couchrest_glue_env']
 
 #BufsBaseNode.set_name_space(CouchDB)
 
@@ -30,13 +33,14 @@ end
                                                :path => CouchDB.uri,
                                                :user_id => DummyUserID},
                         :requires => BufsDocLibs,
-                        :includes => BufsDocIncludes }  #may not be final form
+                        :includes => BufsDocIncludes,
+                        :glue_name => "BufsCouchRestEnv"}  #may not be final form
 
 
 #TODO Tesing CouchRest implementation, need generic spec
 #invoked this way for spec since we're testing the abstract class
 #BufsBaseNode.__send__(:include, BufsInfoDocEnvMethods)
-BufsBaseNode.set_environment(CouchDBEnvironment)
+BufsBaseNode.set_environment(CouchDBEnvironment, CouchDBEnvironment[:glue_name])
 
 describe BufsBaseNode, "Basic Document Operations (no attachments)" do
   include BufsBaseNodeSpecHelpers

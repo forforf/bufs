@@ -16,10 +16,10 @@ module MakeUserClasses
     node_env2 = CouchRestNodeHelpers.env_builder(node_class_id2, CouchDB2, @user2_id)
     node_env3 = FileSystemNodeHelpers.env_builder(node_class_id3, FileSystem1, @user3_id)
     node_env4 = FileSystemNodeHelpers.env_builder(node_class_id4, FileSystem2, @user4_id)
-    #User1Class =  BufsNodeFactory.make(node_env1)
-    #User2Class =  BufsNodeFactory.make(node_env2)
+    User1Class =  BufsNodeFactory.make(node_env1)
+    User2Class =  BufsNodeFactory.make(node_env2)
     User3Class =  BufsNodeFactory.make(node_env3)
-    #User4Class =  BufsNodeFactory.make(node_env4)
+    User4Class =  BufsNodeFactory.make(node_env4)
 end
 
 module GrapherSpecHelpers

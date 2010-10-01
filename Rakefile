@@ -6,28 +6,30 @@ task :default => ['specs_with_rcov']
 task :specs => ['spec_set_1', 'spec_set_2', 'spec_set_3']
 
 
-#rake fails when running spec/abstract_node_spec.rb (but the spec works standalone)
+#Tests that fail in rake but work standalone
 spec_set_0 = ['spec/bufs_escape_spec.rb']
 
-spec_set_1 = ['spec/bufs_escape_spec.rb',
-              'spec/bufs_info_attachment_spec.rb',
-              'spec/bufs_info_doc_spec.rb',
-              'spec/bufs_file_system_spec.rb',
-              'spec/user_doc_spec.rb',
-              'spec/user_file_node_spec.rb',
-              'spec/convert_node_type_spec.rb',
-              'spec/bind_user_file_system_spec.rb']
+#fixture tests
+spec_set_1 = ['spec/couchdb_running_spec.rb', 
+              'spec/bufs_sample_dataset_spec.rb']
 
-spec_set_2 = [#'spec/abstract_node_spec.rb',
-              'spec/sync_node_spec.rb']
+#model tests
+spec_set_2 = ['spec/couchrest_attachment_handler_spec.rb',
+              #'spec/bufs_base_node_spec.rb',
+              #'spec/node_element_operations_spec.rb',
+              'spec/bufs_couchrest_spec.rb',
+              'spec/bufs_filesystem_spec.rb',
+              'spec/bufs_node_factory_spec.rb']
 
-spec_set_3 = ['spec/abstract_node_spec.rb']
+#ui integration tests
+spec_set_3 = ['spec/grapher_spec.rb',
+              'spec/bufs_jsvis_data_spec.rb']
 
 spec_set_4 = ['spec/bufs_view_builder_spec.rb']
 
 desc "Run Specs with RCov"
   Spec::Rake::SpecTask.new('specs_with_rcov') do |t|
-    t.spec_files = spec_set_1
+    t.spec_files = spec_set_1 + spec_set_2 + spec_set_3
 
     t.rcov = true
     #t.rcov_opts = ['--exclude', 'examples']

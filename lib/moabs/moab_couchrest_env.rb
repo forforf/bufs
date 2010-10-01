@@ -366,8 +366,11 @@ module CouchRestEnv
     end
   end
 
+  #TODO: Test in spec that attachments are being deleted
   def self.destroy_node(node)
-    att_doc = node.my_GlueEnv.attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
+    #att_doc = node.my_GlueEnv.attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
+    att_doc = node.my_GlueEnv.attachClass.get(node.my_GlueEnv.attachClass.uniq_att_doc_id(node))
+    #raise "Destroying #{att_doc.inspect}"
     att_doc.destroy if att_doc
     begin
       self.destroy(node)

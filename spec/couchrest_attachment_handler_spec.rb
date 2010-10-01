@@ -16,7 +16,7 @@ end
 #SrcLocation = ProjectLocation + 'src/'
 
 require BufsAttachSpec::LibDir + 'bufs_base_node'  #used for getting the attachment id
-require BufsAttachSpec::LibDir+ 'bufs_info_attachment'
+require BufsAttachSpec::LibDir+ 'moabs/couchrest_attachment_handler'
 
 #BufsInfoAttachment.set_name_space(CouchDB)
 #BufsInfoAttachment.use_database(CouchDB)  #TODO  Catch errors when database isn't set
@@ -25,36 +25,52 @@ describe BufsInfoAttachment do
   before(:all) do
     @test_files = BufsFixtures.test_files
     DummyUserID = 'AttachSpec'
-    CouchDBEnvironment = {:bufs_info_doc_env => {:host => CouchDB.host,
+ #   CouchDBEnvironment = {:bufs_info_doc_env => {:host => CouchDB.host,
+ #                                              :path => CouchDB.uri,
+ #                                              :user_id => DummyUserID }
+ #                         }
+  #  BufsBaseNode.set_environment(CouchDBEnvironment, "BufsCouchRestEnv")
+  BufsDocLibs = [File.dirname(__FILE__) + '/../lib/glue_envs/bufs_couchrest_glue_env']
+  BufsDocIncludes = [:CouchRestEnv]
+  CouchDBEnvironment = {:bufs_info_doc_env => {:host => CouchDB.host,
                                                :path => CouchDB.uri,
-                                               :user_id => DummyUserID }
-                         }
-    BufsInfoDoc.set_environment(CouchDBEnvironment)
+                                               :user_id => DummyUserID},
+                        :requires => BufsDocLibs,
+                        :includes => BufsDocIncludes,
+                        :glue_name => "BufsCouchRestEnv" }  #may not be final form
+
+    BufsBaseNode.set_environment(CouchDBEnvironment, CouchDBEnvironment[:glue_name])
+
     BufsInfoAttachment.use_database CouchDB
 
     @test_doc = BufsBaseNode.new(:my_category => "attach_test_doc",
                                 :parent_categories => ["atd_dad", "atd_mom"])
-    @test_doc.save
-    @test_doc_id = @test_doc.model_metadata[:_id]
+    @test_doc.__save
+    @test_doc_id = @test_doc._model_metadata[:_id]
   end
 
+
   after(:all) do
-    @test_doc.destroy_node
-    bias = BufsInfoAttachment.all
+    @test_doc.__destroy_node
+    #FIXME: Reconcile BufsInfoAttachment vs CouchRestEnv::Moab...AttachSpec
+    bias = CouchRestEnv::MoabAttachmentHandlerAttachSpec.all
     bias.each do |bia|
+      puts "BIA to destroy: #{bia.inspect}"
       bia.destroy
     end
+    #puts "Test: #{CouchRestEnv::MoabAttachmentHandlerAttachSpec.all.inspect}"
   end
 
   before(:each) do
-    BufsInfoAttachment.all.each do |doc|
+    bias = CouchRestEnv::MoabAttachmentHandlerAttachSpec.all
+    bias.each do |att_doc|
       begin
-        doc.destroy
+        att_doc.destroy
       rescue ArgumentError => e
-        puts "Rescued Error:[#{e}] while trying to destroy #{doc.class}"
-        raise "#{doc.inspect}" #doc['_id'].inspect}"
-        me = doc.class.get(doc.model_metadata['_id'])
-        me.destroy 
+        puts "Rescued Error:[#{e}] while trying to destroy #{att_doc.class}"
+        raise "#{att_doc.inspect}" #doc['_id'].inspect}"
+        me = att_doc.class.get(doc._model_metadata['_id'])
+        me.__destroy_node
       end
     end
   end
@@ -74,7 +90,7 @@ describe BufsInfoAttachment do
     #test
     bia = BufsInfoAttachment.add_attachment_package(test_doc, attachs )
     #check results
-    test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
+    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
     bia['_id'].should == test_attachment_id
     #test_doc.attachment_doc_id.should == test_attachment_id
     #p bia
@@ -100,7 +116,7 @@ describe BufsInfoAttachment do
     #test
     bia = BufsInfoAttachment.add_attachment_package(test_doc, attachs )
     #check results
-    test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
+    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
     bia['_id'].should == test_attachment_id
     bia['md_attachments'][BufsEscape.escape(test_file_basename)]['file_modified'].should == test_file_modified_time.to_s
     bia['_attachments'][BufsEscape.escape(test_file_basename)]['content_type'].should == md_params['content_type']
@@ -129,7 +145,7 @@ describe BufsInfoAttachment do
     #test
     bia = BufsInfoAttachment.add_attachment_package(test_doc, attachs)
     #verify results
-    test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
+    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
     bia['_id'].should == test_attachment_id
     bia['md_attachments'][BufsEscape.escape(test_file1_basename)]['file_modified'].should == File.mtime(test_file1).to_s
     bia['_attachments'][BufsEscape.escape(test_file1_basename)]['content_type'].should == md_params1['content_type']
@@ -158,7 +174,7 @@ describe BufsInfoAttachment do
     test_doc = @test_doc
     test_doc_id = @test_doc_id
     bia_existing = BufsInfoAttachment.add_attachment_package(test_doc, attachs)
-    test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
+    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
     #verify attachment exists
     bia_existing['_id'].should == test_attachment_id
     #set initial conditions for test file
@@ -189,7 +205,7 @@ describe BufsInfoAttachment do
     test_doc = @test_doc
     test_doc_id = @test_doc_id
     #test_doc_id = 'dummy_fresh_attachment_replaces_stale'
-    test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
+    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
     #create a single record
     md_params = {}
     md_params['content_type'] = MimeNew.for_ofc_x(test_file)
@@ -297,8 +313,8 @@ describe BufsInfoAttachment do
                test_file2_basename => {'data' => data2, 'md' => md_params2}
               }
     test_doc = @test_doc
-    test_doc_id = test_doc.model_metadata[:_id]
-    test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
+    test_doc_id = test_doc._model_metadata[:_id]
+    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
     test_attachment = BufsInfoAttachment.get(test_attachment_id)
     bia = BufsInfoAttachment.add_attachment_package(test_doc, attachs)
     data = BufsInfoAttachment.get_attachments(bia)
@@ -327,8 +343,8 @@ describe BufsInfoAttachment do
                test_file2_basename => {'data' => data2, 'md' => md_params2}
               }
     test_doc = @test_doc
-    test_doc_id = test_doc.model_metadata[:_id]
-    test_attachment_id = test_doc_id + BufsInfoDoc.attachment_base_id
+    test_doc_id = test_doc._model_metadata[:_id]
+    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
     test_attachment = BufsInfoAttachment.get(test_attachment_id)
     bia = BufsInfoAttachment.add_attachment_package(test_doc, attachs)
     #test
