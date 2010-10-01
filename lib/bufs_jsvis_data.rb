@@ -24,12 +24,19 @@ class BufsJsvisData
     #user_id.gsub!(/BufsNodeFactory::Bufs(File|InfoNode)/, "") # A bit hacky
     root_node= RootNode.new(user_id, [])
     @all_nodes = node_list
+    puts "JSVIS All Nodes size: #{@all_nodes.size}"
     @keys = {:node_id_key => :my_category,
               :parent_key => :parent_categories}
     #TODO: To support multiple vis types, have this move to a parameter
     graph_type = :digraph
+    puts "JSVIS Root Node: #{root_node.inspect}"
+    
+    nodes_with_root = @all_nodes
+    nodes_with_root << root_node if root_node
+    
     @graph_data = Grapher.new(@all_nodes, @keys, graph_type, root_node).graph_data
     @graph = @graph_data[:graph]
+    puts "JSVIS Graph Iteration #{@graph.vertices.map {|v| v.node_name }.inspect}"
     raise "Graph is nil!!!" unless @graph
     #@no_parents = @graph_data[:no_parents]
     parents_to_nodes = @graph.vertices.map{|v| [v.node_content.__send__(@keys[:parent_key]), v]}
@@ -47,7 +54,10 @@ class BufsJsvisData
      top_nodes_existing = @all_nodes.select{|n| n.__send__(@keys[:node_id_key]) == top_node_id}
      raise "Key: #{@keys[:node_id_key]} is supposed to be unique, found #{top_nodes_existing.size} records" if top_nodes_existing.size > 1
      top_node = top_nodes_existing.first || DefaultNode.new(top_node_id)
-     make_jsvis_tree_from_node(top_node, depth)
+     puts "Top Node #{top_node.inspect}"
+     tree = make_jsvis_tree_from_node(top_node, depth)
+     puts "Jsvis Tree: #{tree.inspect}"
+     tree
   end
   
   def make_jsvis_tree_from_node(twnode, depth)
@@ -64,7 +74,13 @@ class BufsJsvisData
     jsvis_model['id'] = node.__send__(@keys[:node_id_key])
     jsvis_model['name'] = node.__send__(@keys[:node_id_key])
     #TODO Complete the generalization of this so that custom data can be selected
-    jsvis_model['data'] = {}#node.description
+    node_data = nil
+    #TODO genericize this by using special key
+    node_data = node._user_data if node.respond_to? :_user_data
+    file_data = {:attached_files => node.attached_files} if node.respond_to? :attached_files
+    jsvis_data = node_data.merge(file_data) if node_data
+    
+    jsvis_model['data'] = jsvis_data
     jsvis_model['children'] = get_node_children(node).map {|cn| make_jsvis_tree_from_node(cn, depth-1)}
     jsvis_model['children'].compact!
     jsvis_model

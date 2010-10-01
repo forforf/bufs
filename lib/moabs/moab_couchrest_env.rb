@@ -279,10 +279,10 @@ module CouchRestEnv
     }
   end
 
-  def self.set_couch_design(db) #, view_name)
+  def self.set_couch_design(db, user_id) #, view_name)
     @@mutex.synchronize {
       design_doc = CouchRest::Design.new
-      design_doc.name = self.to_s + "_Design"
+      design_doc.name = "#{self.to_s}_#{user_id}_Design"
       #example of a map function that can be passed as a parameter if desired (currently not needed)
       #map_function = "function(doc) {\n  if(doc['#{@@collection_namespace}']) {\n   emit(doc['_id'], 1);\n  }\n}"
       #design_doc.view_by collection_namespace.to_sym #, {:map => map_function }

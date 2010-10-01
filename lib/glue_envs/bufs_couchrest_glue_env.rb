@@ -45,6 +45,16 @@ module BufsCouchRestViews
     map_fn = { :map => map_str } #returned from synced block
     self.set_view(db, design_doc, view_name, map_fn)
   end
+  
+  def self.tmp_my_cat_view(db, design_doc, user_datastore_id)
+    map_str = "function(doc) {
+                   if (doc.bufs_namespace =='#{user_datastore_id}' && doc.my_category ){
+                     emit(doc.my_category, doc);
+                  }
+               }"
+    map_fn = { :map => map_str }
+    self.set_view(db, design_doc, :my_category, map_fn)
+  end
 
   def self.by_my_category(moab_data, user_datastore_id, match_key)
     db = moab_data[:db]
@@ -137,7 +147,7 @@ class GlueEnv
     @collection_namespace = CouchRestEnv.set_collection_namespace(db_name_path, db_user_id)
     @user_datastore_selector = CouchRestEnv.set_user_datastore_selector(@db, @db_user_id)
     @user_datastore_id = CouchRestEnv.set_collection_namespace(db_name_path, db_user_id)
-    @design_doc = CouchRestEnv.set_couch_design(@db)#, @collection_namespace)
+    @design_doc = CouchRestEnv.set_couch_design(@db, db_user_id)#, @collection_namespace)
     @moab_data = {:db => @db, :design_doc => @design_doc}
     @define_query_all = "by_all_bufs".to_sym #CouchRestEnv.query_for_all_collection_records
     @attachment_base_id = CouchRestEnv::AttachmentBaseID
@@ -152,6 +162,9 @@ class GlueEnv
     @namespace = CouchRestEnv.set_namespace(db_name_path, db_user_id)
     @views = BufsCouchRestViews
     @views.set_view_all(@db, @design_doc, @collection_namespace)
+    
+    @views.tmp_my_cat_view(@db, @design_doc, @user_datastore_id)
+    
     attach_class_name = "MoabAttachmentHandler#{db_user_id}"
     @attachClass = CouchRestEnv.set_attach_class(@db.root, attach_class_name) 
     @_files_mgr_class = CouchRestEnv::FilesMgrInterface

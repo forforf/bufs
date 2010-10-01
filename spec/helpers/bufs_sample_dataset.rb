@@ -22,9 +22,9 @@ module MakeUserClasses
     node_env3 = FileSystemNodeHelpers.env_builder(node_class_id3, FileSystem, @user3_id)
     node_env4 = FileSystemNodeHelpers.env_builder(node_class_id4, FileSystem, @user4_id)
     User1Class =  BufsNodeFactory.make(node_env1)
-    #User2Class =  BufsNodeFactory.make(node_env2)
+    User2Class =  BufsNodeFactory.make(node_env2)
     User3Class =  BufsNodeFactory.make(node_env3)
-    #User4Class =  BufsNodeFactory.make(node_env4)
+    User4Class =  BufsNodeFactory.make(node_env4)
 end
 
 
@@ -55,7 +55,7 @@ module SampleDataSets
     
     data_set[:aa][:my_category] = 'aa'
     data_set[:aa][:parent_categories] = ['a']
-    data_set[:aa][:files] = ['simple_text_file', 'binarary_data_pptx']
+    data_set[:aa][:files] = ['simple_text_file', 'binary_data_pptx']
     
     data_set[:ab][:my_category] = 'ab'
     data_set[:ab][:parent_categories] = ['a', 'aaa', 'bb', 'just_a_label2']
@@ -107,7 +107,8 @@ include MakeUserClasses
 include SampleDataSets
 include NodeHelpers
 
-  @user_classes = [User1Class, User3Class]
+  @user_classes = [User1Class, User2Class, User3Class, User4Class]
+  @test_files = BufsFixtures.test_files
   
   #stupid hack so I don't have to go change existing stuff
   class Dummy
@@ -117,11 +118,22 @@ include NodeHelpers
   def self.add_data_set_to_model(data_set = Sample1::DataSet)
     data_set.each do |node, node_data|
       params = { :my_category => node_data[:my_category],
-                       :parent_categories => node_data[:parent_categories] }
+                       :parent_categories => node_data[:parent_categories],
+                       :links => node_data[:links],
+                       :description => "test"}
       raise "Params Issue with :my_category #{params.inspect}" unless node_data[:my_category]
       raise "Params Issue with :parent_categories #{params.inspect}" unless node_data[:parent_categories]
       @user_classes.each do |user_class|
         node = Dummy.new.make_doc_no_attachment(user_class, params)
+        node.description = "from #{node.my_GlueEnv.user_id}"
+        
+        #add files to node
+        if node_data[:files]
+          file_references = node_data[:files]
+          file_data = file_references.map{|ref| {:src_filename => @test_files[ref]}}
+          node.files_add(file_data)
+        end
+        
         #Another Hack to be able to find the user as root in a tree
         user_id = user_class.myGlueEnv.user_id
         if node.my_category == 'a'|| node.my_category == 'b'|| node.my_category == 'c'
