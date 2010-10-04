@@ -109,7 +109,7 @@ class BufsBaseNode
   #Setting up the Class Environment - The class environment holds all
   # model-specific implementation details
   def self.set_environment(env, glue_name)
-    reqs = env[:requires]  #Typically nil, since it's set at the factory
+    reqs = env[:requires]  #nil if being created from factory
     #incs = env[:includes] 
     reqs.each {|r| require r} if reqs   #load software libraries needed
     #incs.each {|mod| include Module.const_get(mod)} if incs  #include the modules to mix in to the node
@@ -135,7 +135,6 @@ class BufsBaseNode
     #TODO: test for proper format
 
     raw_nodes = @myGlueEnv.raw_all
-    puts "BufsBaseNode all size: #{raw_nodes.size}"
 
     raw_nodes.map! do |base_data| 
       combined_data = self.modify_data_structures(base_data, data_structure_changes)

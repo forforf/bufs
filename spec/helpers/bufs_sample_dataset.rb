@@ -114,18 +114,27 @@ include NodeHelpers
   class Dummy
     include NodeHelpers
   end
+
+  def self.convert_links_to_hash(links)
+    link_hash = {}
+    return unless links
+    links.each do |link_pair|
+      link_hash[link_pair[1]] = link_pair[0]
+    end
+    link_hash
+  end
   
   def self.add_data_set_to_model(data_set = Sample1::DataSet)
     data_set.each do |node, node_data|
       params = { :my_category => node_data[:my_category],
                        :parent_categories => node_data[:parent_categories],
-                       :links => node_data[:links],
+                       :links => self.convert_links_to_hash(node_data[:links]),
                        :description => "test"}
       raise "Params Issue with :my_category #{params.inspect}" unless node_data[:my_category]
       raise "Params Issue with :parent_categories #{params.inspect}" unless node_data[:parent_categories]
       @user_classes.each do |user_class|
         node = Dummy.new.make_doc_no_attachment(user_class, params)
-        node.description = "from #{node.my_GlueEnv.user_id}"
+        node.description = "from: #{node.my_GlueEnv.user_id}"
         
         #add files to node
         if node_data[:files]

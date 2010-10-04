@@ -27,20 +27,78 @@ module BufsBaseNodeSpecHelpers
   end
 end
 
-  DummyUserID = 'StubID1'
-  BufsDocIncludes = [:BufsInfoDocEnvMethods]
-  CouchDBEnvironment = {:bufs_info_doc_env => {:host => CouchDB.host,
-                                               :path => CouchDB.uri,
+module BufsBaseNodeSpec
+  StubsForSpec = BufsDocLibs = [File.dirname(__FILE__) + '/../lib/glue_envs/base_class_stub_for_spec']
+  
+  DummyUserID = 'BaseStubID1'
+  StubIncludes = [:PersistentModelEnv]
+  StubModelEnv = {:persistent_model_env => {:pers_mod_param1 => :param1,
+                                               :pers_mod_param2 => :param2,
                                                :user_id => DummyUserID},
-                        :requires => BufsDocLibs,
-                        :includes => BufsDocIncludes,
-                        :glue_name => "BufsCouchRestEnv"}  #may not be final form
+                        :requires => StubsForSpec,
+                        :includes => StubIncludes,
+                        :glue_name => "GlueStub"}  #may not be final form
+                        
+  
+end
 
+describe BufsBaseNode, "Base Class initialization with stubs" do
+  #include BufsBaseNodeSpec
+  
+  before(:each) do
+    @user_class = BufsBaseNode
+  end
+  
+  it "should have a persistent model environment set up" do
+    my_env = BufsBaseNodeSpec::StubModelEnv
+    BufsBaseNode.set_environment(my_env, my_env[:glue_name])
+    GlueStub::IsLoaded.should == true
+    @user_class.metadata_keys.should == [:model_metadata]
+  end
+  
+  it "should be able to query all native records associated with the class" do
+    @user_class.all_native_records.should == "returns all records in native form"
+  end
+  
+  it "should fail to initialize if validations aren't met"
+  
+  it "should be able to intialize" do
+    initial_params = {:node_id => 'node_new',
+        :model_content => 'native data new',
+        :model_metadata => 'n/a to base node new',
+        :content_to_remove => 'bye, bye new'}
+    new_node = @user_class.new(initial_params)
+    new_node.class.should == @user_class
+    #TODO: More verifications should be added
+  end
+  
+  it "should be able to query all records and return them in base class form" do
+    data_structure_changes = {:add => {:new_dynamic_key => 'default dynamic value'},
+                                          :remove => [:model_metadata]}
+    nodes = @user_class.all(data_structure_changes)
+    #data defined in  GlueStub
+    nodes.each do |node|
+      ['node1', 'node2'].should include node.node_id
+      ['native data 1', 'native data 2'].should include node.model_content
+      node.new_dynamic_key.should == 'default dynamic value'
+      #TODO: Create test to show it would be there otherwise
+      node.respond_to?(:model_metadata).should == false
+    end
+  end
+  
+  it "should be able to filter records from the model using call view"
+  it "should be able to find records from the model by an id"
+  it "should be able to destroy all user records in the model natively"
+  it "should be able to create a new node (may not be testable here)"
+  it "should have an attachment base id decoupled from the model"
+  
+  
+  
+  
+end
 
-#TODO Tesing CouchRest implementation, need generic spec
-#invoked this way for spec since we're testing the abstract class
-#BufsBaseNode.__send__(:include, BufsInfoDocEnvMethods)
-BufsBaseNode.set_environment(CouchDBEnvironment, CouchDBEnvironment[:glue_name])
+=begin
+#BufsBaseNode.set_environment(CouchDBEnvironment, CouchDBEnvironment[:glue_name])
 
 describe BufsBaseNode, "Basic Document Operations (no attachments)" do
   include BufsBaseNodeSpecHelpers
@@ -309,3 +367,4 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     records.size.should == 1
   end
 end
+=end

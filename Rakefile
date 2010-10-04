@@ -14,7 +14,7 @@ spec_set_1 = ['spec/couchdb_running_spec.rb',
               'spec/bufs_sample_dataset_spec.rb']
 
 #model tests
-spec_set_2 = ['spec/couchrest_attachment_handler_spec.rb',
+spec_set_2 = [#'spec/couchrest_attachment_handler_spec.rb',
               #'spec/bufs_base_node_spec.rb',
               #'spec/node_element_operations_spec.rb',
               'spec/bufs_couchrest_spec.rb',
@@ -29,7 +29,7 @@ spec_set_4 = ['spec/bufs_view_builder_spec.rb']
 
 desc "Run Specs with RCov"
   Spec::Rake::SpecTask.new('specs_with_rcov') do |t|
-    t.spec_files = spec_set_1 + spec_set_2 + spec_set_3
+    t.spec_files = spec_set_2 #spec_set_1 + spec_set_2 + spec_set_3
 
     t.rcov = true
     #t.rcov_opts = ['--exclude', 'examples']
