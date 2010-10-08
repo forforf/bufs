@@ -20,7 +20,8 @@ class BufsJsvisData
   attr_accessor :graph, :graph_data
   
   #TODO: Rather than using instance variables, pass explicitly
-  def initialize(user_id, node_list)
+  def initialize(user_id, node_list, view_id_postfix="")
+    @view_id_postfix = view_id_postfix
     #user_id.gsub!(/BufsNodeFactory::Bufs(File|InfoNode)/, "") # A bit hacky
     root_node= RootNode.new(user_id, [])
     @all_nodes = node_list
@@ -50,15 +51,16 @@ class BufsJsvisData
 
   #Caller may not have access ruby object structure, so need to use the node_id
   def json_vis_tree(top_node_id, depth)
-     all_graph_nodes = {}
-     top_nodes_existing = @all_nodes.select{|n| n.__send__(@keys[:node_id_key]) == top_node_id}
-     raise "Key: #{@keys[:node_id_key]} is supposed to be unique, found #{top_nodes_existing.size} records" if top_nodes_existing.size > 1
-     top_node = top_nodes_existing.first || DefaultNode.new(top_node_id)
-     #puts "Top Node #{top_node.inspect}"
-     tree = make_jsvis_tree_from_node(top_node, depth)
-     #puts "Jsvis Tree: #{tree.inspect}"
-     tree
+    all_graph_nodes = {}
+    top_nodes_existing = @all_nodes.select{|n| n.__send__(@keys[:node_id_key]) == top_node_id}
+    raise "Key: #{@keys[:node_id_key]} is supposed to be unique, found #{top_nodes_existing.size} records" if top_nodes_existing.size > 1
+    top_node = top_nodes_existing.first || DefaultNode.new(top_node_id)
+    #puts "Top Node #{top_node.inspect}"
+    tree = make_jsvis_tree_from_node(top_node, depth)
+    #puts "Jsvis Tree: #{tree.inspect}"
+    tree
   end
+   
   
   def make_jsvis_tree_from_node(twnode, depth)
     jsvis_model = {} #JsvisModel.new
@@ -71,8 +73,9 @@ class BufsJsvisData
     else
       node = twnode
     end
-    jsvis_model['id'] = node.__send__(@keys[:node_id_key])
-    jsvis_model['name'] = node.__send__(@keys[:node_id_key])
+    view_id = node.__send__(@keys[:node_id_key])
+    jsvis_model['id'] = view_id + @view_id_postfix
+    jsvis_model['name'] = view_id
     #TODO Complete the generalization of this so that custom data can be selected
     node_data = nil
     #TODO genericize this by using special key
@@ -85,9 +88,11 @@ class BufsJsvisData
     jsvis_model['children'].compact!
     jsvis_model
   end
+  
 
   def get_node_children(node)
     childrens_parent = node.__send__(@keys[:node_id_key])  #I am my childrens' parent
     ch_nodes = @parent_to_nodes.select {|n| n[0] == childrens_parent}.map{|i| i.last}
   end
+  
 end
