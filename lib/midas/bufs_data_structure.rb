@@ -44,13 +44,16 @@ module NodeElementOperations
                            Hash[:update_this => this] }
   #if link_name is used besides other, then all link_names would need to be unique, so we use other
   LinkSubtractOp = lambda {|this, other| this = this || {}
+                                          #Hacked together needs thought out (and TESTED!!)
                                          other = other || {}
-                                         puts "Other: #{other.inspect}"
-                                         srcs = [other].flatten
-                                         srcs.each { |s| 
-                                                      other[s].each {|olnk| this[s].delete(olnk) if this[s]}
+                                         puts "This / Other: #{this.inspect} / #{other.inspect}"
+                                         #srcs = [other].flatten
+                                         other.keys.each { |s|
+                                                      #other[s].each {|olnk| this[s].delete(olnk) if this[s]}
+                                                      puts "delete #{other[s].inspect} from #{this[s].inspect}"
                                                       #this[s].delete(other[s]) if this[s]
-                                                      this.delete(s) if (this[s].nil? || this[s].empty?)
+                                                      this.delete(s) 
+                                                      #this.delete(s) if (this[s].nil? || this[s].empty?)
                                               }
                                          Hash[:update_this => this]
                            }
