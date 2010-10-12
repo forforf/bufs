@@ -274,12 +274,18 @@ class BufsBaseNode
     #and this method wraps the obj.links so that the links_add method doesn't have to
     #include itself as a paramter to the predefined operation
     #lambda {|other| @node_data_hash[param] = unbound_op.call(@node_data_hash[param], other)}
-    lambda {|other| this = self.__send__("#{param}".to_sym) #original value
+    lambda {|other| old_this = self.__send__("#{param}".to_sym) #original value
+                    #we're going to compare the new value to the old later
+                    if old_this
+                      this = old_this.dup 
+                    else
+                      this = old_this
+                    end
                     rtn_data = unbound_op.call(this, other)
                     new_this = rtn_data[:update_this]
                     self.__send__("#{param}=".to_sym, new_this)
                     it_changed = true
-                    it_changed = false if (this == new_this) || !(rtn_data.has_key?(:update_this))
+                    it_changed = false if (old_this == new_this) || !(rtn_data.has_key?(:update_this))
                     not_in_model = !@saved_to_model
                     self.__save if (not_in_model || it_changed)#unless (@saved_to_model && save) #don't save if the value hasn't changed
                     rtn = rtn_data[:return_value] || rtn_data[:update_this]

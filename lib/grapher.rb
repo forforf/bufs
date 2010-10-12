@@ -193,11 +193,13 @@ class Grapher
   def make_tree(base_graph, ordered_nodes, adj_list, root_data)
     tree = base_graph
     ordered_nodes.each do |tw_node|
+      #puts "Adding Node: #{tw_node.node_name}"
       tw_children = adj_list[tw_node]
       if tree.has_vertex?(tw_node)
         #should be safe to silently skip since the node of the trees are objects
         #this means that the exact object is already on the tree, no need to readd it
       else
+         #puts "Adding link to Root Node: #{tw_node.node_name}"
         #raise "making tree from root data (is it wrapped?): #{root_data.class.inspect}" if root_data
         tree.add_edge(RootId, tw_node)
         tw_node.assigned_to_tree = true
@@ -219,6 +221,12 @@ class Grapher
   end #def
   
   def make_digraph(base_graph, ordered_nodes, adj_list)
+    #Logic flaws
+    #ToDo:
+    #Separate no parents from ordered nodes
+    #If there is only node with no parents than it is root
+    #If there are multiple nodes with no parents then build a digraph for each??
+    #If all nodes have parents then top node in ordered list is root
     #assume root is first node
     root = ordered_nodes.shift
     digraph = base_graph

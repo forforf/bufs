@@ -45,6 +45,7 @@ module NodeElementOperations
   #if link_name is used besides other, then all link_names would need to be unique, so we use other
   LinkSubtractOp = lambda {|this, other| this = this || {}
                                          other = other || {}
+                                         puts "Other: #{other.inspect}"
                                          srcs = [other].flatten
                                          srcs.each { |s| 
                                                       other[s].each {|olnk| this[s].delete(olnk) if this[s]}
