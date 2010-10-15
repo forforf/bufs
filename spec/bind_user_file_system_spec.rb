@@ -47,8 +47,10 @@ describe BindUserFileSystem do
       user_node_class = user_binding[0]
       user = user_binding[1]
       #checks that the class and filesystem directories match 
-      #FIXME!!!! the model directory should not equal the view directory!!!!!
-      "#{user_node_class.myGlueEnv.user_datastore_selector}/".should_not == BindUserFileSystem.get_home_dir(user)
+      
+      #TODO: get model dir from class rather than setting it here
+      model_dir = ".model"
+      File.join(user_node_class.myGlueEnv.user_datastore_selector).should == File.join(BindUserFileSystem.get_home_dir(user), model_dir)
     end
   end
 end

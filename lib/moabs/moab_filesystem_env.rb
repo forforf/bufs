@@ -73,6 +73,7 @@ module FileSystemEnv
 
     def self.get_att_doc(node)
       root_path = node.my_GlueEnv.user_datastore_selector
+      #my_cat dependency
       node_loc  = node._user_data[node.my_GlueEnv.node_key]
       node_path = File.join(root_path, node_loc)
       model_basenames = Dir.working_entries(node_path)
@@ -135,6 +136,8 @@ module FileSystemEnv
       #bia = bia_class.get(node.my_attachment_doc_id)
       #record = bia_class.add_attachment_package(node, attachment_package)
       #@record_ref = record['_id']
+      #add raw data only supports a single file, but returns it as an array so that the return
+      #type is consisentent with other methods that ad files.
       [esc_attach_name]
     end
 
@@ -203,6 +206,7 @@ module FileSystemEnv
       node_path = File.join(root_path, node_loc)
       attached_entries = Dir.working_entries(node_path)
       #alternate approach would be to use node.files_attached
+      #FIXME: What is the e for in the File.join? is it needed?
       attached_filenames = attached_entries.map{|e| File.join(node_path, e)}
       FileUtils.rm(attached_filenames)
     end
@@ -226,20 +230,20 @@ module FileSystemEnv
 
   def self.set_user_datastore_selector(fs_name_path, fs_user_id)
     @@mutex.synchronize {
-      File.join(fs_name_path, fs_user_id)
+      File.join(fs_name_path, fs_user_id, self.model_dir_name)
     }
   end
 
   def self.set_user_datastore_id(fs_name_path, fs_user_id)
     @@mutex.synchronize {
-      File.join(fs_name_path, fs_user_id)
+      File.join(fs_name_path, fs_user_id, self.model_dir_name)
     }
   end
 
   #model namespace
   def self.set_namespace(fs_name_path, fs_user_id)
     @@mutex.synchronize {
-      namespace = File.join(fs_name_path, fs_user_id)
+      namespace = File.join(fs_name_path, fs_user_id, self.model_dir_name)
     }
   end
 
@@ -249,6 +253,10 @@ module FileSystemEnv
 
   def self.set_data_file_name
     ".node_data.json"
+  end
+  
+  def self.model_dir_name
+    ".model"
   end
 
   #Node Actions
@@ -262,7 +270,10 @@ module FileSystemEnv
     def self.save(model_save_params, data)
       #TODO: Figure out how to separate node_id and my_category, still munged currently
       parent_path = model_save_params[:nodes_save_path]
-      node_path = File.join(parent_path, data[:my_category])  #<- Fix this dependency on my_cat
+      #model_dir = self.model_dir_name
+      #TODO, should the node_path come from some other data type (i.e., datastore_selector?)
+      #TODO Fix filename dependency with :my_category
+      node_path = File.join(parent_path, data[:my_category])
       file_name = model_save_params[:data_file]
       save_path = File.join(node_path, file_name)  
       #raise "Path not found to save data: #{parent_path}" unless File.exist?(parent_path)
@@ -305,6 +316,7 @@ module FileSystemEnv
       #end
     end
 
+    #TODO: This method is never reached since the glue env handles it.  That is probably the wrong approach.
     def self.destroy_node(node)
       att_doc = node.class.user_attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
       att_doc.destroy if att_doc

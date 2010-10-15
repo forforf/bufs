@@ -47,9 +47,11 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
   end
 
   it "should have its namespace set up correctly" do
-    #TODO: Figure out if both are necessary (may require integration of other models)
-    BufsBaseNode.myGlueEnv.user_datastore_selector.should == File.join(TestFSModelBaseDir, ModelDir,DummyUserID)
-    BufsBaseNode.myGlueEnv.user_datastore_id.should == File.join(TestFSModelBaseDir, ModelDir,DummyUserID)
+    #TODO: Figure out if both datastore selector and datastore id are necessary (may require integration of other models)
+    #TODO:  retrieve base model from BufsBaseNode glue env
+    base_model_dir = ".model"
+    BufsBaseNode.myGlueEnv.user_datastore_selector.should == File.join(TestFSModelBaseDir, ModelDir, DummyUserID, base_model_dir)
+    BufsBaseNode.myGlueEnv.user_datastore_id.should == File.join(TestFSModelBaseDir, ModelDir, DummyUserID, base_model_dir)
   end
 
   it "should initialize correctly" do
@@ -118,6 +120,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     
     #check results
     doc_params.keys.each do |param|
+      #TODO convert to datastore selector if possible
       namespace = BufsBaseNode.myGlueEnv.user_datastore_id
       node_id = doc_to_save.my_category
       doc_id = BufsBaseNode.myGlueEnv.generate_model_key(namespace, node_id)
