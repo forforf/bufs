@@ -195,6 +195,7 @@ class BufsBaseNode
     #TODO: what about node id collisions? currently ignoring it
     #and letting the persistence model work it out
     this_node = self.new(other_node._user_data)
+    this_node.__save
     this_node.__import_attachments(other_node.__export_attachments) if other_node.attached_files
   end
 

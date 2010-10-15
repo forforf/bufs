@@ -21,7 +21,7 @@ class BufsJsvisData
   
   #TODO: Rather than using instance variables, pass explicitly
   def initialize(user_id, node_list, view_id_postfix="")
-    puts "JSVIS Init - node list #{node_list.map {|n| [n.my_category, n.parent_categories] }.inspect}"
+    #puts "JSVIS Init - node list #{node_list.map {|n| [n.my_category, n.parent_categories] }.inspect}"
     @view_id_postfix = view_id_postfix
     #user_id.gsub!(/BufsNodeFactory::Bufs(File|InfoNode)/, "") # A bit hacky
     root_node= RootNode.new(user_id, [])
@@ -31,14 +31,14 @@ class BufsJsvisData
               :parent_key => :parent_categories}
     #TODO: To support multiple vis types, have this move to a parameter
     graph_type = :digraph
-    puts "JSVIS Root Node: #{root_node.inspect}"
+    #puts "JSVIS Root Node: #{root_node.inspect}"
     
     nodes_with_root = @all_nodes
     nodes_with_root << root_node if root_node
     
     @graph_data = Grapher.new(@all_nodes, @keys, graph_type, root_node).graph_data
     @graph = @graph_data[:graph]
-    puts "JSVIS Graph Iteration #{@graph.vertices.map {|v| [v.node_name, v.node_parents] }.inspect}"
+    #puts "JSVIS Graph Iteration #{@graph.vertices.map {|v| [v.node_name, v.node_parents] }.inspect}"
     raise "Graph is nil!!!" unless @graph
     #@no_parents = @graph_data[:no_parents]
     parents_to_nodes = @graph.vertices.map{|v| [v.node_content.__send__(@keys[:parent_key]), v]}
@@ -96,6 +96,8 @@ class BufsJsvisData
     ch_nodes = @parent_to_nodes.select {|n| n[0] == childrens_parent}.map{|i| i.last}
   end
   
+  
+=begin
   def uniq_json_vis_tree(top_node_id, depth)
     #ids = []
     all_graph_nodes = {}
@@ -104,10 +106,11 @@ class BufsJsvisData
     top_node = top_nodes_existing.first || DefaultNode.new(top_node_id)
     #puts "Top Node #{top_node.inspect}"
     tree = uniq_make_jsvis_tree_from_node(top_node, depth)
-    puts "Jsvis Tree: #{tree.inspect}"
+    #puts "Jsvis Tree: #{tree.inspect}"
     tree
   end
-  
+=end
+
     def make_jsvis_tree_from_node(twnode, depth)
     jsvis_model = {} #JsvisModel.new
   
