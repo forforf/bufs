@@ -37,15 +37,17 @@ describe BindUserFileSystem do
     @test_users = ["test3", "test4"]
     user_a = @test_users.first
     user_b = @test_users.last
-    user_nodes = []
+    user_bindings = []
     BindUserFileSystem.add_user_to_system(user_a, "1234")
     BindUserFileSystem.user_exists?(user_a).should == true
     @test_users.each do |user|
-      user_nodes << BindUserFileSystem.get_user_node(user, "1234")
+      user_bindings << [BindUserFileSystem.get_user_node_class(user, "1234"), user]
     end
-    user_nodes.each do |user_node|
-      #TODO: Create test to check a class of the right type is returned
-      p user_node
+    user_bindings.each do |user_binding|
+      user_node_class = user_binding[0]
+      user = user_binding[1]
+      #checks that the class and filesystem directories match 
+      "#{user_node_class.myGlueEnv.user_datastore_selector}/".should == BindUserFileSystem.get_home_dir(user)
     end
   end
 end
