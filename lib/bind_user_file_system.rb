@@ -50,7 +50,7 @@ class BindUserFileSystem
   def self.make_nodeClass(user_id)
     #raise "Need to rewrite for new architecture"
     node_class_name = BindUserFileSystem.make_class_name(user_id)
-    fs_env = BindUserFileSystem.user_filesys_env_builder(node_class_name, @@base_home_dir, user_id)
+    fs_env = BindUserFileSystem.user_filesys_env_builder(node_class_name, File.join(@@base_home_dir), user_id)
     BufsNodeFactory.make(fs_env)
   end
 

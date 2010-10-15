@@ -345,10 +345,11 @@ class BufsBaseNode
     new_basic_node = self.new(other_node._user_data)
 
     #transfer attachments
-    other_node.attached_files.each do |att_file|
-      new_basic_node.__import_attachment(att_file, other_node.__export_attachment(att_file))
+    if other_node.attached_files
+      other_node.attached_files.each do |att_file|
+        new_basic_node.__import_attachment(att_file, other_node.__export_attachment(att_file)) if att_file
+      end
     end
-
     new_basic_node
   end
 
