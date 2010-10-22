@@ -102,13 +102,14 @@ attr_accessor :fs_user_id,
 
   def initialize(env)
     env_name = :bufs_file_system_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
-    puts "GlueFileSys env keys: #{env.keys.inspect}" 
+    #puts "GlueFileSys env keys: #{env.keys.inspect}" 
     fs_path = env[env_name][:path]
     FileUtils.mkdir_p(fs_path) unless File.exists?(fs_path)
     fs_user_id = env[env_name][:user_id]
     @user_id = fs_user_id
 
     #@collection_namespace = FileSystemEnv.set_collection_namespace(fs_path, fs_user_id)
+    #TODO: user_datastore_selector gets .model added at it at some point magically, set in one place to maintain consistency
     @user_datastore_selector = FileSystemEnv.set_user_datastore_selector(fs_path, fs_user_id)
     @user_datastore_id = FileSystemEnv.set_user_datastore_id(fs_path, fs_user_id)
 

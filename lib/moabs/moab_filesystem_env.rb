@@ -243,7 +243,7 @@ module FileSystemEnv
   #model namespace
   def self.set_namespace(fs_name_path, fs_user_id)
     @@mutex.synchronize {
-      namespace = File.join(fs_name_path, fs_user_id, self.model_dir_name)
+      namespace = File.join(fs_name_path, fs_user_id)
     }
   end
 

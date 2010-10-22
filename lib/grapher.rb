@@ -40,7 +40,7 @@ class Grapher
   def initialize(node_data, keys, graph_type=:tree, root_node=nil)
     
     #puts "Grapher Node Data: #{node_data.map{|n| n.my_category}.inspect}"
-    
+    @root_node = root_node || RootId
     @key = keys[:node_id_key]
     @parent_key = keys[:parent_key]
     @all_nodes = wrap_nodes(node_data, @key, @parent_key)
@@ -87,7 +87,7 @@ class Grapher
     @graph_data[:graph] = case graph_type
      
       when :tree
-        make_tree(base_graph, ordered_by_descendant_size, adj_list, wroot_node ) #root data not implemented yet
+        make_tree(base_graph, ordered_by_descendant_size, adj_list, @root_node ) #root data not implemented yet
       when :digraph
         make_digraph(base_graph, ordered_by_descendant_size, adj_list)
       else
@@ -191,6 +191,7 @@ class Grapher
   end
 
   def make_tree(base_graph, ordered_nodes, adj_list, root_data)
+    tw_root_data = TreeWrapper.new(root_data.my_category, nil, [], true)
     tree = base_graph
     ordered_nodes.each do |tw_node|
       #puts "Adding Node: #{tw_node.node_name}"
@@ -201,7 +202,7 @@ class Grapher
       else
          #puts "Adding link to Root Node: #{tw_node.node_name}"
         #raise "making tree from root data (is it wrapped?): #{root_data.class.inspect}" if root_data
-        tree.add_edge(RootId, tw_node)
+        tree.add_edge(tw_root_data, tw_node)
         tw_node.assigned_to_tree = true
       end #if
       

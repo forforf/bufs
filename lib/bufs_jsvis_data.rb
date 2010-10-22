@@ -33,6 +33,7 @@ class BufsJsvisData
     graph_type = :digraph
     #puts "JSVIS Root Node: #{root_node.inspect}"
     
+    #TODO: Do these do anything?
     nodes_with_root = @all_nodes
     nodes_with_root << root_node if root_node
     
