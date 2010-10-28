@@ -72,11 +72,15 @@ class BufsFileViewMaker
     #a tree 3 layers down is iterated over 3 separate times to get
     #the same files
     subtree = @tree.bfs_search_tree_from(node)
+    #FIXME: I think instead of passing the subtree if you build a new tree
+    #with the current node as root it may work??  May require some tricky refactoring though
     subtree_files = find_all_files_in_tree(subtree)
     subtree_links = find_all_links_in_tree(subtree)
     #require 'pp'
     #pp subtree_files
     
+    
+    #FIXME: sigh, this only works when there are no cycles
     @files_in_tree[node] = subtree_files
     @links_in_tree[node] = subtree_links
 
@@ -155,6 +159,8 @@ class BufsFileViewMaker
       raise "Can't find node dir: #{node_dir.inspect}" unless File.exist?(node_dir)
       #directory to put accumulated files
       all_files_dir = File.join(@node_map[v.node_name], all_files_dir_name)
+      
+      #FIXME: 
             
       subtree_files_kvp = @files_in_tree[v]    #@files_in_tree.each do |top_tw_node, subtree_files_kvp|
         #node_to_nodes_with_attached_files = node_to_nodes_with_attached_files || {}
