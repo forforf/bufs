@@ -2,4 +2,13 @@
 #cd /media-ec2/ec2a/bufs_users/$1
 #su $1 -c "mkdir /media-ec2/ec2a/bufs_users/$1/Dropbox"
 #su $1 -c "cp -R  /media-ec2/ec2a/bufs_users/$1  /media-ec2/ec2a/bufs_users/$1/Dropbox/$1_data/"
-su $1 -c "rsync -rldq /media-ec2/ec2a/bufs_users/$1/  /media-ec2/ec2a/bufs_users/$1/Dropbox/$1_data/ --exclude Dropbox"
+#echo "Copying via rsync data from '/media-ec2/ec2a/bufs_users/$1/'  to  '/media-ec2/ec2a/bufs_users/$1/Dropbox/$1_data/'" >&2
+src_dir = "/media-ec2/ec2a/bufs_users/$1/"
+dest_dir = "/media-ec2/ec2a/bufs_users/$1/Dropbox/$1_data/"
+echo "mkdir $dest_dir" >&2
+su $1 -c "mkdir $dest_dir"
+echo "rsync copy from $src_dir to $dest_dir" >&2
+su $1 -c "rsync -rldv '/media-ec2/ec2a/bufs_users/$1/'  '/media-ec2/ec2a/bufs_users/$1/Dropbox/$1_data/' --exclude Dropbox"
+su $1 -c "rm -rf /media-ec2/ec2a/bufs_users/$1/Dropbox/$1_data/.*"  # --exclude .[a-zA-Z]*"
+#su $1 -c "find /media-ec2/ec2a/bufs_users/$1/ ! -name 'Dropbox' ! -name '.*' | xargs -i cp -r {} /media-ec2/ec2a/bufs_users/$1/Dropbox/$1_data/"
+#su $1 -c "rsync -rldv '/media-ec2/ec2a/bufs_users/$1/'  '/tmp/dropbox_test/'  --exclude Dropbox " #--exclude '.'[a-zA-Z]*"
