@@ -1,0 +1,17 @@
+#!/bin/bash
+echo $1
+echo "Start"
+sleep 1
+echo "Start"
+sleep 1
+echo "Start"
+sleep 1
+echo "Start"
+sleep 1
+echo "interim output"
+sleep 1
+echo "interim output"
+sleep 1
+echo "interim output"
+sleep 1
+echo "final output"

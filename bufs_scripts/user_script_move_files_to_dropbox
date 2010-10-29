@@ -1,0 +1,5 @@
+#!/bin/bash
+#cd /media-ec2/ec2a/bufs_users/$1
+#su $1 -c "mkdir /media-ec2/ec2a/bufs_users/$1/Dropbox"
+#su $1 -c "cp -R  /media-ec2/ec2a/bufs_users/$1  /media-ec2/ec2a/bufs_users/$1/Dropbox/$1_data/"
+su $1 -c "rsync -rldq /media-ec2/ec2a/bufs_users/$1/  /media-ec2/ec2a/bufs_users/$1/Dropbox/$1_data/ --exclude Dropbox"
