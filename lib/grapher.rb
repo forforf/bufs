@@ -8,6 +8,9 @@ require 'rgl/implicit'
 require 'rgl/dot'
 require 'pp'
 
+#TODO: Find a better place to store this helper (helpers?)
+RootNode = Struct.new(:my_category, :parent_categories)
+
 class TreeWrapper
   attr_accessor :assigned_to_tree, :normal_descendants,
                 :linked_descendants, :node_name, :node_content, :node_parents
@@ -154,19 +157,6 @@ class Grapher
   end
 
   def order_nodes(adj_list, no_parents, wroot_node)
-    #puts "ON Root: #{wroot_node.node_name}" if wroot_node
-    #adj_list.each do |k,v|
-    #  puts "#{k.node_name} #{k.is_root_node} - > #{v.map{|c| c.node_name}}"
-    #end
-    #adj_list.delete(wroot_node)
-    #puts "[]][[[[[[[[[[[[[[[["
-    #adj_list.each do |k,v|
-    #  puts "#{k.node_name} #{k.is_root_node} - > #{v.map{|c| c.node_name}}"
-    #end
-
-    #pp root_node.node_name 
-    #root_node = content_list.select{|class_node_pr| class_node_pr[0] == RootNode}[1]
-    #pp wroot_node.node_name
     weights = []  #[node, weight]
     adj_list.each do |node, children|
       node_weight = node_weighting(node, adj_list)

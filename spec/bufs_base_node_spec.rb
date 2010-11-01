@@ -1,4 +1,5 @@
 require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
+require File.join(File.dirname(__FILE__),'/helpers/bufs_node_builder')
 require File.dirname(__FILE__) + '/../lib/bufs_base_node'
 
 CouchDB = BufsFixtures::CouchDB #CouchRest.database!(doc_db_name)
@@ -8,7 +9,7 @@ CouchDB.compact!
 BufsDocLibs = [File.dirname(__FILE__) + '/../lib/bufs_couchrest_glue_env']
 
 #BufsBaseNode.set_name_space(CouchDB)
-
+=begin
 module BufsBaseNodeSpecHelpers
   DefaultDocParams = {:my_category => 'default',
                       :parent_categories => ['default_parent'],
@@ -26,6 +27,7 @@ module BufsBaseNodeSpecHelpers
     return BufsBaseNode.new(init_params)
   end
 end
+=end
 
 module BufsBaseNodeSpec
   StubsForSpec = BufsDocLibs = [File.dirname(__FILE__) + '/../lib/glue_envs/base_class_stub_for_spec']

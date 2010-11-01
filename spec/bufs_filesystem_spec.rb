@@ -1,6 +1,6 @@
 
 require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
-
+require File.join(File.dirname(__FILE__), '/helpers/bufs_node_builder')
 
 require File.dirname(__FILE__) + '/../lib/bufs_base_node'
 
@@ -9,26 +9,11 @@ BufsFileLibs = [File.dirname(__FILE__) + '/../lib/glue_envs/bufs_filesystem_glue
 
 TestFSModelBaseDir = BufsFixtures::ProjectLocation  + 'sandbox_for_specs/file_system_specs'
 
-module BufsBaseNodeSpecHelpers
-  DefaultDocParams = {:my_category => 'default',
-                      :parent_categories => ['default_parent'],
-                      :description => 'default description'}
-
-  def get_default_params
-    DefaultDocParams.dup #to avoid a couchrest weirdness don't use the params directly
-  end
-  
-  def make_doc_no_attachment(override_defaults={})
-    init_params = get_default_params.merge(override_defaults)
-    return BufsBaseNode.new(init_params)
-  end
-end
-
   ModelDir = "tmp_test" #'BufsFileSystem_DefaultModel'
-  DummyUserID = 'StubID1'
+  FSDummyUserID = 'StubID1'
   BufsFileIncludes = [:FileSystemEnv]
   FileEnvironment = {:bufs_file_system_env => {:path => File.join(TestFSModelBaseDir,ModelDir),
-                                               :user_id => DummyUserID},
+                                               :user_id => FSDummyUserID},
                         :requires => BufsFileLibs,
                         :includes => BufsFileIncludes,
                         :glue_name => "BufsFileSystemEnv" }  #may not be final form
@@ -40,7 +25,7 @@ end
 BufsBaseNode.set_environment(FileEnvironment, FileEnvironment[:glue_name])
 
 describe BufsBaseNode, "Basic Document Operations (no attachments)" do
-  include BufsBaseNodeSpecHelpers
+  include BufsNodeBuilder
 
   before(:each) do
     BufsBaseNode.destroy_all
@@ -50,8 +35,8 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     #TODO: Figure out if both datastore selector and datastore id are necessary (may require integration of other models)
     #TODO:  retrieve base model from BufsBaseNode glue env
     base_model_dir = ".model"
-    BufsBaseNode.myGlueEnv.user_datastore_selector.should == File.join(TestFSModelBaseDir, ModelDir, DummyUserID, base_model_dir)
-    BufsBaseNode.myGlueEnv.user_datastore_id.should == File.join(TestFSModelBaseDir, ModelDir, DummyUserID, base_model_dir)
+    BufsBaseNode.myGlueEnv.user_datastore_selector.should == File.join(TestFSModelBaseDir, ModelDir, FSDummyUserID, base_model_dir)
+    BufsBaseNode.myGlueEnv.user_datastore_id.should == File.join(TestFSModelBaseDir, ModelDir, FSDummyUserID, base_model_dir)
   end
 
   it "should initialize correctly" do
@@ -194,7 +179,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
       node = doc_with_new_parent_cat
       node_id = node._model_metadata[:_id]
       persistent_node = node.class.get(node_id)
-      puts "Node Id: #{node_id.inspect}\n All: #{node.class.all.inspect}"
+      #puts "Node Id: #{node_id.inspect}\n All: #{node.class.all.inspect}"
       db_param = persistent_node.__send__(param.to_sym)
       #db_param = doc_with_new_parent_cat.class.get(doc_with_new_parent_cat._model_metadata[:_id]).__send__(param.to_sym)
       #doc_with_new_parent_cat[param].should == db_param
@@ -356,7 +341,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
 end
 
 describe BufsBaseNode, "Attachment Operations" do
-  include BufsBaseNodeSpecHelpers
+  include BufsNodeBuilder
 
   before(:all) do 
     @test_files = BufsFixtures.test_files

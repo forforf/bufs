@@ -1,5 +1,5 @@
 require File.join(File.dirname(__FILE__), 'grapher')
-RootNode = Struct.new(:my_category, :parent_categories)
+#RootNode = Struct.new(:my_category, :parent_categories)
 
 class BufsFileViewMaker
   LinksFileName = "links.html"

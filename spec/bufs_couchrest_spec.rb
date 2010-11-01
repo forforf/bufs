@@ -2,40 +2,22 @@
 require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
 
 
-CouchDB = BufsFixtures::CouchDB #CouchRest.database!(doc_db_name)
-CouchDB.compact!
+DBCouchDB = BufsFixtures::CouchDB #CouchRest.database!(doc_db_name)
+DBCouchDB.compact!
 
+require File.join(File.dirname(__FILE__), 'helpers/bufs_node_builder')
 
 require File.dirname(__FILE__) + '/../lib/bufs_base_node'
 
 #BufsDoc Libraries
 BufsDocLibs = [File.dirname(__FILE__) + '/../lib/glue_envs/bufs_couchrest_glue_env']
 
-#BufsBaseNode.set_name_space(CouchDB)
 
-module BufsBaseNodeSpecHelpers
-  DefaultDocParams = {:my_category => 'default',
-                      :parent_categories => ['default_parent'],
-                      :description => 'default description'}
-
-  def get_default_params
-    DefaultDocParams.dup #to avoid a couchrest weirdness don't use the params directly
-  end
-  
-  def make_doc_no_attachment(override_defaults={})
-    #default_params = {:my_category => 'default', 
-    #                  :parent_categories => ['default_parent'],
-    #		      :description => 'default description'}
-    init_params = get_default_params.merge(override_defaults)
-    return BufsBaseNode.new(init_params)
-  end
-end
-
-  DummyUserID = 'StubID1'
+  DBDummyUserID = 'StubID1'
   BufsDocIncludes = [:CouchRestEnv]
-  CouchDBEnvironment = {:bufs_info_doc_env => {:host => CouchDB.host,
-                                               :path => CouchDB.uri,
-                                               :user_id => DummyUserID},
+  CouchDBEnvironment = {:bufs_info_doc_env => {:host => DBCouchDB.host,
+                                               :path => DBCouchDB.uri,
+                                               :user_id => DBDummyUserID},
                         :requires => BufsDocLibs,
                         :includes => BufsDocIncludes,
                         :glue_name => "BufsCouchRestEnv" }  #may not be final form
@@ -47,22 +29,21 @@ end
 BufsBaseNode.set_environment(CouchDBEnvironment, CouchDBEnvironment[:glue_name])
 
 describe BufsBaseNode, "Basic Document Operations (no attachments)" do
-  include BufsBaseNodeSpecHelpers
+  include BufsNodeBuilder
 
   before(:each) do
     BufsBaseNode.destroy_all
   end
 
   it "should have its namespace set up correctly" do
-    #raise CouchDB.inspect
     #Namespace and Collection Namespace are identical?
     #BufsBaseNode.myGlueEnv.namespace.should == "#{CouchDB.name}_#{DummyUserID}"
 
-    db_name_path = CouchDB.uri
+    db_name_path = DBCouchDB.uri
     lose_leading_slash = db_name_path.split("/")
     lose_leading_slash.shift
     db_name = lose_leading_slash.join("")
-    BufsBaseNode.myGlueEnv.user_datastore_id.should == "#{db_name}_#{DummyUserID}"
+    BufsBaseNode.myGlueEnv.user_datastore_id.should == "#{db_name}_#{DBDummyUserID}"
   end
 
   it "should initialize correctly" do
@@ -133,7 +114,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
       namespace = BufsBaseNode.myGlueEnv.user_datastore_id
       node_id = doc_to_save.my_category
       doc_id = BufsBaseNode.myGlueEnv.generate_model_key(namespace, node_id)
-      db_param = CouchDB.get(doc_id)[param]
+      db_param = DBCouchDB.get(doc_id)[param]
       bufs_param = BufsBaseNode.get(doc_id).__send__(param.to_sym)
       db_param.should == bufs_param
       doc_to_save._user_data[param].should == db_param
@@ -186,7 +167,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     doc_with_new_parent_cat.parent_categories.should include new_cat
     #check database
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_with_new_parent_cat._model_metadata[:_id])[param]
+      db_param = DBCouchDB.get(doc_with_new_parent_cat._model_metadata[:_id])[param]
       #doc_with_new_parent_cat[param].should == db_param
       #test accessor method
       doc_with_new_parent_cat.__send__(param).should == db_param
@@ -212,7 +193,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     doc_with_new_parent_cat.parent_categories.should include new_cat
     #check database
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_with_new_parent_cat._model_metadata[:_id])[param]
+      db_param = DBCouchDB.get(doc_with_new_parent_cat._model_metadata[:_id])[param]
       #doc_with_new_parent_cat[param].should == db_param
       #test accessor method
       doc_with_new_parent_cat.__send__(param).should == db_param
@@ -227,9 +208,10 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     doc_params = get_default_params.merge({:my_category => 'cat_test2', :parent_categories => orig_parent_cats})
     doc_existing_new_parent_cat = make_doc_no_attachment(doc_params)
     doc_existing_new_parent_cat.__save
+    #puts "Original Data: #{doc_existing_new_parent_cat._model_metadata[:_id].inspect}"
     #verify initial conditions
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_existing_new_parent_cat._model_metadata[:_id])[param]
+      db_param = DBCouchDB.get(doc_existing_new_parent_cat._model_metadata[:_id])[param]
       #doc_existing_new_parent_cat[param].should == db_param
       #test accessor method
       doc_existing_new_parent_cat.__send__(param).should == db_param
@@ -251,7 +233,8 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
       #ex_cats.should include new_cat
     end
     #check database
-    parent_cats = CouchDB.get(doc_existing_new_parent_cat._model_metadata[:_id])[:parent_categories]
+    #puts "Retrieving: #{doc_existing_new_parent_cat._model_metadata[:_id].inspect}"
+    parent_cats = DBCouchDB.get(doc_existing_new_parent_cat._model_metadata[:_id])[:parent_categories]
     new_cats.each do |cat|
       parent_cats.should include cat
     end
@@ -268,7 +251,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     doc_remove_parent_cat.__save
     #verify initial conditions
     doc_params.keys.each do |param|
-      db_param = CouchDB.get(doc_remove_parent_cat._model_metadata[:_id])[param]
+      db_param = DBCouchDB.get(doc_remove_parent_cat._model_metadata[:_id])[param]
       #doc_remove_parent_cat[param].should == db_param
       #test accessor method
       doc_remove_parent_cat.__send__(param).should == db_param
@@ -286,7 +269,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     remove_multi_cats.each do |cat|
       doc_remove_parent_cat.parent_categories.should_not include cat
     end
-    cats_in_db = CouchDB.get(doc_remove_parent_cat._model_metadata[:_id])['parent_categories']
+    cats_in_db = DBCouchDB.get(doc_remove_parent_cat._model_metadata[:_id])['parent_categories']
     remove_multi_cats.each do |removed_cat|
       cats_in_db.should_not include removed_cat
     end
@@ -307,7 +290,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     doc_uniq_parent_cat.parent_categories_add(new_cats)
     #verify results
     expected_size.should == doc_uniq_parent_cat.parent_categories.size
-    CouchDB.get(doc_uniq_parent_cat._model_metadata[:_id])['parent_categories'].sort.should == doc_uniq_parent_cat.parent_categories.sort
+    DBCouchDB.get(doc_uniq_parent_cat._model_metadata[:_id])['parent_categories'].sort.should == doc_uniq_parent_cat.parent_categories.sort
     #"can't query on :my_category".should == "test should have way to query based on :my_category"
     records = BufsBaseNode.call_view(:my_category , doc_uniq_parent_cat.my_category)
     records = [records].flatten
@@ -406,7 +389,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     #verify results
     new_records.each do |i, rcd|
       rcd.respond_to?(new_key_field).should == true
-      p rcd._user_data
+      #p rcd._user_data
     end
     new_records[2].my_category.should == my_cats[2]
     new_records[2].__send__(new_key_field).should == "hi!"
@@ -423,7 +406,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
 end
 
 describe BufsBaseNode, "Attachment Operations" do
-  include BufsBaseNodeSpecHelpers
+  include BufsNodeBuilder
 
   before(:all) do
     @test_files = BufsFixtures.test_files

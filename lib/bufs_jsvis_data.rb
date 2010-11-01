@@ -14,7 +14,7 @@ class DefaultNode < Hash
   end
 end
 
-RootNode = Struct.new(:my_category, :parent_categories)
+#RootNode = RootNode || Struct.new(:my_category, :parent_categories)
 
 class BufsJsvisData
   attr_accessor :graph, :graph_data
