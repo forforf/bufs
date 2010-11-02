@@ -98,7 +98,7 @@ describe Grapher do
   include GrapherSpecHelpers
 
   before(:each) do
-    @user_classes = [User3Class]
+    @user_classes = [User1Class, User2Class, User3Class, User4Class]
     @root_data = RootNode.new(:root, :root_data)
   end
 
@@ -171,20 +171,24 @@ describe Grapher do
     end
     #verify results
     @user_classes.each do |user_class|
+      #puts "User Class to build graph: #{user_class.inspect}"
       my_grapher = user_graph[user_class]
       tree = my_grapher.graph
       
-      root_id = Grapher::RootId
-      #raise "Root Nodes: #{root_node.inspect}"
-      #raise "Verts: #{tree.vertices.map{|v| v.node_content.class.name}.inspect}"
+      root_id =my_grapher.converted_root_node
+      #puts "Root Nodes: #{root_id.inspect}"
+      #puts "Working Tree: #{tree.vertices.map{|v| v.class.inspect}}"
+      #puts "Verts: #{tree.vertices.map{|v| v.node_content.class.name}.inspect}"
       bfs = tree.bfs_iterator(root_id)
+      #puts "BFS Tree size: #{bfs.vertices.map{|v| v.node_name.inspect}}"
       tree_order = []
       bfs.each {|v| tree_order << v}
       #tree_order.should == []
       tree_order[0].should == root_id
       tree_order[1].node_name.should == 'top'
-      tree_order[2].node_name.should == 'child2'
-      tree_order[3].node_name.should == 'child1'
+      ['child1', 'child2'].should include tree_order[2].node_name 
+      ['child1', 'child2'].should include tree_order[2].node_name 
+      tree_order[2].node_name.should_not == tree_order[3].node_name
       tree_order[1].normal_descendants.map{|d| d.node_name}.sort.should == ['child1', 'child2']
     end
   end    
@@ -220,7 +224,7 @@ describe Grapher do
     @user_classes.each do |user_class|
       my_grapher = user_graph[user_class]
       tree = my_grapher.graph
-      root_nodes = tree.vertices.select{|v| v == Grapher::RootId}
+      root_nodes = tree.vertices.select{|v| v == my_grapher.converted_root_node}
       #raise "vertex not found for #{@root_data.class.name}. Verts: #{tree.vertices.map{|v| v.node_content.class.name}.inspect}"
       raise "Wrong number of root nodes: #{root_nodes.size}" unless root_nodes.size == 1
       root_node = root_nodes.first
@@ -272,7 +276,7 @@ describe Grapher do
     @user_classes.each do |user_class|
       my_grapher = user_graph[user_class]
       tree = my_grapher.graph
-      root_nodes = tree.vertices.select{|v| v == Grapher::RootId}
+      root_nodes = tree.vertices.select{|v| v == my_grapher.converted_root_node}
       #raise "vertex not found for #{@root_data.class.name}. Verts: #{tree.vertices.map{|v| v.node_content.class.name}.inspect}"
       raise "Wrong number of root nodes: #{root_nodes.size}" unless root_nodes.size == 1
       root_node = root_nodes.first
@@ -335,14 +339,14 @@ describe Grapher do
       
       my_grapher = user_tree[user_class]
       tree = my_grapher.graph
-      root_nodes = tree.vertices.select{|v| v == Grapher::RootId}
+      root_nodes = tree.vertices.select{|v| v == my_grapher.converted_root_node}
       #raise "vertex not found for #{@root_data.class.name}. Verts: #{tree.vertices.map{|v| v.node_content.class.name}.inspect}"
       raise "Wrong number of root nodes: #{root_nodes.size}" unless root_nodes.size == 1
       root_node = root_nodes.first
       bfs = tree.bfs_iterator(root_node)
       tree_order = []
       bfs.each {|v| tree_order << v}
-      tree_order[0].should == :root
+      tree_order[0].should == my_grapher.converted_root_node
       tree_order[1].node_name.should == 'top1'
       tree_order[2].node_name.should == 'top2'
       tree_order[3].node_name.should == 'child11'

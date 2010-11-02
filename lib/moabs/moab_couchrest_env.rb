@@ -341,9 +341,9 @@ module CouchRestEnv
     rescue RestClient::RequestFailed => e
       #TODO Update specs to test for this
       if e.http_code == 409
-	puts "Document Conflict in the Database,"\
-        " most likely this is a duplication."\
-        " Processing will continue with pre-existing record."\
+        puts "Document Conflict in the Database,"\
+        " record exists or there is database corruption. "\
+        " Will attempt to continue with pre-existing record."\
 	      #" Error Code was 409. Need to ensure current revs are maintained/current"\
 	      #"\nAdditonal Data: model params: #{model_save_params.inspect}"\
 	      #"\n                model data: #{model_data.inspect}"\
@@ -353,10 +353,6 @@ module CouchRestEnv
         rev = existing_doc['_rev']
         data_with_rev = model_data.merge({'_rev' => rev})
         res = db.save_doc(data_with_rev)
-	#existing_doc['_attachments'] = existing_doc['attachments'].merge(self['_attachments']) if self[
-	#existing_doc['file_metadata'] = existing_doc['file_metadata'].merge(self['file_metadata']) if s
-	#existing_doc.save
-	#return existing_doc
       else
 	raise "Request Failed -- Response: #{res.inspect} Error:#{e}"\
 	      "\nAdditonal Data: model params: #{model_save_params.inspect}"\

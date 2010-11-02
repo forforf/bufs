@@ -160,10 +160,15 @@ class BufsBaseNode
       #TODO: Think of a more elegant way to handle an unknown view
       raise "Unknown design view #{view_method_name} called for: #{param}"
     end
-    nodes = records.map do |base_data|
-       combined_data = self.modify_data_structures(base_data, data_structure_changes)
-       self.new(combined_data)
+    
+    nodes = []
+    records.map do |base_data|
+      if base_data
+        combined_data = self.modify_data_structures(base_data, data_structure_changes)
+        nodes << self.new(combined_data)
+      end
     end
+    return nodes
   end
 
   def self.get(id)

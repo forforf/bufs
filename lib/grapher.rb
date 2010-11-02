@@ -38,10 +38,11 @@ end
 class Grapher
   RootId = :root
   attr_accessor :key, :parent_key,  :graph, :graph_data,
-                      :nodes_by_name, :nodes_by_parent_cat
+                      :nodes_by_name, :nodes_by_parent_cat, :converted_root_node
 
   def initialize(node_data, keys, graph_type=:tree, root_node=nil)
     
+    #TODO: refactor @root_node -> @native_root_node
     #puts "Grapher Node Data: #{node_data.map{|n| n.my_category}.inspect}"
     @root_node = root_node || RootId
     @key = keys[:node_id_key]
@@ -182,6 +183,8 @@ class Grapher
 
   def make_tree(base_graph, ordered_nodes, adj_list, root_data)
     tw_root_data = TreeWrapper.new(root_data.my_category, nil, [], true)
+    #TODO: move the formatting of the root data into a general method, rather than by graph type
+    @converted_root_node = tw_root_data
     tree = base_graph
     ordered_nodes.each do |tw_node|
       #puts "Adding Node: #{tw_node.node_name}"

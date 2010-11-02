@@ -473,7 +473,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
   end
 
   before(:each) do
-    @user_classes = [User1Class, User2Class, User3Class, User4Class]
+    @user_classes = [User1Class, User2Class,  User3Class, User4Class] #[User1Class, User2Class, User3Class, User4Class]
   end
 
     after(:each) do
@@ -608,8 +608,11 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       parent_cats[user_class] = ['docs with attachments']
       doc_params[user_class] = get_default_params.merge({:my_category => 'doc_w_att2', :parent_categories => parent_cats[user_class]})
       basic_docs[user_class] = make_doc_w_attach_from_file(user_class, test_filename1, doc_params[user_class])
+      #puts "User Class: #{user_class.inspect}"
+      #puts "fname to add: #{test_filename2}"
+      #puts "Node Class: #{basic_docs[user_class].class.inspect}"
+      #puts "Node Name: #{basic_docs[user_class].my_category.inspect}"
       basic_docs[user_class].files_add(:src_filename => test_filename2)
-
     end
     #verify initial conditions
     #att_doc_ids = {}
@@ -925,7 +928,9 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     node_params2 = get_default_params.merge(params2)
     #here is where we create the node from the first user class
     user_class1 = @user_classes[0]
-    user_class2 = @user_classes[2]
+    #TODO: Figure out better way that doesn't break when reconfiguring user classes
+    user_class2 = @user_classes[2] #||@user_classes[0]
+    raise "User Class is nil" unless (user_class1 && user_class2)
     other_node1 = make_doc_no_attachment(user_class1, node_params1)
     #plus one from a different class
     other_node2 = make_doc_no_attachment(user_class2, node_params2)
