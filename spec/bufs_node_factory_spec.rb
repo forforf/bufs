@@ -476,7 +476,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     @user_classes = [User1Class, User2Class,  User3Class, User4Class] #[User1Class, User2Class, User3Class, User4Class]
   end
 
-    after(:each) do
+  after(:each) do
     @user_classes.each do |user_class|
       user_class.destroy_all
     end

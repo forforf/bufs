@@ -209,10 +209,20 @@ class GlueEnv
     query_all
   end
 
+  #TODO: Investigate if Couchrest bulk actions or design views will assist here
+  #fixed to delete orphaned attachments, but this negates much of the advantage of using this method in the first place
+  #or perhaps using a close to the metal design view based on the class name?? (this may be better)
   def destroy_bulk(list_of_native_records)
     list_of_native_records.each do |r|
       begin
+        att_doc_id = r["_id"] + BufsInfoAttachment::AttachmentID
         @db.delete_doc(r)
+        begin
+          att_doc = @db.get(att_doc_id)
+        rescue
+          att_doc = nil
+        end
+        @db.delete_doc(att_doc) if att_doc
       rescue RestClient::RequestFailed
         puts "Warning:: Failed to delete document?"
       end
