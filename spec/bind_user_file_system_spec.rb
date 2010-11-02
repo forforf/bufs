@@ -1,5 +1,7 @@
-require File.dirname(__FILE__) + '/../lib/bind_user_file_system'
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../lib/helpers/require_helper')
 
+require Bufs.lib 'bind_user_file_system'
 
 describe BindUserFileSystem do
   before(:all) do 

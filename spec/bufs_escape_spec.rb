@@ -1,17 +1,14 @@
-require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
-
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../lib/helpers/require_helper')
 
 require 'couchrest'
+
+require Bufs.fixtures 'bufs_fixtures'
+require Bufs.lib 'bufs_escape'
+
 doc_db_name = "http://127.0.0.1:5984/bufs_escape_spec/"
 EscapeTestDB = CouchRest.database!(doc_db_name)
 EscapeTestDB.compact!
-
-module BufsEscapeSpec
-  LibDir = File.dirname(__FILE__) + '/../lib/'
-end
-
-require BufsEscapeSpec::LibDir + 'bufs_escape'
-#require BufsEscapeSpec::LibDir + 'bufs_info_doc'
 
 describe BufsEscape do
 

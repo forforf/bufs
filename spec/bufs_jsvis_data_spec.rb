@@ -1,5 +1,8 @@
-require File.join(File.dirname(__FILE__) , 'helpers/bufs_sample_dataset')
-require File.join(File.dirname(__FILE__), '../lib/bufs_jsvis_data')
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../lib/helpers/require_helper')
+
+require Bufs.spec_helpers 'bufs_sample_dataset'
+require Bufs.lib 'bufs_jsvis_data'
 
 
 describe BufsJsvisData do

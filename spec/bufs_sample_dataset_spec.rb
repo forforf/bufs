@@ -1,4 +1,7 @@
-require File.join(File.dirname(__FILE__), 'helpers/bufs_sample_dataset')
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../lib/helpers/require_helper')
+
+require Bufs.spec_helpers 'bufs_sample_dataset'
 
 describe PopulatePersistenceModels do
 

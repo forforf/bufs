@@ -1,8 +1,9 @@
-#common libraries
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '/helpers/require_helper')
 
 #bufs libraries
-require File.dirname(__FILE__) + '/helpers/hash_helpers'
-require File.dirname(__FILE__) + '/bufs_escape'
+require Bufs.helpers 'hash_helpers'
+require Bufs.lib 'bufs_escape'
 
 #This is the base abstract class used.  Each user would get a unique
 #class derived from this one.  In other words, a class context
@@ -189,7 +190,6 @@ class BufsBaseNode
     @myGlueEnv.destroy_bulk(all_records)
   end
 
-  #TODO: Fix create from other node to work
   #Create the document in the BUFS node format from an existing node.
   def self.__create_from_other_node(other_node)
     #TODO:Figure out data structure imports

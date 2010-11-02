@@ -1,5 +1,7 @@
-DirBufsNodeFactorySpec = File.dirname(__FILE__)
-require File.join(DirBufsNodeFactorySpec, 'helpers/bufs_test_environments')
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../lib/helpers/require_helper')
+
+require Bufs.spec_helpers 'bufs_test_environments'
 
 #Test Environments
 #The test environments sets up the following:
@@ -473,7 +475,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
   end
 
   before(:each) do
-    @user_classes = [User1Class, User2Class,  User3Class, User4Class] #[User1Class, User2Class, User3Class, User4Class]
+    @user_classes = [User1Class, User2Class,  User3Class, User4Class]
   end
 
   after(:each) do

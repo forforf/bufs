@@ -1,7 +1,10 @@
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../lib/helpers/require_helper')
+
 require 'spec'
 require 'couchrest'
 
-require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
+require Bufs.fixtures 'bufs_fixtures'
 
 describe CouchRest::Database do
   it "should be running and have records" do

@@ -1,12 +1,15 @@
-require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
-require File.join(File.dirname(__FILE__),'/helpers/bufs_node_builder')
-require File.dirname(__FILE__) + '/../lib/bufs_base_node'
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../lib/helpers/require_helper')
+
+require Bufs.fixtures 'bufs_fixtures'
+require Bufs.spec_helpers 'bufs_node_builder'
+require Bufs.lib 'bufs_base_node'
 
 CouchDB = BufsFixtures::CouchDB #CouchRest.database!(doc_db_name)
 CouchDB.compact!
 
 #BufsDoc Libraries
-BufsDocLibs = [File.dirname(__FILE__) + '/../lib/bufs_couchrest_glue_env']
+BufsDocLibs = [Bufs.glue('bufs_couchrest_glue_env')]
 
 #BufsBaseNode.set_name_space(CouchDB)
 =begin

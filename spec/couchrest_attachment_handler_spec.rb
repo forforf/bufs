@@ -1,25 +1,15 @@
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../lib/helpers/require_helper')
+
 require 'spec'
 require 'couchrest'
 
-require File.dirname(__FILE__) + '/../bufs_fixtures/bufs_fixtures'
+require Bufs.fixtures 'bufs_fixtures'
+require Bufs.lib 'bufs_base_node'
+require Bufs.moabs 'couchrest_attachment_handler'
 
 CouchDB = BufsFixtures::CouchDB #CouchRest.database!(doc_db_name)
 CouchDB.compact!
-
-module BufsAttachSpec
-  LibDir = File.dirname(__FILE__) + '/../lib/'
-end
-
-#ProjectLocation = '/media-ec2/ec2a/projects/bufs/'
-#TestFileLocation = ProjectLocation + 'sandbox_for_specs/attachment_specs/'
-
-#SrcLocation = ProjectLocation + 'src/'
-
-require BufsAttachSpec::LibDir + 'bufs_base_node'  #used for getting the attachment id
-require BufsAttachSpec::LibDir+ 'moabs/couchrest_attachment_handler'
-
-#BufsInfoAttachment.set_name_space(CouchDB)
-#BufsInfoAttachment.use_database(CouchDB)  #TODO  Catch errors when database isn't set
 
 describe BufsInfoAttachment do 
   before(:all) do

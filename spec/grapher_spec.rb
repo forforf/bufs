@@ -1,7 +1,8 @@
-DirBufsTreeViewSpec = File.dirname(__FILE__)
-require File.join(DirBufsTreeViewSpec, '../lib', 'grapher')
-require File.join(DirBufsTreeViewSpec, 'helpers/bufs_test_environments')
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../lib/helpers/require_helper')
 
+require Bufs.lib 'grapher'
+require Bufs.spec_helpers 'bufs_test_environments'
 
 module MakeUserClasses
     @user1_id = "CouchUser001"
@@ -26,8 +27,7 @@ module GrapherSpecHelpers
   RootNode = Struct.new(:my_category, :parent_categories)
   include NodeHelpers
   include MakeUserClasses
-  
-
+ 
   def data_for_simple_tree(user_class)
     nodes = []
     top = make_doc_no_attachment(user_class, :my_category => 'top')
