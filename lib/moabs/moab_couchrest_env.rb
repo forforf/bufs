@@ -318,7 +318,7 @@ module CouchRestEnv
   end
 
   def self.set_attach_class(db_root_location, attach_class_name)
-    dyn_attach_class_def = "class #{attach_class_name} < BufsInfoAttachment
+    dyn_attach_class_def = "class #{attach_class_name} < CouchrestAttachment
       use_database CouchRest.database!(\"http://#{db_root_location}/\")
  
       def self.namespace

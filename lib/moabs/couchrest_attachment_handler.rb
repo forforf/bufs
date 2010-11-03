@@ -8,7 +8,7 @@ require Bufs.lib 'bufs_escape'
 require Bufs.helpers 'mime_types_new'
 
 #Performs manipulations ont file attachment structures and metadata
-module BufsInfoAttachmentHelpers
+module CouchrestAttachmentHelpers
 
   #Attachment data format: attachment_name => attachment info
   #attachment info format: { 'data' => attachment data, 'md' => attachment metadata }
@@ -16,7 +16,7 @@ module BufsInfoAttachmentHelpers
   #and the additional metadata that CouchDB attachments do not handle (boo, hiss)
   # 
   # Usage Example:
-  #   BufsInfoAttachmentHelpers.sort_attachment_data(attachments)
+  #   CouchrestAttachmentHelpers.sort_attachment_data(attachments)
   #   #=> { 'data_by_name' => { attachment_1 => raw_attachment_data1,
   #                           attachment_2 => raw_attachment_data2 }.
   #       'att_md_by_name' => { attachment_1 => CouchDB metadata fields1,
@@ -81,7 +81,7 @@ module BufsInfoAttachmentHelpers
   def self.split_attachment_metadata(combined_metadata)
     split_metadata = {'cust_md' => {}, 'att_md' => {}}
     combined_metadata.each do |param, param_value|
-      if BufsInfoAttachment::CouchDBAttachParams.include? param
+      if CouchrestAttachment::CouchDBAttachParams.include? param
         split_metadata['att_md'][param] = param_value
       else
         split_metadata['cust_md'][param] = param_value
@@ -97,7 +97,7 @@ end
   #couchrest/CouchDB attachment format.  The reason this is needed is because
   #CouchDB cannot
   #support custom metadata for attachments.  So custom metadata is held
-  #in the BufsInfoAttachment document.  This document will also hold the
+  #in the CouchrestAttachment document.  This document will also hold the
   #attachments and its built in metadata (such as content-type and modified
   #times
   # Attachment structure:
@@ -108,9 +108,9 @@ end
   # }
   #
 
-class BufsInfoAttachment < CouchRest::ExtendedDocument
+class CouchrestAttachment < CouchRest::ExtendedDocument
   
-  #CouchDB attachment metadata parameters supported by BufsInfoAttachment
+  #CouchDB attachment metadata parameters supported by CouchrestAttachment
   CouchDBAttachParams = ['content_type', 'stub']
   AttachmentID = "_attachments"
 
@@ -144,7 +144,7 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
     #raise "No attachments provided for attaching" unless attachments
     #separate attachment data from custom attachment metadata
     #this is necessary since couchdb can't put custom metadata with its attachments
-    sorted_attachments = BufsInfoAttachmentHelpers.sort_attachment_data(attachments)
+    sorted_attachments = CouchrestAttachmentHelpers.sort_attachment_data(attachments)
     #att_doc_id  = self.uniq_att_doc_id(bufs_info_doc)
     custom_metadata_doc_params = {'_id' => att_doc_id, 'md_attachments' => sorted_attachments['cust_md_by_name']}
     att_doc = bufs_info_doc.my_GlueEnv.attachClass.get(att_doc_id)
@@ -182,7 +182,7 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
           most_recent_attachment[esc_new_att_name] = fresh_attachment
           if most_recent_attachment[esc_new_att_name] != existing_attachments[esc_new_att_name]
             #update that file and metadata
-            sorted_attachments = BufsInfoAttachmentHelpers.sort_attachment_data(esc_new_att_name => new_data)
+            sorted_attachments = CouchrestAttachmentHelpers.sort_attachment_data(esc_new_att_name => new_data)
             #update doc
             working_doc['md_attachments'] = working_doc['md_attachments'].merge(sorted_attachments['cust_md_by_name'])
             #update attachments
@@ -196,7 +196,7 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
           end
         else #filename does not exist in attachment
           #puts "Attachment Name not found in Attachment Document, adding #{esc_new_att_name}"
-          sorted_attachments = BufsInfoAttachmentHelpers.sort_attachment_data(esc_new_att_name => new_data)
+          sorted_attachments = CouchrestAttachmentHelpers.sort_attachment_data(esc_new_att_name => new_data)
           #update doc
           working_doc['md_attachments'] = working_doc['md_attachments'].merge(sorted_attachments['cust_md_by_name'])
           #update attachments
@@ -219,7 +219,7 @@ class BufsInfoAttachment < CouchRest::ExtendedDocument
     return nil unless att_doc
     custom_md = att_doc['md_attachments']
     esc_couch_md = att_doc['_attachments']
-    couch_md = BufsInfoAttachmentHelpers.unescape_names_in_attachments(esc_couch_md)
+    couch_md = CouchrestAttachmentHelpers.unescape_names_in_attachments(esc_couch_md)
     raise "data integrity error, attachment metadata inconsistency" if custom_md.keys.sort != couch_md.keys.sort
     (attachment_data = custom_md.dup).merge(couch_md) {|k,v_custom, v_couch| v_custom.merge(v_couch)}
   end

@@ -140,7 +140,7 @@ class GlueEnv
     #  attachClass = UserNode.const_get(user_attach_class_name)
     #rescue NameError
     #  puts "Warning:: Multiuser support for attachments not enabled. Using generic Attachment Class"
-    #  attachClass = BufsInfoAttachment
+    #  attachClass = CouchrestAttachment
     #end
     @db_user_id = db_user_id
     couch_db_location = CouchRestEnv.set_db_location(couch_db_host, db_name_path)
@@ -218,7 +218,7 @@ class GlueEnv
   def destroy_bulk(list_of_native_records)
     list_of_native_records.each do |r|
       begin
-        att_doc_id = r["_id"] + BufsInfoAttachment::AttachmentID
+        att_doc_id = r["_id"] + CouchrestAttachment::AttachmentID
         @db.delete_doc(r)
         begin
           att_doc = @db.get(att_doc_id)
