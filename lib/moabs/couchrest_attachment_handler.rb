@@ -93,13 +93,11 @@ module CouchrestAttachmentHelpers
 end
 
 
-  #Converts from BufsInfoDoc attachment format to closer to the metal
+  #Converts from Bufs attachment format to closer to the metal
   #couchrest/CouchDB attachment format.  The reason this is needed is because
-  #CouchDB cannot
-  #support custom metadata for attachments.  So custom metadata is held
+  #CouchDB cannot support custom metadata for attachments.  So custom metadata is held
   #in the CouchrestAttachment document.  This document will also hold the
-  #attachments and its built in metadata (such as content-type and modified
-  #times
+  #attachments and its built in metadata (such as content-type and modified times
   # Attachment structure:
   # attachments =>{ attachment_1 => { 'data1' => raw attachment data1,
   #                                   'md1' => combined attachment metadata1 },
@@ -115,48 +113,52 @@ class CouchrestAttachment < CouchRest::ExtendedDocument
   AttachmentID = "_attachments"
 
   #create the attachment document id to be used
-  def self.uniq_att_doc_id(bufs_info_doc)
-    uniq_id = bufs_info_doc._model_metadata[:_id] + bufs_info_doc.class.attachment_base_id 
+  def self.uniq_att_doc_id(bufs_node)
+    uniq_id = bufs_node._model_metadata[:_id] + bufs_node.class.attachment_base_id 
   end
 
-  def self.add_attachment_package(bufs_info_doc, attachments)
-    raise "No document provided for attachments" unless bufs_info_doc
-    raise "No id found for the document" unless bufs_info_doc._model_metadata[:_id]
+  def self.add_attachment_package(bufs_node, attachments)
+    raise "No document provided for attachments" unless bufs_node
+    raise "No id found for the document" unless bufs_node._model_metadata[:_id]
     raise "No attachments provided for attaching" unless attachments
-    att_doc_id = self.uniq_att_doc_id(bufs_info_doc)
-    #TODO: Fix the dependency upon structure of the node (my_GlueEnv)
-    att_doc = bufs_info_doc.my_GlueEnv.attachClass.get(att_doc_id)
+    att_doc_id = self.uniq_att_doc_id(bufs_node)
+    att_doc = self.get(att_doc_id)
     rtn = if att_doc
-      #TODO: This call should be able to be simplified in the new architecture
-      bufs_info_doc.my_GlueEnv.attachClass.update_attachment_package(att_doc, attachments)
+      #Done!  TODO: This call should be able to be simplified in the new architecture
+      #bufs_node.my_GlueEnv.attachClass.update_attachment_package(att_doc, attachments)
+      self.update_attachment_package(att_doc, attachments)
     else
-      #TODO: simplify call
-      bufs_info_doc.my_GlueEnv.attachClass.create_attachment_package(att_doc_id, bufs_info_doc, attachments)
+      #Done! TODO: simplify call
+      #bufs_node.my_GlueEnv.attachClass.create_attachment_package(att_doc_id, bufs_node, attachments)
+      self.create_attachment_package(att_doc_id, bufs_node, attachments)
     end
     return rtn
   end
 
    #Create an attachment for a particular BUFS document
-  #TODO: See if bufs_info_doc can be factored out of this method call
-  def self.create_attachment_package(att_doc_id, bufs_info_doc, attachments)
-    #raise "No document provided for attachments" unless bufs_info_doc
-    #raise "No id found for the document" unless bufs_info_doc._model_metadata[:_id]
+  #TODO: See if bufs_node can be factored out of this method call
+  #YES!! pass in bufs_node.my_GlueEnv.attachClass insteand of bufs_node and use it for instantiation of the att_doc
+  def self.create_attachment_package(att_doc_id, bufs_node, attachments)
+    #raise "No document provided for attachments" unless bufs_node
+    #raise "No id found for the document" unless bufs_node._model_metadata[:_id]
     #raise "No attachments provided for attaching" unless attachments
     #separate attachment data from custom attachment metadata
     #this is necessary since couchdb can't put custom metadata with its attachments
     sorted_attachments = CouchrestAttachmentHelpers.sort_attachment_data(attachments)
-    #att_doc_id  = self.uniq_att_doc_id(bufs_info_doc)
+    #att_doc_id  = self.uniq_att_doc_id(bufs_node)
     custom_metadata_doc_params = {'_id' => att_doc_id, 'md_attachments' => sorted_attachments['cust_md_by_name']}
-    att_doc = bufs_info_doc.my_GlueEnv.attachClass.get(att_doc_id)
+    #simplifying att_doc = bufs_node.my_GlueEnv.attachClass.get(att_doc_id)
+    att_doc = self.get(att_doc_id)
     raise IndexError, "Can't create new attachment document for #{self}. Document already exists in Database" if att_doc
-    att_doc = bufs_info_doc.my_GlueEnv.attachClass.new(custom_metadata_doc_params)
+    att_doc = bufs_node.my_GlueEnv.attachClass.new(custom_metadata_doc_params)
     att_doc.save
     sorted_attachments['att_md_by_name'].each do |att_name, params|
       esc_att_name = BufsEscape.escape(att_name)
       att_doc.put_attachment(esc_att_name, sorted_attachments['data_by_name'][esc_att_name],params)
     end
     #returns the updated document from the database
-    return bufs_info_doc.my_GlueEnv.attachClass.get(att_doc_id)
+    #simplifyingreturn bufs_node.my_GlueEnv.attachClass.get(att_doc_id)
+    return self.get(att_doc_id)
   end
 
   #Update the attachment data of the attachment document
