@@ -1,8 +1,11 @@
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../helpers/require_helper')
+
 require 'couchrest'
 require 'monitor'
-require File.dirname(__FILE__) + '/couchrest_attachment_handler'
 
-require File.dirname(__FILE__) + '/files_manager_base'
+require Bufs.moabs '/couchrest_attachment_handler'
+#require Bufs.moabs 'files_manager_base'  #Not implemented yet
 
 module CouchRestEnv
   ##Uncomment all mutexs and monitors for thread safety for this module (untested)

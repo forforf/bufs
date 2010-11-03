@@ -1,6 +1,9 @@
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '/helpers/require_helper')
+
 require 'json'
-require File.join(File.dirname(__FILE__), 'grapher')
-#require File.dirname(__FILE__) + '/bufs_info_doc'
+
+require Bufs.lib 'grapher'
 
 class DefaultNode < Hash
   #TODO This is a bit hackish and really dependent upon the underlying model, decouple if possible

@@ -1,20 +1,13 @@
-#= bufs_info_attachment.rb - Support for handling CouchDB attachments in the 'BUFS' (Bottom Up File System) Format
-#
-#Copyright (C) 2010  David Martin
-#
-#David Martin mailto:dmarti21@gmail.com
-  
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../helpers/require_helper')
 
-#require 'mime/types'
 require 'cgi'
-
-require File.dirname(__FILE__) + '/../bufs_escape'
-require File.dirname(__FILE__) + '/../helpers/mime_types_new'
 require 'couchrest'
 
-#Module of helper functions for BufsInfoAttachment that performs manipulations on the
-#file attachment structures and metadata
+require Bufs.lib 'bufs_escape'
+require Bufs.helpers 'mime_types_new'
 
+#Performs manipulations ont file attachment structures and metadata
 module BufsInfoAttachmentHelpers
 
   #Attachment data format: attachment_name => attachment info

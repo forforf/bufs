@@ -1,4 +1,7 @@
-require File.join(File.dirname(__FILE__), 'grapher')
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '/helpers/require_helper')
+
+require Bufs.lib 'grapher'
 #RootNode = Struct.new(:my_category, :parent_categories)
 
 class BufsFileViewMaker

@@ -1,10 +1,10 @@
-require 'monitor'
-#require 'cgi'
-#require 'time'
-#require 'json'
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../helpers/require_helper')
 
-require File.dirname(__FILE__) + '/../midas/bufs_data_structure'
-require File.dirname(__FILE__) + '/../moabs/moab_filesystem_env'
+require 'monitor'
+
+require Bufs.midas 'bufs_data_structure'
+require Bufs.moabs 'moab_filesystem_env'
 
 #class ViewsMgr
 module BufsFileSystemViews

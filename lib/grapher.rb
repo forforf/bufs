@@ -1,14 +1,15 @@
-DirTreeView = File.dirname(__FILE__)
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '/helpers/require_helper')
 
-require File.join(DirTreeView, 'bufs_node_factory')
 require 'rgl/adjacency'
 require 'rgl/traversal'
 require 'rgl/topsort'
 require 'rgl/implicit'
 require 'rgl/dot'
-require 'pp'
 
-#TODO: Find a better place to store this helper (helpers?)
+require Bufs.lib 'bufs_node_factory'
+
+#TODO: Find a better place to store this helper (helpers?) (it's used by dependent files)
 RootNode = Struct.new(:my_category, :parent_categories)
 
 class TreeWrapper

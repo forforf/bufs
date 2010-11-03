@@ -1,4 +1,7 @@
-require File.dirname(__FILE__) + '/bufs_base_node'
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '/helpers/require_helper')
+
+require Bufs.lib 'bufs_base_node'
 
 class BufsNodeFactory 
   def self.make(node_env)

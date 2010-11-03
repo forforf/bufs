@@ -1,11 +1,13 @@
-#require 'couchrest'
-#require 'monitor'
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../helpers/require_helper')
+
 require 'cgi'
 require 'time'
 require 'json'
+require 'monitor'
 
-require File.dirname(__FILE__) + '/../helpers/mime_types_new'
-require File.dirname(__FILE__) + '/files_manager_base'
+require Bufs.helpers 'mime_types_new'
+#require Bufs.moabs 'files_manager_base' #Not implemented yet
 
 #File Node Helpers
 class Dir  #monkey patch  (duck punching?)

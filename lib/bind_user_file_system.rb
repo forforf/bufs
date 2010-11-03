@@ -1,6 +1,7 @@
-require File.dirname(__FILE__) + '/bufs_node_factory'
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '/helpers/require_helper')
 
-
+require Bufs.lib 'bufs_node_factory'
 
 class BindUserFileSystem
 

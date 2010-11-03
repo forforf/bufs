@@ -1,5 +1,8 @@
-require File.dirname(__FILE__) + '/../midas/bufs_data_structure'
-require File.dirname(__FILE__) + '/../moabs/moab_couchrest_env'
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../helpers/require_helper')
+
+require Bufs.midas 'bufs_data_structure'
+require Bufs.moabs 'moab_couchrest_env'
 
 module BufsCouchRestViews
 
