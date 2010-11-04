@@ -31,6 +31,7 @@ module BufsCouchRestViews
       res
     rescue RestClient::RequestFailed
       puts "Warning: Request Failed, assuming because the design doc was already saved?"
+      puts "Design doc_id: #{design_doc['_id'].inspect}"
       puts "doc_rev: #{design_doc['_rev'].inspect}"
       puts "db_rev: #{view_rev_in_db}"
       puts "Code thinks doc is up to date? #{design_doc_uptodate.inspect}"
@@ -216,9 +217,15 @@ class GlueEnv
   #fixed to delete orphaned attachments, but this negates much of the advantage of using this method in the first place
   #or perhaps using a close to the metal design view based on the class name?? (this may be better)
   def destroy_bulk(list_of_native_records)
+    #TODO: Investigate why mutiple ids may be returned for the same record
+    #Answer Database Corruption
+    list_of_native_records.uniq!
+    #puts "List of all records: #{list_of_native_records.map{|r| r['_id']}.inspect}"
     list_of_native_records.each do |r|
       begin
-        att_doc_id = r["_id"] + CouchrestAttachment::AttachmentID
+        att_doc_id = r['_id'] + CouchrestAttachment::AttachmentID
+        #puts "Node ID: #{r['_id'].inspect}"
+        #puts "DB: #{@db.all.inspect}"
         @db.delete_doc(r)
         begin
           att_doc = @db.get(att_doc_id)

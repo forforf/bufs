@@ -410,7 +410,7 @@ describe BufsBaseNode, "Attachment Operations" do
   end
 
   before(:each) do
-    BufsBaseNode.destroy_all
+    #BufsBaseNode.destroy_all
   end
 
   #TODO: Need ttest for db duplication, how to do force duplication?
@@ -444,7 +444,7 @@ describe BufsBaseNode, "Attachment Operations" do
     att_node_fresh.attached_files.size.should == 2
     att_node_fresh.attached_files.should include test_basename2
   end
-
+=begin
   it "should remove specified data files" do
     test_filename = @test_files['binary_data_spaces_in_fname_pptx']
     test_basename = File.basename(test_filename)

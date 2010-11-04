@@ -67,6 +67,7 @@ module CouchrestAttachmentHelpers
   #Unescapes attachment names in a CouchDb compatible way
   def self.unescape_names_in_attachments(esc_attachments)
     unescaped_attachments = {}
+    #esc_attachments = esc_attachments || []
     esc_attachments.each do |esc_key, val|
       unesc_key = CGI.unescape(esc_key)
       unescaped_attachments[unesc_key] = val
@@ -110,64 +111,55 @@ class CouchrestAttachment < CouchRest::ExtendedDocument
   
   #CouchDB attachment metadata parameters supported by CouchrestAttachment
   CouchDBAttachParams = ['content_type', 'stub']
+  
+  #changing this will result in existing persisted data being lost
+  #(unless the persisted data is updated as well)
   AttachmentID = "_attachments"
 
   #create the attachment document id to be used
-  def self.uniq_att_doc_id(bufs_node)
-    uniq_id = bufs_node._model_metadata[:_id] + bufs_node.class.attachment_base_id 
+  def self.uniq_att_doc_id(doc_id)
+    uniq_id = doc_id + AttachmentID if doc_id#bufs_node.class.attachment_base_id 
   end
-
-  def self.add_attachment_package(bufs_node, attachments)
-    raise "No document provided for attachments" unless bufs_node
-    raise "No id found for the document" unless bufs_node._model_metadata[:_id]
+  
+  def self.add_attachment_package(doc_id, attach_class, attachments)
+    raise "No class definition provided for attachments" unless attach_class
+    raise "No id found for the document" unless doc_id #bufs_node._model_metadata[:_id]
     raise "No attachments provided for attaching" unless attachments
-    att_doc_id = self.uniq_att_doc_id(bufs_node)
+    att_doc_id = self.uniq_att_doc_id(doc_id)
     att_doc = self.get(att_doc_id)
     rtn = if att_doc
-      #Done!  TODO: This call should be able to be simplified in the new architecture
-      #bufs_node.my_GlueEnv.attachClass.update_attachment_package(att_doc, attachments)
       self.update_attachment_package(att_doc, attachments)
     else
-      #Done! TODO: simplify call
-      #bufs_node.my_GlueEnv.attachClass.create_attachment_package(att_doc_id, bufs_node, attachments)
-      self.create_attachment_package(att_doc_id, bufs_node, attachments)
+      self.create_attachment_package(att_doc_id, attach_class, attachments)
     end
     return rtn
   end
 
    #Create an attachment for a particular BUFS document
-  #TODO: See if bufs_node can be factored out of this method call
-  #YES!! pass in bufs_node.my_GlueEnv.attachClass insteand of bufs_node and use it for instantiation of the att_doc
-  def self.create_attachment_package(att_doc_id, bufs_node, attachments)
-    #raise "No document provided for attachments" unless bufs_node
-    #raise "No id found for the document" unless bufs_node._model_metadata[:_id]
-    #raise "No attachments provided for attaching" unless attachments
-    #separate attachment data from custom attachment metadata
-    #this is necessary since couchdb can't put custom metadata with its attachments
+  def self.create_attachment_package(att_doc_id, attach_class, attachments)
+    raise "No class definition provided for attachments" unless attach_class
+    raise "No id found for the document" unless att_doc_id 
+    raise "No attachments provided for attaching" unless attachments
+    
     sorted_attachments = CouchrestAttachmentHelpers.sort_attachment_data(attachments)
-    #att_doc_id  = self.uniq_att_doc_id(bufs_node)
     custom_metadata_doc_params = {'_id' => att_doc_id, 'md_attachments' => sorted_attachments['cust_md_by_name']}
-    #simplifying att_doc = bufs_node.my_GlueEnv.attachClass.get(att_doc_id)
-    att_doc = self.get(att_doc_id)
-    raise IndexError, "Can't create new attachment document for #{self}. Document already exists in Database" if att_doc
-    att_doc = bufs_node.my_GlueEnv.attachClass.new(custom_metadata_doc_params)
+    att_doc = attach_class.new(custom_metadata_doc_params)
     att_doc.save
+    
     sorted_attachments['att_md_by_name'].each do |att_name, params|
       esc_att_name = BufsEscape.escape(att_name)
       att_doc.put_attachment(esc_att_name, sorted_attachments['data_by_name'][esc_att_name],params)
     end
+    
     #returns the updated document from the database
-    #simplifyingreturn bufs_node.my_GlueEnv.attachClass.get(att_doc_id)
     return self.get(att_doc_id)
   end
 
-  #Update the attachment data of the attachment document
-  #Note: The attachment is decoupled from the associated bufs document, requiring the bufs document
-  #to explicitly be provided.
-  def update_attachment_package(bufs_doc, new_attachments)
-    bufs_doc.my_GlueEnv.attachClass.update_attachment_package(self, new_attachments)
-  end
-
+  #not used? (2010-11-04)
+  #def update_attachment_package(att_doc_id, attach_class, new_attachments)
+  #  #bufs_doc.my_GlueEnv.attachClass.update_attachment_package(self, new_attachments)
+  #  self.update_attachment_package(att_doc_id, attach_class, new_attachments)
+  #end
 
   #Update the attachment data for a particular BUFS document
   #  Important Note: Currently existing data is only updated if new data has been modified more recently than the existing data.
@@ -176,11 +168,11 @@ class CouchrestAttachment < CouchRest::ExtendedDocument
     most_recent_attachment = {}
     if existing_attachments
       new_attachments.each do |new_att_name, new_data|
-	esc_new_att_name = BufsEscape.escape(new_att_name)
+      esc_new_att_name = BufsEscape.escape(new_att_name)
         working_doc = att_doc.class.get(att_doc['_id'])
         if existing_attachments.keys.include? esc_new_att_name
           #filename already exists as an attachment
-	  fresh_attachment =self.find_most_recent_attachment(existing_attachments[esc_new_att_name], new_attachments[new_att_name]['md'])
+          fresh_attachment =self.find_most_recent_attachment(existing_attachments[esc_new_att_name], new_attachments[new_att_name]['md'])
           most_recent_attachment[esc_new_att_name] = fresh_attachment
           if most_recent_attachment[esc_new_att_name] != existing_attachments[esc_new_att_name]
             #update that file and metadata
@@ -210,7 +202,7 @@ class CouchrestAttachment < CouchRest::ExtendedDocument
           #working_doc does not have attachment
           
         end
-        #
+        
       end
     end
     return att_doc.class.get(att_doc['_id'])
@@ -222,7 +214,10 @@ class CouchrestAttachment < CouchRest::ExtendedDocument
     custom_md = att_doc['md_attachments']
     esc_couch_md = att_doc['_attachments']
     couch_md = CouchrestAttachmentHelpers.unescape_names_in_attachments(esc_couch_md)
-    raise "data integrity error, attachment metadata inconsistency" if custom_md.keys.sort != couch_md.keys.sort
+    if custom_md.keys.sort != couch_md.keys.sort
+      raise "data integrity error, attachment metadata inconsistency\n"\
+             "in memory: #{custom_md.inspect} \n persisted: #{couch_md.inspect}"
+    end
     (attachment_data = custom_md.dup).merge(couch_md) {|k,v_custom, v_couch| v_custom.merge(v_couch)}
   end
 
@@ -234,11 +229,13 @@ class CouchrestAttachment < CouchRest::ExtendedDocument
   def remove_attachment(attachment_names)
     attachment_names = [attachment_names].flatten
     attachment_names.each do |att_name|
-      att_name = BufsEscape.escape(att_name)    
-      self.delete_attachment(att_name)
+      att_name = BufsEscape.escape(att_name)
       self['md_attachments'].delete(att_name)
+      self['_attachments'].delete(att_name)
     end
     resp = self.save
+    atts = self.class.get_attachments(self)
+    #raise atts.inspect
     raise "Remove Attachment Operation Failed with response: #{resp.inspect}" unless resp == true
     self
   end
@@ -258,8 +255,6 @@ class CouchrestAttachment < CouchRest::ExtendedDocument
       most_recent_attachment_data = attachment_data1 || attachment_data2
     end
     most_recent_attachment_data
-  end
+  end#def
 
-  def delete_attachments(attachment_name)
-  end
-end
+end#class

@@ -57,14 +57,15 @@ module CouchRestEnv
   end
   class FilesMgrInterface
 
-    attr_accessor :attachment_location, :attachment_packages
+    attr_accessor :attachment_location, :attachment_packages, :attachment_doc_class
 
     def self.get_att_doc(node)
-      #FIXME: This is a hack that doesn't require changing the attachment class
+      #FIXME: This is a hack that doesn't require changing the attachment class #Fixed?
       #id = node_env.generate_model_key(node_env.user_datastore_id, node_key)
       #stub_bid = BIDStub.new(id)
       #@attachment_doc_id = @attachment_doc_class.uniq_att_doc_id(stub_bid)
-      attachment_doc_id = node.my_GlueEnv.attachClass.uniq_att_doc_id(node)
+      node_id = node._model_metadata[:_id]
+      attachment_doc_id = node.my_GlueEnv.attachClass.uniq_att_doc_id(node_id)
       att_doc = node.my_GlueEnv.db.get(attachment_doc_id)
       if att_doc
         return att_doc
@@ -111,7 +112,8 @@ module CouchRestEnv
       #TODO: What if the attachment already exists?
       user_id = node.my_GlueEnv.db_user_id
       node_id = node._model_metadata[:_id]
-      record = bia_class.add_attachment_package(node, attachment_package)
+#      record = bia_class.add_attachment_package(node, attachment_package)
+      record = bia_class.add_attachment_package(node_id, bia_class, attachment_package)
       if node.respond_to? :attachment_doc_id
         if node.attachment_doc_id && (node.attachment_doc_id != record['_id'] )
           raise "Attachment ID mismatch, current id: #{node.attachment_doc_id} new id: #{record['_id']}"
@@ -122,6 +124,7 @@ module CouchRestEnv
         node.__set_userdata_key(:attachment_doc_id,  record['_id'] )
       end
       #node.attachment_doc_id
+      #raise stored_basenames.inspect
       stored_basenames
     end
 
@@ -138,7 +141,8 @@ module CouchRestEnv
       unesc_attach_name = BufsEscape.unescape(attach_name)
       attachment_package[unesc_attach_name] = {'data' => raw_data, 'md' => file_metadata}
       #bia = bia_class.get(node.attachment_doc_id)
-      record = bia_class.add_attachment_package(node, attachment_package)
+      node_id = node._model_metadata[:_id]
+      record = bia_class.add_attachment_package(node_id, bia_class, attachment_package)
       if node.respond_to? :attachment_doc_id
         if node.attachment_doc_id && (node.attachment_doc_id != record['_id'] )
           raise "Attachment ID mismatch, current id: #{node.attachment_doc_id} new id: #{record['_id']}"
@@ -164,14 +168,16 @@ module CouchRestEnv
 
     def get_raw_data(node, model_basename)
       bia_class = node.my_GlueEnv.attachClass
-      bia_doc_id = bia_class.uniq_att_doc_id(node)
+      node_id = node._model_metadata[:_id]
+      bia_doc_id = bia_class.uniq_att_doc_id(node_id)
       bia_doc = bia_class.get(bia_doc_id)
       bia_doc.fetch_attachment(model_basename)
     end
 
     def get_attachments_metadata(node)
       bia_class = node.my_GlueEnv.attachClass
-      bia_doc_id = bia_class.uniq_att_doc_id(node)
+      node_id = node._model_metadata[:_id]
+      bia_doc_id = bia_class.uniq_att_doc_id(node_id)
       bia_doc = bia_class.get(bia_doc_id)
       bia_doc.get_attachments
     end 
@@ -234,7 +240,7 @@ module CouchRestEnv
   #The goal is to have the class environment completed abstracted from the
   #operations (i.e. methods) of the class. Perfect abstraction would yield
   #a model class that could be readily applied to differnt models, and perhaps 
-  #elimivgnate the need for an abstract class to encapsulate the modesl (the current approach) 
+  #eliminate the need for an abstract class to encapsulate the models (the current approach) 
   #The class variables should be able to be reused across all models (yet to be seen if this is possible)
   #The structure of the environment is a hash (which can contain multiple class environments)
   #           { env_name => env_options_for_that_particular_class }
@@ -368,8 +374,8 @@ module CouchRestEnv
   #TODO: Test in spec that attachments are being deleted
   def self.destroy_node(node)
     #att_doc = node.my_GlueEnv.attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
-    att_doc = node.my_GlueEnv.attachClass.get(node.my_GlueEnv.attachClass.uniq_att_doc_id(node))
-    #raise "Destroying #{att_doc.inspect}"
+    att_doc = node.my_GlueEnv.attachClass.get(node.my_GlueEnv.attachClass.uniq_att_doc_id(node._model_metadata[:_id]))
+    #raise "Destroying Attachment #{att_doc.inspect} from #{node._model_metadata[:_id].inspect}"
     att_doc.destroy if att_doc
     begin
       self.destroy(node)
