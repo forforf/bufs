@@ -125,12 +125,10 @@ module CouchRestEnv
       else
         file_metadata['file_modified'] = Time.now.to_s
       end
-      #FIXME!! Unknown content type is dropped somewhere and lost
       file_metadata['content_type'] = content_type 
       attachment_package = {}
       unesc_attach_name = BufsEscape.unescape(attach_name)
       attachment_package[unesc_attach_name] = {'data' => raw_data, 'md' => file_metadata}
-      #bia = bia_class.get(node.attachment_doc_id)
       node_id = node._model_metadata[:_id]
       record = bia_class.add_attachment_package(node_id, bia_class, attachment_package)
       if node.respond_to? :attachment_doc_id
@@ -143,7 +141,6 @@ module CouchRestEnv
         node.__set_userdata_key(:attachment_doc_id,  record['_id'] )
       end
       [attach_name]
-      #@record_ref = record['_id']
     end
 
     #TODO  Document the :all shortcut somewhere
@@ -172,31 +169,6 @@ module CouchRestEnv
       bia_doc.get_attachments
     end 
 
-    #def get_attachment_metadata(node, model_basename)
-    #  atts = get_attachments_metadata(node)
-    #  atts[BufsEscape.escape(model_basename)]  #TODO This will break when filename is not the key field
-    #end
-
-    #def list_files(node)
-    #  return nil unless node.attachment_doc_id
-    #  bia_class = @model_actor[:attachment_actor_class]
-    #  rtn = if node.attachment_doc_id
-    #    bia_doc = bia_class.get(node.attachment_doc_id)
-    #    bia_doc.get_attachments
-    #  end
-    #  rtn
-    #end
-
-    #def get_file_data(node, basename)
-    #  bia_class = node.my_GlueEnv.attachClass
-    #  data = bia_doc.fetch_attachment(basename)
-    #end
-
-    #def list_file_keys(node)
-    #   return nil unless node.attachment_doc_id
-    #   atts = list_files(node)
-    #   rtn = atts.keys
-    #end
 
     #TODO: make private
     def subtract_some(node, model_basenames, bia_class)

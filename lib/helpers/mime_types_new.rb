@@ -8,6 +8,7 @@ require 'mime/types'
 #This class will include the Office 2007 extension types when looking up MIME types.
 class MimeNew
 
+  DefaultUnknownContentType = "application/octet-stream"
   #Returns the mime type of a file
   #  MimeNew.for_ofc_x('a_new_word_doc.docx') 
   #  #=>  "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -17,22 +18,32 @@ class MimeNew
     cont_type =case old_ext
       #New Office Formats
     when '.docx'
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
     when '.dotx'
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.template"
+      ["application/vnd.openxmlformats-officedocument.wordprocessingml.template"]
     when '.pptx'
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+      ["application/vnd.openxmlformats-officedocument.presentationml.presentation"]
     when '.ppsx'
-      "application/vnd.openxmlformats-officedocument.presentationml.slideshow"
+      ["application/vnd.openxmlformats-officedocument.presentationml.slideshow"]
     when '.potx'
-      "application/vnd.openxmlformats-officedocument.presentationml.template"
+      ["application/vnd.openxmlformats-officedocument.presentationml.template"]
     when '.xlsx'
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]
     when '.xltx'
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.template"
+      ["application/vnd.openxmlformats-officedocument.spreadsheetml.template"]
     else
-      MIME::Types.type_for(fname).first.content_type
+      self.other_content_types(fname)
+    end#case
+    return cont_type
+  end# def
+  
+  def self.other_content_types(fname)
+    std_type = MIME::Types.type_for(fname).first
+    rtn = if std_type
+      std_type.content_type
+    else
+      DefaultUnknownContentType
     end
-  end
+  end#def
 end
 
