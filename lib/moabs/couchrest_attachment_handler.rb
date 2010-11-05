@@ -223,7 +223,7 @@ class CouchrestAttachment < CouchRest::ExtendedDocument
 
   #retrieves document attachments for this document
   def get_attachments
-    self.class.get_attachments(self) #BufsInfoAttachment.get_attachments(self)
+    self.class.get_attachments(self) 
   end
 
   def remove_attachment(attachment_names)
@@ -235,7 +235,6 @@ class CouchrestAttachment < CouchRest::ExtendedDocument
     end
     resp = self.save
     atts = self.class.get_attachments(self)
-    #raise atts.inspect
     raise "Remove Attachment Operation Failed with response: #{resp.inspect}" unless resp == true
     self
   end

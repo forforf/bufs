@@ -19,8 +19,6 @@ module CouchRestEnv
   NamespaceKey = :bufs_namespace
   BaseMetadataKeys = [ModelKey, VersionKey, NamespaceKey]
 
-  AttachmentBaseID = "_attachments"
-
   #The file handling is bound to the model, and can't be abstracted away. This means files can't be handle
   #via the dynamic methods used for other data structures.
   #models that will handle data files (whether filesystem files or attachments)
@@ -44,48 +42,36 @@ module CouchRestEnv
       #                 }
       #
       # filename_key = model_filenames to delete
-  class BIDStub
-    attr_accessor :_model_metadata
-    def self.attachment_base_id
-      "_attachments"
-    end
-   
-    def initialize(id)
-      @_model_metadata = {}
-      @_model_metadata[:_id] = id
-    end
-  end
+  
+  
   class FilesMgrInterface
 
-    attr_accessor :attachment_location, :attachment_packages, :attachment_doc_class
+    attr_accessor :attachment_doc_class
 
     def self.get_att_doc(node)
-      #FIXME: This is a hack that doesn't require changing the attachment class #Fixed?
-      #id = node_env.generate_model_key(node_env.user_datastore_id, node_key)
-      #stub_bid = BIDStub.new(id)
-      #@attachment_doc_id = @attachment_doc_class.uniq_att_doc_id(stub_bid)
       node_id = node._model_metadata[:_id]
       attachment_doc_id = node.my_GlueEnv.attachClass.uniq_att_doc_id(node_id)
       att_doc = node.my_GlueEnv.db.get(attachment_doc_id)
       if att_doc
         return att_doc
       else
-        return nil #self.new(node_env, node_key) #, node_key)
+        return nil 
       end
     end
 
-
-    def initialize(node_env,node_key) #, node_key)
+    def initialize(node_env, node_key)
       #for bufs node_key is the value of :my_category
-      #TODO move from glue to moab
+      #although it is not used in this class, it is required to 
+      #maintain consitency with bufs_base_node
+      #TODO: Actually the goal is for moab's to have no dependency on bufs_base_node
+      #so maybe the glue environment should have a files interface to bufs_base_node??
       @attachment_doc_class = node_env.attachClass
     end
 
     def add_files(node, file_datas)
-      bia_class = @attachment_doc_class #node.my_GlueEnv.attachClass
+      bia_class = @attachment_doc_class
       attachment_package = {}
       file_datas = [file_datas].flatten
-      stored_basenames = []
       file_datas.each do |file_data|
         #get file data
         src_filename = file_data[:src_filename]
@@ -102,29 +88,32 @@ module CouchRestEnv
         file_metadata['content_type'] = content_type
         file_metadata['file_modified'] = modified_time
         #read in file
-        #TODO: reading the file in this way is memory intensive for large files, chunking it up woudl be better
+        #TODO: reading the file in this way is memory intensive for large files, chunking it up would be better
         file_data = File.open(src_filename, "rb") {|f| f.read}
         attachment_package[model_basename] = {'data' => file_data, 'md' => file_metadata}
-        stored_basenames << src_basename  #TODO: Tie this more closely with successful attachment
       end
       #attachment package has now been created
       #create the attachment record
-      #TODO: What if the attachment already exists?
+      #The attachment handler (bia_class) will deal with creating vs updating
       user_id = node.my_GlueEnv.db_user_id
       node_id = node._model_metadata[:_id]
-#      record = bia_class.add_attachment_package(node, attachment_package)
+      #TODO: There is probably a cleaner way to do add attachments, but low on the priority list
       record = bia_class.add_attachment_package(node_id, bia_class, attachment_package)
+      #get the basenames we just stored
+      stored_basenames = record['_attachments'].keys
       if node.respond_to? :attachment_doc_id
+        #make sure the objects attachment id matches the persistence layer's record id
         if node.attachment_doc_id && (node.attachment_doc_id != record['_id'] )
           raise "Attachment ID mismatch, current id: #{node.attachment_doc_id} new id: #{record['_id']}"
+        #if the attachment id doesn't exist, create it
         elsif node.attachment_doc_id.nil?
           node.attachment_doc_id = record['_id']  #TODO How is it nil?
+        else
+          #we will reach here when everything is fine but we don't need to do anything
         end
-      else
+      else #it's a new attachment and the attachment id has not been set, so we create and set it
         node.__set_userdata_key(:attachment_doc_id,  record['_id'] )
       end
-      #node.attachment_doc_id
-      #raise stored_basenames.inspect
       stored_basenames
     end
 
@@ -136,7 +125,8 @@ module CouchRestEnv
       else
         file_metadata['file_modified'] = Time.now.to_s
       end
-      file_metadata['content_type'] = content_type #TODO: is unknown content handled gracefully?
+      #FIXME!! Unknown content type is dropped somewhere and lost
+      file_metadata['content_type'] = content_type 
       attachment_package = {}
       unesc_attach_name = BufsEscape.unescape(attach_name)
       attachment_package[unesc_attach_name] = {'data' => raw_data, 'md' => file_metadata}

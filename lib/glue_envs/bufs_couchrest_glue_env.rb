@@ -154,7 +154,6 @@ class GlueEnv
     @design_doc = CouchRestEnv.set_couch_design(@db, db_user_id)#, @collection_namespace)
     @moab_data = {:db => @db, :design_doc => @design_doc}
     @define_query_all = "by_all_bufs".to_sym #CouchRestEnv.query_for_all_collection_records
-    @attachment_base_id = CouchRestEnv::AttachmentBaseID
     @metadata_keys = CouchRestEnv.set_db_metadata_keys #(@collection_namespace)
     @required_instance_keys = DataStructureModels::Bufs::RequiredInstanceKeys
     @required_save_keys = DataStructureModels::Bufs::RequiredSaveKeys

@@ -258,10 +258,10 @@ class BufsBaseNode
     # so @node_data_hash can be updated
     #dynamic method acting like an instance variable getter
     self.class.__send__(:define_method, "#{attr_var}".to_sym,
-       lambda {@_user_data[attr_var]} )
+                                lambda {@_user_data[attr_var]} )
     #dynamic method acting like an instance variable setter
     self.class.__send__(:define_method, "#{attr_var}=".to_sym,
-       lambda {|new_val| @_user_data[attr_var] = new_val} )
+                                lambda {|new_val| @_user_data[attr_var] = new_val} )
   end
 
   #TODO: Method Wrapper is not sufficiently tested
@@ -399,6 +399,7 @@ class BufsBaseNode
     attached_basenames = @_files_mgr.add_raw_data(self, attach_name, content_type, raw_data, file_modified_at = nil)
     if self.attached_files
       self.attached_files += attached_basenames
+      self.attached_files.uniq!  #removing duplicates is ok because these names are keys to the underlying attached file data (dupes would point to the same data)
     else
       self.__set_userdata_key(:attached_files, attached_basenames)
     end
@@ -413,6 +414,7 @@ class BufsBaseNode
     attached_basenames = @_files_mgr.add_files(self, file_datas)
     if self.attached_files
       self.attached_files += attached_basenames
+      self.attached_files.uniq!  #removing duplicates is ok because these names are keys to the underlying attached file data (dupes would point to the same data)
     else
       self.__set_userdata_key(:attached_files, attached_basenames)
     end
