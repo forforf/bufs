@@ -56,8 +56,9 @@ class BufsFileViewMaker
     end
   end
   
+  #TODO: Works, but needs optimization and refactoriation
   def build_static_node_view(node, parent_dir)
-    puts "Node (Static): #{node.node_name}"
+    #puts "Node (Static): #{node.node_name}"
 
     #make directory
     node_dir = File.join(parent_dir, node.node_name)
@@ -74,16 +75,33 @@ class BufsFileViewMaker
     #TODO: make the file search more efficient 
     #a tree 3 layers down is iterated over 3 separate times to get
     #the same files
-    subtree = @tree.bfs_search_tree_from(node)
-    #FIXME: I think instead of passing the subtree if you build a new tree
-    #with the current node as root it may work??  May require some tricky refactoring though
+    #subtree = @tree.bfs_search_tree_from(node)
+    #@tree_data = Grapher.new(@all_nodes, @keys, graph_type, @root_node).graph_data
+    #@tree = @tree_data[:graph]
+    
+    graph_type = :digraph
+    new_root_node = RootNode.new("dummy", [])
+    #puts "Full Node List: #{@all_nodes.map{|n| n.my_category}.inspect}"
+    new_node_list = @all_nodes #- [new_root_node.unwrap]
+    #puts "New Node List : #{new_node_list.map{|n| n.my_category}.inspect}"
+    new_grapher = Grapher.new(new_node_list, @keys, graph_type, new_root_node)
+    new_tree_data = new_grapher.graph_data
+    new_tree = new_tree_data[:graph]
+    puts "New Tree: #{new_tree.vertices.map{|v| v.node_name }.inspect}"
+    puts "New Tree Objs: #{new_tree.vertices.map{|v| v.object_id}.inspect}"
+    
+    base_nodes = new_tree.vertices.select{|v| v.node_name == node.node_name}
+    raise "Wrong number of key nodes found: #{base_nodes.size} for #{node.node_name.inspect}" unless base_nodes.size == 1
+    base_node = base_nodes.first
+    puts "Node: #{base_node.node_name.inspect}"
+    puts "Node Obj: #{base_node.object_id.inspect}"
+    
+    subtree = new_tree.bfs_search_tree_from(base_node)
     subtree_files = find_all_files_in_tree(subtree)
     subtree_links = find_all_links_in_tree(subtree)
     #require 'pp'
     #pp subtree_files
     
-    
-    #FIXME: sigh, this only works when there are no cycles
     @files_in_tree[node] = subtree_files
     @links_in_tree[node] = subtree_links
 
@@ -124,7 +142,7 @@ class BufsFileViewMaker
     #files_list = {}
     #TODO: Create a generic function that can be used for files and bufs web UI
     #returns list of file paths (not compatible with web UI)
-    tree.vertices.map{|v| {v => v.node_content.attached_files} }.compact
+    tree.vertices.map{|v| {v => v.node_content.attached_files} if v.node_content }.compact
   end
 
   def find_all_links_in_tree(tree)
@@ -132,18 +150,27 @@ class BufsFileViewMaker
     #files_list = {}
     #TODO: Create a generic function that can be used for files and bufs web UI
     #returns list of file paths (not compatible with web UI)
-    tree.vertices.map{|v| {v => v.node_content.links} }.compact
-  end
+    tree.vertices.map{|v| {v => v.node_content.links} if v.node_content }.compact
+  end#def
 
   def create_links_file(links)
     link_file_data = ""
     return nil unless links
     #links format {"http:\\dest.com" => "label"}
     
-    links.each do |url, label|
-      next unless ( url || label) 
+    links.each do |url, labels|
+      next unless ( url || labels) 
       #link.each do |url, label|
         #htmlify the data
+        #FIXME: This is a hack to avoid changing data structure
+        #which constructively adds, but now only want to replace
+        #puts "Creating Links File with #{labels.inspect}"
+        if labels.respond_to?(:join)
+          label = labels.join(",")
+        else
+          label = labels
+        end
+        #puts "Creating Link File with #{label.inspect}"
         link_html = "<a href='#{url}'>#{label}</a>\n"
         link_file_data << link_html
       #end
@@ -225,8 +252,19 @@ class BufsFileViewMaker
             puts "Val Class: #{v.inspect}"
           end
           next unless node_with_link_data
-          node_with_link_data.each do |tw_node, link_data|
-            next unless link_data
+          node_with_link_data.each do |tw_node, link_datas|
+            next unless link_datas
+            link_data = {}
+            #FIXME: Ugly hack to deal with string and array data structures
+            link_datas.each do |k,v|
+              if v.respond_to?(:join)
+                link_data[k] = v.join(",")
+              else
+                link_data[k] = v
+              end              
+            end#each
+
+            puts "Link Data class: #{link_data.class.name}"
             puts "Merge: #{@links_data.inspect} with #{link_data.inspect}"
             @links_data += link_data.to_a
             @links_data.uniq!

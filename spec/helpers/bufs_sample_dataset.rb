@@ -90,6 +90,7 @@ module SampleDataSets
     
     data_set[:bcc][:my_category] = 'bcc'
     data_set[:bcc][:parent_categories] = ['bc']
+    data_set[:bcc][:links] = [[['MeFi'], 'http:\\www.metafilter.com']]
     
     data_set[:c][:my_category] = 'c'
     data_set[:c][:parent_categories] = []
