@@ -34,6 +34,8 @@ class MimeNew
     else
       self.other_content_types(fname)
     end#case
+    cont_type = [cont_type].flatten.first
+    #puts "Content Type returned: #{cont_type.inspect}"
     return cont_type
   end# def
   
@@ -44,6 +46,7 @@ class MimeNew
     else
       DefaultUnknownContentType
     end
+    return rtn
   end#def
 end
 

@@ -267,6 +267,7 @@ module FileSystemEnv
     #data sets (i.e., users) within the model
     def self.generate_model_key(collection_namespace, node_key)
       "#{collection_namespace}::#{node_key}"
+      #File.join(collection_namespace,node_key)
     end  
 
     def self.save(model_save_params, data)

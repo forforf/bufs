@@ -35,12 +35,14 @@ module NodeElementOperations
                                  other = other || {}
                                  srcs = other.keys
                                  srcs.each {|s| if this[s]
-                                            this[s] = [ other[s] ].flatten
+                                            #this[s] = [ other[s] ].flatten
+                                            this[s] = other[s]
                                            else
-                                            this[s] = [ other[s] ].flatten
-                                           end
-                                           this[s].uniq!
-                                           this[s].compact! }
+                                            #this[s] = [ other[s] ].flatten
+                                            this[s] = other[s]
+                                           end }
+                                           #this[s].uniq!
+                                           #this[s].compact! }
                            Hash[:update_this => this] }
   #if link_name is used besides other, then all link_names would need to be unique, so we use other
   LinkSubtractOp = lambda {|this, other| this = this || {}

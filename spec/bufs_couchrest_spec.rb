@@ -315,14 +315,17 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     #initial conditions for  adding data
     #NOTE: :links has a special operations for add and subtract
     #defined in the Node Operations (see midas directory)
-    new_data = {:link_name => "blah", :link_src =>"http:\\\\to.somewhere.blah"}
+    #NOTE NOTE
+    #old  add(old_key => new_val) -> old_key => [old_val, new_val]
+    #now add(old_key => new_val) -> old_key => new_val
+    new_data = {:link_name => "blah", :link_src =>"http:\\to.somewhere.blah"}
     add_method = "#{new_key_field}_add".to_sym
     LinkAddOp = NodeElementOperations::LinkAddOp
     #test adding new data
     basic_node.__send__(add_method, new_data)
     #verify new data was added appropriately
     updated_data = basic_node.__send__(new_key_field)
-    updated_data.should_not == new_data
+    updated_data.should == new_data   #formerly was not ==
     magically_transformed_data = LinkAddOp.call(nil, new_data)[:update_this]
     updated_data.should == magically_transformed_data
   end
