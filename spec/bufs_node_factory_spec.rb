@@ -457,7 +457,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
       nodes[user_class].__send__(add_method, new_data)
     #verify new data was added appropriately
       updated_data = nodes[user_class].__send__(new_key_field)
-      updated_data.should_not == new_data
+      updated_data.should == new_data #old links version it would not be equal
       magically_transformed_data = link_add_op.call(nil, new_data)[:update_this]
       updated_data.should == magically_transformed_data
     end

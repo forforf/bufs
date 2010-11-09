@@ -130,6 +130,8 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     #test
     doc_to_save.__save
     #verify results
+    puts "doc to save: #{doc_to_save.my_category}"
+    puts "doc to save id: #{doc_to_save._model_metadata[:_id]}"
     saved_doc = BufsBaseNode.get(doc_to_save._model_metadata[:_id])
     doc_to_save.my_category.should == saved_doc.my_category
   end
@@ -335,7 +337,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     basic_node.__send__(add_method, new_data)
     #verify new data was added appropriately
     updated_data = basic_node.__send__(new_key_field)
-    updated_data.should_not == new_data
+    updated_data.should == new_data  #old links version it would not be equal
     magically_transformed_data = LinkAddOp.call(nil, new_data)[:update_this]
     updated_data.should == magically_transformed_data
   end

@@ -80,9 +80,10 @@ describe CouchrestAttachment do
     data = File.open(test_file, 'rb') {|f| f.read}
     attachs = {test_file_basename => {'data' => data, 'md' => md_params }}
     #test
-    bia = CouchrestAttachment.add_attachment_package(test_doc_id, ::CouchrestAttachment, attachs )
+    bia = CouchrestAttachment.add_attachment_package(test_doc_id, CouchrestAttachment, attachs )
     #check results
-    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
+
+    test_attachment_id = test_doc_id + CouchrestAttachment::AttachmentID
     bia['_id'].should == test_attachment_id
     #test_doc.attachment_doc_id.should == test_attachment_id
     #p bia.class
@@ -106,9 +107,9 @@ describe CouchrestAttachment do
     data = File.open(test_file, 'rb') {|f| f.read}
     attachs = {test_file_basename => {'data' => data, 'md' => md_params }}
     #test
-    bia = CouchrestAttachment.add_attachment_package(test_doc_id, ::CouchrestAttachment, attachs )
+    bia = CouchrestAttachment.add_attachment_package(test_doc_id, CouchrestAttachment, attachs )
     #check results
-    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
+    test_attachment_id = test_doc_id + CouchrestAttachment::AttachmentID
     bia['_id'].should == test_attachment_id
     bia['md_attachments'][BufsEscape.escape(test_file_basename)]['file_modified'].should == test_file_modified_time.to_s
     bia['_attachments'][BufsEscape.escape(test_file_basename)]['content_type'].should == md_params['content_type']
@@ -137,7 +138,7 @@ describe CouchrestAttachment do
     #test
     bia = CouchrestAttachment.add_attachment_package(test_doc_id, ::CouchrestAttachment, attachs )
     #verify results
-    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
+    test_attachment_id = test_doc_id + CouchrestAttachment::AttachmentID
     bia['_id'].should == test_attachment_id
     bia['md_attachments'][BufsEscape.escape(test_file1_basename)]['file_modified'].should == File.mtime(test_file1).to_s
     bia['_attachments'][BufsEscape.escape(test_file1_basename)]['content_type'].should == md_params1['content_type']
@@ -166,7 +167,7 @@ describe CouchrestAttachment do
     test_doc = @test_doc
     test_doc_id = @test_doc_id
     bia_existing = CouchrestAttachment.add_attachment_package(test_doc_id, ::CouchrestAttachment, attachs )
-    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
+    test_attachment_id = test_doc_id + CouchrestAttachment::AttachmentID
     #verify attachment exists
     bia_existing['_id'].should == test_attachment_id
     #set initial conditions for test file
@@ -197,14 +198,14 @@ describe CouchrestAttachment do
     test_doc = @test_doc
     test_doc_id = @test_doc_id
     #test_doc_id = 'dummy_fresh_attachment_replaces_stale'
-    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
+    test_attachment_id = test_doc_id + CouchrestAttachment::AttachmentID
     #create a single record
     md_params = {}
     md_params['content_type'] = MimeNew.for_ofc_x(test_file)
     md_params['file_modified'] = test_file_modified_time.to_s
     data = File.open(test_file, 'rb') {|f| f.read}
     attachs = {test_file_basename => {'data' => data, 'md' => md_params }}
-    bia = CouchrestAttachment.add_attachment_package(test_doc_id, ::CouchrestAttachment, attachs )
+    bia = CouchrestAttachment.add_attachment_package(test_doc_id, CouchrestAttachment, attachs )
     #verify initial condition
     bia['_id'].should == test_attachment_id
     bia['md_attachments'][BufsEscape.escape(test_file_basename)]['file_modified'].should == test_file_modified_time.to_s
@@ -306,9 +307,9 @@ describe CouchrestAttachment do
               }
     test_doc = @test_doc
     test_doc_id = test_doc._model_metadata[:_id]
-    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
+    test_attachment_id = test_doc_id + CouchrestAttachment::AttachmentID
     test_attachment = CouchrestAttachment.get(test_attachment_id)
-    bia = CouchrestAttachment.add_attachment_package(test_doc_id, ::CouchrestAttachment, attachs )
+    bia = CouchrestAttachment.add_attachment_package(test_doc_id, CouchrestAttachment, attachs )
     data = CouchrestAttachment.get_attachments(bia)
     #puts "SIA data: #{data.inspect}"
     data[BufsEscape.escape(test_file1_basename)]['file_modified'].should == test_file1_modified_time.to_s
@@ -336,9 +337,9 @@ describe CouchrestAttachment do
               }
     test_doc = @test_doc
     test_doc_id = test_doc._model_metadata[:_id]
-    test_attachment_id = test_doc_id + BufsBaseNode.attachment_base_id
+    test_attachment_id = test_doc_id + CouchrestAttachment::AttachmentID
     test_attachment = CouchrestAttachment.get(test_attachment_id)
-    bia = CouchrestAttachment.add_attachment_package(test_doc_id, ::CouchrestAttachment, attachs )
+    bia = CouchrestAttachment.add_attachment_package(test_doc_id, CouchrestAttachment, attachs )
     #test
     bia.remove_attachment(test_file1_basename)
     #verify
