@@ -58,53 +58,26 @@ class BufsFileViewMaker
   
   #TODO: Works, but needs optimization and refactoriation
   def build_static_node_view(node, parent_dir)
-    #puts "Node (Static): #{node.node_name}"
-
     #make directory
     node_dir = File.join(parent_dir, node.node_name)
-    #puts "Making Node Dir: #{node_dir}"
     FileUtils.mkdir_p(node_dir)
     #update the node map
     @node_map[node.node_name] = node_dir
 
     create_attached_files(node, node_dir)
-
     create_link_data_and_file(node, node_dir)
-    
-    #all files in subdirs
+
     #TODO: make the file search more efficient 
     #a tree 3 layers down is iterated over 3 separate times to get
     #the same files
-    #subtree = @tree.bfs_search_tree_from(node)
-    #@tree_data = Grapher.new(@all_nodes, @keys, graph_type, @root_node).graph_data
-    #@tree = @tree_data[:graph]
     
-    graph_type = :digraph
-    new_root_node = RootNode.new("dummy", [])
-    #puts "Full Node List: #{@all_nodes.map{|n| n.my_category}.inspect}"
-    new_node_list = @all_nodes #- [new_root_node.unwrap]
-    #puts "New Node List : #{new_node_list.map{|n| n.my_category}.inspect}"
-    new_grapher = Grapher.new(new_node_list, @keys, graph_type, new_root_node)
-    new_tree_data = new_grapher.graph_data
-    new_tree = new_tree_data[:graph]
-    puts "New Tree: #{new_tree.vertices.map{|v| v.node_name }.inspect}"
-    puts "New Tree Objs: #{new_tree.vertices.map{|v| v.object_id}.inspect}"
-    
-    base_nodes = new_tree.vertices.select{|v| v.node_name == node.node_name}
-    raise "Wrong number of key nodes found: #{base_nodes.size} for #{node.node_name.inspect}" unless base_nodes.size == 1
-    base_node = base_nodes.first
-    puts "Node: #{base_node.node_name.inspect}"
-    puts "Node Obj: #{base_node.object_id.inspect}"
-    
-    subtree = new_tree.bfs_search_tree_from(base_node)
-    subtree_files = find_all_files_in_tree(subtree)
-    subtree_links = find_all_links_in_tree(subtree)
-    #require 'pp'
-    #pp subtree_files
-    
+    #borg assimilates all node elements at the current node and below
+    #works with directed graphs with cycles as well
+    borg = Borg.new(@all_nodes, @keys)  #Borg is part of grapher
+    subtree_files = borg.ify(node, :attached_files)
+    subtree_links = borg.ify(node, :links)
     @files_in_tree[node] = subtree_files
     @links_in_tree[node] = subtree_links
-
     
     #recurse through the descendants
     static_children = node.normal_descendants
@@ -113,6 +86,32 @@ class BufsFileViewMaker
       next unless node
       build_static_node_view(child, node_dir)
     end
+  end
+  
+  def borg(top_node, data_element)
+    graph_type = :digraph
+    new_root_node = RootNode.new("dummy", [])
+    #puts "Full Node List: #{@all_nodes.map{|n| n.my_category}.inspect}"
+    new_node_list = @all_nodes #- [new_root_node.unwrap]
+    #puts "New Node List : #{new_node_list.map{|n| n.my_category}.inspect}"
+    new_grapher = Grapher.new(new_node_list, @keys, graph_type, new_root_node)
+    new_tree_data = new_grapher.graph_data
+    new_tree = new_tree_data[:graph]
+    #puts "New Tree: #{new_tree.vertices.map{|v| v.node_name }.inspect}"
+    #puts "New Tree Objs: #{new_tree.vertices.map{|v| v.object_id}.inspect}"
+    
+    base_nodes = new_tree.vertices.select{|v| v.node_name == top_node.node_name}
+    raise "Wrong number of key nodes found: #{base_nodes.size} for #{top_node.node_name.inspect}" unless base_nodes.size <= 1
+    return nil if base_nodes.size == 0
+    
+    base_node = base_nodes.first
+    #puts "Node: #{base_node.node_name.inspect}"
+    #puts "Node Obj: #{base_node.object_id.inspect}"
+    
+    subtree = new_tree.bfs_search_tree_from(base_node)
+    borged_data  = subtree.vertices.map{|v| {v => v.node_content.__send__(data_element.to_sym)} if v.node_content }.compact
+    #subtree_files = find_all_files_in_tree(subtree)
+    #subtree_links = find_all_links_in_tree(subtree)
   end
   
   def create_attached_files(node, node_dir)
@@ -150,7 +149,11 @@ class BufsFileViewMaker
     #files_list = {}
     #TODO: Create a generic function that can be used for files and bufs web UI
     #returns list of file paths (not compatible with web UI)
-    tree.vertices.map{|v| {v => v.node_content.links} if v.node_content }.compact
+    puts "vv"
+    require 'pp'
+    pp tree.vertices.map{|v| {v.node_name => v.node_content.links} if v.node_content}
+    puts "^^"
+    tree.vertices.map{|v| {v => v.node_content.links} if v.node_content}.compact
   end#def
 
   def create_links_file(links)
@@ -248,8 +251,8 @@ class BufsFileViewMaker
           subtree_nodes_with_links.each do |node_with_link_data|
           #puts "node_with_link_data"
           node_with_link_data.each do |k,v|
-            puts "Key Class: #{k.node_name}"
-            puts "Val Class: #{v.inspect}"
+            #puts "Key Class: #{k.node_name}"
+            #puts "Val Class: #{v.inspect}"
           end
           next unless node_with_link_data
           node_with_link_data.each do |tw_node, link_datas|
@@ -264,11 +267,11 @@ class BufsFileViewMaker
               end              
             end#each
 
-            puts "Link Data class: #{link_data.class.name}"
-            puts "Merge: #{@links_data.inspect} with #{link_data.inspect}"
+            #puts "Link Data class: #{link_data.class.name}"
+            #puts "Merge: #{@links_data.inspect} with #{link_data.inspect}"
             @links_data += link_data.to_a
             @links_data.uniq!
-            puts "Result: #{@links_data.inspect}"
+            #puts "Result: #{@links_data.inspect}"
             #link_data.each do |url, label|
               
               #node = tw_node.node_content

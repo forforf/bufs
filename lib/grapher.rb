@@ -35,6 +35,34 @@ class TreeWrapper
   
 end
 
+class Borg
+  def initialize(node_list, keys)
+    @graph_type = :digraph
+    @dummy_root = RootNode.new("dummy", [])
+    @keys = keys
+    @node_list = node_list
+  end
+  #borg.ify
+  def ify(top_node, node_element)
+    new_grapher = Grapher.new(@node_list, @keys, @graph_type, top_node)
+    new_tree_data = new_grapher.graph_data
+    new_tree = new_tree_data[:graph]
+    
+    base_nodes = new_tree.vertices.select{|v| v.node_name == top_node.node_name}
+    raise "Wrong number of key nodes found: #{base_nodes.size} for #{top_node.node_name.inspect}" unless base_nodes.size <= 1
+    return nil if base_nodes.size == 0
+    
+    base_node = base_nodes.first
+    #puts "Node: #{base_node.node_name.inspect}"
+    #puts "Node Obj: #{base_node.object_id.inspect}"
+    
+    subtree = new_tree.bfs_search_tree_from(base_node)
+    borged_data  = subtree.vertices.map{|v| {v => v.node_content.__send__(node_element.to_sym)} if v.node_content }.compact
+    #subtree_files = find_all_files_in_tree(subtree)
+    #subtree_links = find_all_links_in_tree(subtree)
+  end
+end
+
 #opening up tree node for new method for finding nodes
 class Grapher
   RootId = :root
