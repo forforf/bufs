@@ -88,31 +88,6 @@ class BufsFileViewMaker
     end
   end
   
-  def borg(top_node, data_element)
-    graph_type = :digraph
-    new_root_node = RootNode.new("dummy", [])
-    #puts "Full Node List: #{@all_nodes.map{|n| n.my_category}.inspect}"
-    new_node_list = @all_nodes #- [new_root_node.unwrap]
-    #puts "New Node List : #{new_node_list.map{|n| n.my_category}.inspect}"
-    new_grapher = Grapher.new(new_node_list, @keys, graph_type, new_root_node)
-    new_tree_data = new_grapher.graph_data
-    new_tree = new_tree_data[:graph]
-    #puts "New Tree: #{new_tree.vertices.map{|v| v.node_name }.inspect}"
-    #puts "New Tree Objs: #{new_tree.vertices.map{|v| v.object_id}.inspect}"
-    
-    base_nodes = new_tree.vertices.select{|v| v.node_name == top_node.node_name}
-    raise "Wrong number of key nodes found: #{base_nodes.size} for #{top_node.node_name.inspect}" unless base_nodes.size <= 1
-    return nil if base_nodes.size == 0
-    
-    base_node = base_nodes.first
-    #puts "Node: #{base_node.node_name.inspect}"
-    #puts "Node Obj: #{base_node.object_id.inspect}"
-    
-    subtree = new_tree.bfs_search_tree_from(base_node)
-    borged_data  = subtree.vertices.map{|v| {v => v.node_content.__send__(data_element.to_sym)} if v.node_content }.compact
-    #subtree_files = find_all_files_in_tree(subtree)
-    #subtree_links = find_all_links_in_tree(subtree)
-  end
   
   def create_attached_files(node, node_dir)
     #puts "Filename to write:"
@@ -135,26 +110,6 @@ class BufsFileViewMaker
       File.open(links_filename, 'w'){|f| f.write(link_data)}
     end
   end
-
-  def find_all_files_in_tree(tree)
-    #format of file list {dir to put all files in => files}
-    #files_list = {}
-    #TODO: Create a generic function that can be used for files and bufs web UI
-    #returns list of file paths (not compatible with web UI)
-    tree.vertices.map{|v| {v => v.node_content.attached_files} if v.node_content }.compact
-  end
-
-  def find_all_links_in_tree(tree)
-    #format of file list {dir to put all files in => files}
-    #files_list = {}
-    #TODO: Create a generic function that can be used for files and bufs web UI
-    #returns list of file paths (not compatible with web UI)
-    puts "vv"
-    require 'pp'
-    pp tree.vertices.map{|v| {v.node_name => v.node_content.links} if v.node_content}
-    puts "^^"
-    tree.vertices.map{|v| {v => v.node_content.links} if v.node_content}.compact
-  end#def
 
   def create_links_file(links)
     link_file_data = ""
@@ -271,28 +226,6 @@ class BufsFileViewMaker
             #puts "Merge: #{@links_data.inspect} with #{link_data.inspect}"
             @links_data += link_data.to_a
             @links_data.uniq!
-            #puts "Result: #{@links_data.inspect}"
-            #link_data.each do |url, label|
-              
-              #node = tw_node.node_content
-              
-              #link_html_data = "<a href='#{url}'>#{label}</a>\n"
-    
-              #attached_files = attached_file_names || []
-              #puts "attached files: #{attached_files.inspect}"
-            #  puts "opening: #{all_links_file_path}   to add:"
-            #  puts link_html_data
-            #  if url || label
-            #    File.open(all_links_file_path, 'a'){|f| f.write(link_html_data)}
-            #  end
-              #attached_files.each do |att_name|
-                
-              #  path_name = File.join(all_files_dir, att_name)
-                #puts "node: #{node.my_category} fname: #{att_name.inspect}"
-                
-               # File.open(path_name, 'w'){|f| f.write(node.get_raw_data(att_name))}
-              #end
-            #end
           end
         end
       #end
@@ -327,13 +260,6 @@ class BufsFileViewMaker
       dest = @node_map[child.node_name]
       #puts "     link_dest: #{dest.inspect}"
       link_name = File.join(@node_map[node.node_name], child.node_name)
-      #puts "   ^---- link name: #{link_name.inspect}"
-      #puts "making link in 10 seconds"
-      #10.times do
-      #  print "."
-      #  sleep 1
-      #end
-      #puts ""
       if File.exist?(dest) && File.exist?(link_name) && File.readlink(link_name) == dest
         #skip making the link
       elsif File.exist?(dest) && File.exist?(link_name) && File.readlink(link_name) != dest
@@ -349,179 +275,4 @@ class BufsFileViewMaker
       build_linked_node_view(child, node_dir)
     end
   end  
-
-  
-  
 end
-
-
-=begin
-require File.dirname(__FILE__) + '/bufs_file_system'
-require File.dirname(__FILE__) + '/bufs_file_view_reader'
-#require File.dirname(__FILE__) + '/files_finder'
-
-#TODO: Update spec to test the individual parts rather than comparing to a known static output
-#FIXME: Spec doesn't check for dot files
-class BufsViewBuilder
-WorkPackage = Struct.new(:working_dir, :nodes)
-FilesOfChildrenDirName = "__bfs_AllFiles"
- 
-  def initialize
-    @working_queue = []
-    @nodes_with_views = {}
-    @model_dir = nil
-  end
-
-  def build_view(parent_dir, top_level_nodes, all_nodes, model_dir)
-    @model_dir = model_dir
-    raise "No nodes found to create view" if top_level_nodes.size == 0
-    @all_nodes = all_nodes
-    @all_nodes.each do |n|
-      print '.'
-      print n.my_category if n.attached_files?
-    end
-    #TODO: Figure out more elegant way than deleting and rebuilding (also see doc on rm_rf)
-    dirs_to_delete = Dir.glob("#{parent_dir}*") - [@model_dir]
-    FileUtils.rm_rf(dirs_to_delete)
-    #TODO: Test with various permissions
-    FileUtils.mkdir(parent_dir) unless File.exist?(parent_dir) 
-
-    build_view_layer(parent_dir, top_level_nodes)
-    add_file_list(parent_dir)
-    add_html_links(parent_dir)
-  end
-
-  def build_view_layer(parent_dir, nodes)
-    puts "Building Layer with:"
-    nodes.each do |node|
-      puts "-- #{node.my_category}"
-    end
-    #assumes parent dir already exists
-    nodes.each do |node|
-      puts "iterating over nodes to build view"
-      this_dir = parent_dir + '/' + node.my_category
-      if @nodes_with_views[node] #view already created for node
-	puts "- node view already created"
-        add_repeated_view_entry(this_dir, node)
-      else
-	puts "- new node view for #{node.my_category}"
-        @nodes_with_views[node] = this_dir
-        work_package = add_fresh_view_entry(this_dir, node)
-	puts "-- work package: #{work_package.working_dir.inspect}" if work_package
-	if work_package
-	  work_package.nodes.each do |n|
-	    puts "--- node:#{n.my_category}"
-	  end
-        end
-        @working_queue << work_package if work_package
-      end
-    end
-    next_layer = @working_queue.shift
-    #view_of_files_from_subdirs(parent_dir)
-    build_view_layer(next_layer.working_dir, next_layer.nodes) if next_layer
-  end
-
-  def add_fresh_view_entry(this_dir, node)
-    FileUtils.mkdir_p(this_dir) unless File.exist? this_dir
-    puts " --- file?: #{node.attached_files?.inspect}"
-    if node.attached_files?
-      node.list_attached_files.each do |att_full_filename|
-        att_basename = File.basename(att_full_filename)
-        #att_full_filename may == model_file_location
-        puts "Attachment Names"
-        puts "-- From Node: #{att_full_filename.inspect}"
-        model_file_location = @model_dir + node.my_category + '/' + att_basename
-        puts "-- Created Here: #{model_file_location}"
-        this_link_name = this_dir + '/' +  att_basename
-        puts "---> Linked #{model_file_location.inspect}"
-        puts "---> Link Name #{this_link_name.inspect}"
-        FileUtils.ln_s(model_file_location, this_link_name) unless File.exist?(this_link_name)
-      end
-    end
-    node_links = node.list_links
-    if node_links
-      #html_link = node.list_links.map {|link| "<a href=\"#{link}\">#{link}</a>"}
-      #html_str = html_link.join("<br />")
-      html_link = ""
-      html_str = ""
-      node_links.keys.each do |src|
-        node_links[src].uniq!
-      end
-      node_links.each do |src, labels|
-        #next unless labels
-        labels.each do |label|
-          html_link = "<a href=\"#{src}\">#{label}</a><br />\n"
-          html_str += html_link
-        end
-      end
-      File.open("#{this_dir}/links.html", 'w') {|f| f.write(html_str)}   
-    end
-    #TODO: Refactor this and base models so that links, description are arbitrary data
-    #      rather than the data structure being hard coded and hard managed like here
-    if node.respond_to?(:description) && node.description
-      File.open("#{this_dir}/.description.txt", 'w') {|f| f.write(node.description)}
-    end
-    sub_nodes = @all_nodes.select{ |n|n.parent_categories.include? node.my_category }
-    work_package = WorkPackage.new(this_dir, sub_nodes) if sub_nodes && sub_nodes.size > 0
-  end  
-
-  def add_repeated_view_entry(this_dir, node) #don't create work_package
-    puts "--- Creating Link #{this_dir} -> #{@nodes_with_views[node]}"
-    if File.dirname(this_dir) == @nodes_with_views[node]
-      raise "Trying to recreate self, this dir: #{this_dir.inspect}, node dir: #{@nodes_with_views[node]}"
-    end
-    FileUtils.remove_dir(this_dir) if File.exists?(this_dir)
-    FileUtils.ln_s(@nodes_with_views[node], this_dir)
-  end
-
-  #TODO: Deal with duplicate file names
-  def add_file_list(dir)
-    file_list = BufsFileViewReader.new(dir).file_list
-    file_list.each do |file_model, view_dirs|
-      view_dirs.each do |view_dir|
-        FileUtils.mkdir(view_dir) unless File.exists?(view_dir)
-        lnk_name = File.join(view_dir, File.basename(file_model))
-        FileUtils.ln_sf(file_model, lnk_name) unless File.exists?(lnk_name)
-      end
-    end
-  end
-
-  #DRY this with add_file_list
-
-  def add_html_links(dir)
-    html_links = BufsFileViewReader.new(dir).html_link_list
-    html_links.each do |view_dir, html_links|
-      FileUtils.mkdir(view_dir) unless File.exists?(view_dir)
-      #links_fname = File.join(view_dir, File.basename(file_model))
-      #TODO Make the magic string into a constant
-      link_fname =File.join(view_dir, 'all_links.html')
-      #raise "#{html_links.inspect}"
-      link_data = ""
-      html_links.each do |src, labels|
-        labels.each do |label|
-          link_el = "<a href=\"#{src}\">#{label}</a><br />"
-          link_data += link_el + "\n"
-        end
-      end
-      #link_data = html_links.join("<br />\n")
-      File.open(link_fname,'w'){|f| f.write link_data} #unless File.exists?(lnk_name)
-    end
-  end
-=begin
-    #remove existing 
-    #existing = Dir.glob(File.join(dir, "**/#{FilesOfChildrenDirName}"))
-    #existing.each do |d|
-    #  FileUtils.rm_rf(d)
-    #end    
-    files_finder = FileFinder.new
-    all_child_files = files_finder.find_files(dir)
-    #raise all_child_files.inspect
-    child_dir = File.join(dir, FilesOfChildrenDirName)
-    FileUtils.mkdir(child_dir) unless File.exist?(child_dir)
-    all_child_files.each do |fname, linkname|
-      #TODO: Fix this so it isn't forced 
-      FileUtils.ln_sf(fname, File.join(child_dir, linkname)) if linkname
-    end
-#=end
-end
-=end
