@@ -24,7 +24,6 @@ module MakeUserClasses
 end
 
 module GrapherSpecHelpers
-  RootNode = Struct.new(:my_category, :parent_categories)
   include NodeHelpers
   include MakeUserClasses
  
@@ -126,13 +125,7 @@ describe Grapher do
                 :parent_key => :parent_categories }
     @user_classes.each do |user_class|
       nodes = user_class.all
-      #raise "test #{nodes.first.class}"
-      #nodes.each do |node|
-      #  raise "Bad Node? #{node.inspect}" if node.class == Hash
-      #end
-      #@root_data = RootNode.new(:root, :root_data)
-      
-	    user_graph[user_class] = Grapher.new(nodes, keys, :tree, @root_data)
+      user_graph[user_class] = Grapher.new(nodes, keys, :tree, @root_data)
     end
     #verify results
     @user_classes.each do |user_class|
@@ -142,7 +135,7 @@ describe Grapher do
       my_tree.nodes_by_parent_cat.each do |parent_node_pair|
         parent_cat = parent_node_pair[0]
         parent_node_pair[1].node_parents.should include
-                                my_tree.nodes_by_name[parent_cat].node_name
+        my_tree.nodes_by_name[parent_cat].node_name
       end
     end
   end
@@ -434,4 +427,89 @@ describe Grapher do
       #dgbfs.attach_distance_map
     end
   end
+end
+
+describe Borg do
+  include MakeUserClasses
+  include GrapherSpecHelpers
+ 
+  before(:each) do
+    @user_classes = [User1Class, User2Class, User3Class, User4Class]
+    #@root_data = RootNode.new(:root, :root_data)
+    @keys = {:node_id_key => :my_category,
+             :parent_key => :parent_categories}
+  end
+
+  after(:each) do
+    @user_classes.each {|uc| uc.destroy_all}
+  end
+
+  it "should initialize properly" do
+    @user_classes.each do |user_class|
+      #save to the persistence layer data to make a simple tree
+      #not assigned to a variable because we'll pull it from the
+      #persistence layer later
+      save_all data_for_simple_tree(user_class)
+      tops = user_class.call_view(:my_category, 'top')
+      tops.size.should == 1
+      childs = user_class.call_view(:parent_categories, 'top')
+      childs.size.should == 2
+    end
+    #test (not a full test, since Borg doesn't do much on init)
+    @user_classes.each do |user_class|
+      node_list = user_class.all
+      borg = Borg.new(node_list, @keys)
+    end
+    #verify results
+    #ok if it doesn't crash on initialization
+    #the borg object may have attributes in the future
+  end
+
+  it "should borg.ify all descendant data for each node for a simple tree" do
+    @user_classes.each do |user_class|
+      #save to the persistence layer data to make a simple tree
+      #not assigned to a variable because we'll pull it from the
+      #persistence layer later
+      save_all data_for_simple_tree(user_class)
+      tops = user_class.call_view(:my_category, 'top')
+      tops.size.should == 1
+      childs = user_class.call_view(:parent_categories, 'top')
+      childs.size.should == 2
+    end
+    #test and verify with empty data
+    @user_classes.each do |user_class|
+      node_list = user_class.all
+      borg = Borg.new(node_list, @keys)
+      top_node = user_class.call_view(:my_category, 'top').first
+      desc_links = borg.ify(top_node, :links)
+      desc_links.should == []
+    end
+    #add a link and test
+    @user_classes.each do |user_class|
+      select_category = 'child2'
+      achild = user_class.call_view(:my_category, select_category).first
+      achild.my_category.should == select_category
+      achild.__set_userdata_key(:links, nil)
+      new_link = {"http://www.google.com" => "Google"}
+      achild.links_add(new_link)
+      achild.__save
+      achild_from_db = user_class.call_view(:my_category, select_category).first
+      achild_from_db.links.should == new_link
+      node_list = user_class.all
+      borg = Borg.new(node_list, @keys)
+      #Borg needs to refine the data better 
+      top_node = user_class.call_view(:my_category, 'top').first
+      desc_node_data = borg.ify(top_node, :links)
+      desc_node_data.size.should == 3
+      all_links = []
+      desc_node_data.each do |data|
+        all_links << data.values
+      end
+      all_links.flatten!
+      all_links.compact!
+      all_links.first.should == new_link
+    end
+
+  end
+
 end
