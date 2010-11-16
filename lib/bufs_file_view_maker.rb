@@ -76,6 +76,11 @@ class BufsFileViewMaker
     borg = Borg.new(@all_nodes, @keys)  #Borg is part of grapher
     subtree_files = borg.ify(node, :attached_files)
     subtree_links = borg.ify(node, :links)
+    require 'pp'
+    puts "-----"
+    pp subtree_files.map{|n| {n.keys.first.node_name => n.values.first} }
+    puts "--"
+    pp subtree_links.map{|n| {n.keys.first.node_name => n.values.first} }
     @files_in_tree[node] = subtree_files
     @links_in_tree[node] = subtree_links
     

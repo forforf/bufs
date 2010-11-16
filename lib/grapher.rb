@@ -46,6 +46,7 @@ class Borg
   #borg.ify
   def ify(top_node, node_element)
     new_grapher = Grapher.new(@node_list, @keys, @graph_type, top_node)
+
     new_tree_data = new_grapher.graph_data
     new_tree = new_tree_data[:graph]
     
@@ -61,18 +62,22 @@ class Borg
     #puts "Node Obj: #{base_node.object_id.inspect}"
     
     subtree = new_tree.bfs_search_tree_from(base_node)
+#pp subtree.vertices if top_node.node_name == 'bc'
     borged_data  = subtree.vertices.map do |v|
       if (v.node_content && v.node_content.respond_to?(node_element.to_sym) )
-        { v => v.node_content.__send__(node_element.to_sym) }
+        element_content = v.node_content.__send__(node_element.to_sym)
+        { v => element_content }
       end
     end
     borged_data.compact!
+#pp borged_data if top_node.node_name == 'bc'
     borged_data
     #Verify that this is returning the refined data expected
     #i.e., just the elements, rather than a complex hash
     #subtree_files = find_all_files_in_tree(subtree)
     #subtree_links = find_all_links_in_tree(subtree)
   end
+  
 end
 
 #opening up tree node for new method for finding nodes
