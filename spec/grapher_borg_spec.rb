@@ -59,10 +59,11 @@ describe Borg do
       links_data[:bb].should == [{"http://www.yahoo.com"=>"yahoo2",
                                             "http://www.google.com"=>"google"},
                                             {"http:\\www.metafilter.com"=>["MeFi"]}]
-                                            [{"http:\\www.google.com"=>"google2"}]
+                                           # [{"http:\\www.google.com"=>"google2"}]
       links_data[:c] = borged_nodes_links[user_class]['c'].map{|d| d.values}.flatten.compact
       links_data[:c].should == [{"http:\\www.google.com"=>"google2"}]
-      #pp borged_nodes_links[user_class]['c'].map{|d| d.values}.flatten.compact
+      pp borged_nodes_links[user_class]['c'].map{|d| d.rekey{|k| k.node_name}}.flatten.compact
+
     end
   end
 end

@@ -8,6 +8,8 @@ require 'rgl/implicit'
 require 'rgl/dot'
 
 require Bufs.lib 'bufs_node_factory'
+require Bufs.helpers 'hash_helpers'
+
 
 #TODO: Find a better place to store this helper (helpers?) (it's used by dependent files)
 RootNode = Struct.new(:my_category, :parent_categories)
