@@ -103,7 +103,7 @@ class BufsFileViewMaker
   
   def create_link_data_and_file(node, node_dir)
         #create files for links
-    links = node.node_content.links
+    links = node.node_content.links if node.node_content.respond_to?(:links)
     link_data = create_links_file(links)
     #puts link_data
     if link_data
