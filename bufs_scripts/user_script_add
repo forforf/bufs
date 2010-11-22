@@ -1,5 +1,13 @@
 #!/bin/bash
+
 useradd $1 -b /media-ec2/ec2a/bufs_users -m -g 1003 -p `openssl passwd -crypt $2`
+
+#turn on indexing for the user's directory
+echo "Options +Indexes" > /media-ec2/ec2a/bufs_users/$1/.htaccess
+chown $1 /media-ec2/ec2a/bufs_users/$1/.htaccess
+chgrp bufs_users /media-ec2/ec2a/bufs_users/$1/.htaccess
+
+#set the directory permissions
 chmod 775 /media-ec2/ec2a/bufs_users/$1
 rm -rf /media-ec2/ec2a/bufs_users/$1/*
 # adduser --disabled-login --conf ./bufsuser.conf $1 
