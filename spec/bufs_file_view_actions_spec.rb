@@ -3,8 +3,12 @@ require File.join(File.dirname(__FILE__), '../lib/helpers/require_helper')
 
 require Bufs.spec_helpers 'bufs_sample_dataset'
 require Bufs.lib 'bufs_file_view_maker'
+require Bufs.lib 'bufs_file_view_reader'
 
-
+class DirFinder
+  class << self; attr_accessor :dir_list; end
+  @dir_list = {}
+end
 
 BFVMBaseDir = "/media-ec2/ec2a/projects/bufs/sandbox_for_specs/bufs_file_view_maker_spec/"
 describe BufsFileViewMaker do
@@ -30,7 +34,7 @@ describe BufsFileViewMaker do
       raise "user base dir not set" unless user_base_dir
       @user_base_dir_list[user_class] = user_base_dir
     end
-    @user_base_dir_list #has been set
+    DirFinder.dir_list = @user_base_dir_list #has been set
   end
   
   it "should initialize from data provided by the persistence models" do
@@ -112,6 +116,43 @@ describe BufsFileViewMaker do
       view_dir = @user_base_dir_list[user_class]
       view_tree = BufsFileViewMaker.new(user_class.name, node_list, view_dir)
       view_tree.make_file_view
+      view_dir.should == DirFinder.dir_list[user_class]
     end
   end
+end
+
+describe BufsFileViewReader do
+  
+  before(:each) do
+    @user_classes = DirFinder.dir_list.keys
+  end
+  
+  it "should have a models and views to work with" do
+    @user_classes.each do |user_class|
+      #TODO: Fix - The below creates an artificial dependendency between naming and functionality
+      user_id = user_class.myGlueEnv.user_id
+      if user_id =~ /FileSys/
+        DirFinder.dir_list[user_class].should == user_class.myGlueEnv.namespace
+      else
+        DirFinder.dir_list[user_class].should == File.join(BFVMBaseDir, user_id)
+        #FileUtils.mkdir_p(user_base_dir) unless File.exist?(user_base_dir)
+      end
+      File.exist?(DirFinder.dir_list[user_class]).should == true
+      Dir.entries(DirFinder.dir_list[user_class]).size.should > 0
+    end
+  end
+  
+  it "should do something" do
+    @user_classes.each do |user_class|
+      user_dir = DirFinder.dir_list[user_class]
+      node_class = ProtoNode
+      viewer = BufsFileViewReader.new(user_dir, ProtoNode)
+      viewer.read_view
+      require 'pp'
+      pp ProtoNode.all_nodes
+      ProtoNode.clear
+      puts "----------------------"
+    end
+  end
+  
 end
