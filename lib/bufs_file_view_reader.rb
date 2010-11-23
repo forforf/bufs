@@ -9,34 +9,78 @@ require 'hpricot'
 
 
 class ProtoNode
-  @@node_list = {}
+  #@@node_list = {}
   
-  attr_accessor :entry_datas
-  
-  def self.update_node(node_name, entry_data)
-    if @@node_list[node_name]
-      @@node_list[node_name].update(entry_data)
-    else
-      @@node_list[node_name] = self.new(entry_data)
-    end
-  end
-  
-  def self.all_nodes
-    @@node_list
-  end
-  
-  def self.clear
-    @@node_list = {}
-  end
-  
-  def initialize(entry_data)
-    @entry_datas = [entry_data]
+  attr_accessor :_user_data, :files_to_attach, :node_name, :attached_files
+    
+  def initialize(node_name, entry_data)
+    #@entry_datas = entry_data
+    raise "creating a new bufs node requires :my_category received: #{entry_data.inspect}" unless entry_data.keys.include?(:my_category)
+    @files_to_attach = []
+    @node_name = node_name
+    @_user_data = {:my_category => node_name}
+    @attached_files = nil
+    update(entry_data)
   end
   
   def update(entry_data)
-    @entry_datas << entry_data
+    entry_data.each do |key, value|
+      update_parent_categories(key, value) if key == :parent_categories
+      update_links(key, value) if key == :linkfile
+      update_attachments(key, value) if key == :attached_file
+    end
+    #@entry_datas.merge(entry_data)
+  end
+  
+  def update_parent_categories(pc_label, pcs)
+    raise "Mismatched labels, :parent_categories and #{pc_label.inspect}" unless pc_label == :parent_categories
+    if @_user_data[:parent_categories]
+      @_user_data[:parent_categories] + [pcs].flatten
+    else
+      @_user_data[:parent_categories] = [pcs].flatten
+    end
+  end
+  
+  def update_links(link_label, link_file_name)
+    link_file = File.open(link_file_name, "r"){|f| f.read}
+    link_hdoc = Hpricot(link_file)
+    (link_hdoc/"a").each do |el|
+      src = el[:href]
+      label = el.inner_html
+      if @_user_data[:links]
+        @_user_data[:links].merge( {src => label} )
+      else
+        @_user_data[:links] = { src => label }
+      end
+    end
+  end
+  
+  def update_attachments(att_label, filename)
+    @files_to_attach << filename
   end
 end
+
+class ProtoNodeCollection
+  attr_accessor :node_list, :node_class
+  
+  def initialize(node_list = {})
+    @node_class = ProtoNode
+    @node_list = node_list
+  end
+  
+  def update_node(node_name, entry_data)
+    if @node_list[node_name]
+      @node_list[node_name].update(entry_data)
+    else
+      @node_list[node_name] = @node_class.new(node_name, entry_data)
+    end
+  end
+  
+  def all_nodes
+    @node_list
+  end
+end
+  
 
 
 
@@ -47,16 +91,28 @@ class BufsFileViewReader
   
   URLFile = "links.html"
 
-  def initialize(top_dir=nil, node_class)
+  def initialize(top_dir=nil, user_node_class)
     @top_dir = top_dir
     @dirf= DirFilter.new(/^borg/)
-    @node_class = node_class
+    @node_grp = ProtoNodeCollection.new
+    @user_node_class = user_node_class
   end
   
   def read_view(top_dir = @top_dir)
     init_nodes = @dirf.filter_entries(top_dir)
     parent_path = top_dir
     do_something(init_nodes, parent_path)
+    #puts "All Nodes: #{@node_grp.all_nodes.inspect}"
+    @node_grp.all_nodes.each do |node_name, proto_node|
+      #make bufs node
+      p node_name
+      node = @user_node_class.__create_from_other_node(proto_node)
+      node.__save
+      proto_node.files_to_attach.each do |fname|
+        node.files_add( {:src_filename => fname } )
+      end
+      #node.__save
+    end
   end
   
   private
@@ -74,7 +130,7 @@ class BufsFileViewReader
   def build_node(node_name, parent_path)
     #Need something to check if node already exists or not
     parent_cat = File.basename(parent_path)
-    @node_class.update_node(node_name, {:my_category => node_name,
+    @node_grp.update_node(node_name, {:my_category => node_name,
                                                         :parent_categories => parent_cat} )
     
     #puts "Add Parent Category: #{parent_cat}"
@@ -91,13 +147,13 @@ class BufsFileViewReader
       if entry == URLFile
         #file with list of links
         linkfile_name = File.join(current_dir, entry)
-        @node_class.update_node(node_name, {:linkfile => linkfile_name} )
+        @node_grp.update_node(node_name, {:linkfile => linkfile_name} )
       elsif File.ftype(path) == "link"
         #it's a symlink to main node
-        @node_class.update_node(entry, {:parent_categories => parent_name} )
+        @node_grp.update_node(entry, {:my_category => entry, :parent_categories => parent_name} )
       elsif File.ftype(path) == "file"
         filename = File.join(current_dir, entry)
-        @node_class.update_node(node_name, {:attached_file => filename} )
+        @node_grp.update_node(node_name, {:attached_file => filename} )
       elsif File.ftype(path) == "directory"
         #puts "Do this again for #{entry}"
         build_node(entry, current_dir)

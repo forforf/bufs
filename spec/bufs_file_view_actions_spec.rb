@@ -10,6 +10,30 @@ class DirFinder
   @dir_list = {}
 end
 
+module MakeReaderClasses
+  node_db_name = "http://127.0.0.1:5984/read_view_data/"
+  SampleCouchDB = CouchRest.database!(node_db_name)
+  SampleCouchDB.compact!
+
+  FileSystem = "/home/bufs/bufs/sandbox_for_specs/read_view_data"
+    @user1_id = "SampleCouchReader001"
+    #@user2_id = "SampleCouchReader002"
+    @user3_id = "SampleFileSysReader003"
+    #@user4_id = "SampleFileSysReader004"
+    node_class_id1 = "BufsInfoNode#{@user1_id}"
+    #node_class_id2 = "BufsInfoNode#{@user2_id}"
+    node_class_id3 = "BufsFile#{@user3_id}"
+    #node_class_id4 = "BufsFile#{@user4_id}"
+    node_env1 = CouchRestNodeHelpers.env_builder(node_class_id1, SampleCouchDB, @user1_id)
+    #node_env2 = CouchRestNodeHelpers.env_builder(node_class_id2, SampleCouchDB, @user2_id)
+    node_env3 = FileSystemNodeHelpers.env_builder(node_class_id3, FileSystem, @user3_id)
+    #node_env4 = FileSystemNodeHelpers.env_builder(node_class_id4, FileSystem, @user4_id)
+    User1Class =  BufsNodeFactory.make(node_env1)
+    #User2Class =  BufsNodeFactory.make(node_env2)
+    User3Class =  BufsNodeFactory.make(node_env3)
+    #User4Class =  BufsNodeFactory.make(node_env4)
+end
+
 BFVMBaseDir = "/media-ec2/ec2a/projects/bufs/sandbox_for_specs/bufs_file_view_maker_spec/"
 describe BufsFileViewMaker do
   before(:all) do
@@ -122,7 +146,7 @@ describe BufsFileViewMaker do
 end
 
 describe BufsFileViewReader do
-  
+
   before(:each) do
     @user_classes = DirFinder.dir_list.keys
   end
@@ -146,12 +170,15 @@ describe BufsFileViewReader do
     @user_classes.each do |user_class|
       user_dir = DirFinder.dir_list[user_class]
       node_class = ProtoNode
-      viewer = BufsFileViewReader.new(user_dir, ProtoNode)
-      viewer.read_view
-      require 'pp'
-      pp ProtoNode.all_nodes
-      ProtoNode.clear
-      puts "----------------------"
+      
+      
+      new_bufs_classes = [MakeReaderClasses::User1Class, MakeReaderClasses::User3Class]
+      new_bufs_classes.each do |new_user_class|
+        viewer = BufsFileViewReader.new(user_dir, new_user_class)
+        viewer.read_view  #should create model
+      end
+      puts "-0---------"
+
     end
   end
   
