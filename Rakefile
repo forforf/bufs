@@ -32,7 +32,7 @@ spec_set_4 = ['spec/grapher_spec.rb',
 
 #file system conversion tests
 spec_set_5 = ['spec/bind_user_file_system_spec.rb',
-              'spec/bufs_file_view_maker_spec.rb']
+              'spec/bufs_file_view_actions_spec.rb']
 
 desc "Run Specs with RCov"
   Spec::Rake::SpecTask.new('specs_with_rcov') do |t|

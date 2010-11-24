@@ -166,7 +166,7 @@ describe BufsFileViewReader do
     end
   end
   
-  it "should do something" do
+  it "should create a model from a directory" do
     @user_classes.each do |user_class|
       user_dir = DirFinder.dir_list[user_class]
       node_class = ProtoNode
@@ -177,9 +177,31 @@ describe BufsFileViewReader do
         viewer = BufsFileViewReader.new(user_dir, new_user_class)
         viewer.read_view  #should create model
       end
-      puts "-0---------"
-
-    end
-  end
+      
+      #verify
+      new_bufs_classes.each do |new_user_class|
+        new_nodes = new_user_class.all
+        orig_nodes = user_class.all
+        
+        orig_nodes.size.should == new_nodes.size
+        
+        new_my_cats = new_user_class.all.map{|n| n.my_category}.sort
+        orig_my_cats = user_class.all.map{|n| n.my_category}.sort
+        orig_my_cats.should == new_my_cats
+        
+        orig_my_cats.each do |my_cat|
+          orig_node = user_class.call_view(:my_category, my_cat).first
+          new_node = user_class.call_view(:my_category, my_cat).first
+          orig_node.parent_categories.sort.should == new_node.parent_categories.sort
+          if orig_node.respond_to?(:links) && orig_node.links
+            orig_node.links.sort.should == new_node.links.sort
+          end
+          if orig_node.respond_to?(:attached_files) && orig_node.attached_files
+            orig_node.attached_files.should == new_node.attached_files
+          end#if
+        end#each (my_category key)
+      end#each (new nodes)
+    end#each (orig nodes)
+  end#it (spec)
   
 end
