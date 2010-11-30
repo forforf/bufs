@@ -60,7 +60,7 @@ class BufsFileViewMaker
   def build_static_node_view(node, parent_dir)
     #make directory
     node_dir = File.join(parent_dir, node.node_name)
-    FileUtils.mkdir_p(node_dir)
+    FileUtils.mkdir_p(node_dir, :mode => 0775)
     #update the node map
     @node_map[node.node_name] = node_dir
 
@@ -96,6 +96,7 @@ class BufsFileViewMaker
     attached_files = attached_files || [] 
     attached_files.each do |f|
       fname = File.join(node_dir,f)
+      #puts "writing #{f} to #{fname}"
       data = node.node_content.get_raw_data(f)
       File.open(fname, "w"){|fn| fn.write(data)}
     end    

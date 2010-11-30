@@ -102,7 +102,9 @@ module FileSystemEnv
         my_dest = File.join(node_dir, my_dest_basename)
         #FIXME: obj.attached_files is broken, list_attached_files should work
         #@attached_files << my_dest
-        same_file = filename == my_dest
+        same_file = filename if filename == my_dest
+        puts "File model attachments:"
+        puts "Copy #{filename} to #{my_dest} if #{same_file.nil?}"
         FileUtils.cp(filename, my_dest, :preserve => true, :verbose => false ) unless same_file
         #self.file_metadata = {filename => {'file_modified' => File.mtime(filename).to_s}}
       end
@@ -110,6 +112,7 @@ module FileSystemEnv
     end
 
     def add_raw_data(node, attach_name, content_type, raw_data, file_modified_at = nil)
+      raise "No Data provided for file" unless raw_data
       #bia_class = @model_actor[:attachment_actor_class]
       file_metadata = {}
       if file_modified_at

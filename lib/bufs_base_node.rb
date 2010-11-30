@@ -325,7 +325,7 @@ class BufsBaseNode
   def __export_attachment(attachment_name)
     md = __get_attachment_metadata(attachment_name)
     data = get_raw_data(attachment_name)
-    export = {:metadata => md, :data => data}
+    export = {:metadata => md, :raw_data => data}
   end
 
   def __import_attachment(attach_name, att_xfer_format)
@@ -333,6 +333,7 @@ class BufsBaseNode
     content_type = att_xfer_format[:metadata][:content_type]
     file_modified_at = att_xfer_format[:metadata][:file_modified]
     raw_data = att_xfer_format[:raw_data]
+    #raise "Attachment provided no data to import" unless raw_data
     add_raw_data(attach_name, content_type, raw_data, file_modified_at)
   end
 
@@ -352,7 +353,9 @@ class BufsBaseNode
     #transfer attachments
     if other_node.attached_files
       other_node.attached_files.each do |att_file|
-        new_basic_node.__import_attachment(att_file, other_node.__export_attachment(att_file)) if att_file
+        exported_data = other_node.__export_attachment(att_file)
+        #raise "Attachment had no data to export: #{att_file}" unless exported_data
+        new_basic_node.__import_attachment(att_file, exported_data) if att_file
       end
     end
     new_basic_node

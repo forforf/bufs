@@ -92,7 +92,7 @@ class BufsFileViewReader
 
   def initialize(top_dir=nil, user_node_class)
     @top_dir = top_dir
-    @dirf= DirFilter.new(/^borg/, /Dropbox/)
+    @dirf= DirFilter.new([/^borg/, /Dropbox/])
     @node_grp = ProtoNodeCollection.new
     @user_node_class = user_node_class
   end
