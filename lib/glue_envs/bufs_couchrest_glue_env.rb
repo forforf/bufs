@@ -57,6 +57,7 @@ module BufsCouchRestViews
                   }
                }"
     map_fn = { :map => map_str }
+    #TODO: Tied to datastructure
     self.set_view(db, design_doc, :my_category, map_fn)
   end
 
