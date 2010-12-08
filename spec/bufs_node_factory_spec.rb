@@ -878,7 +878,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     #test
       exported_att_data = basic_nodes[user_class].__export_attachment(attached_basename)
       exported_att_data[:metadata].should == basic_nodes[user_class].__get_attachment_metadata(attached_basename)
-      exported_att_data[:data].should == basic_nodes[user_class].get_raw_data(attached_basename)
+      exported_att_data[:raw_data].should == basic_nodes[user_class].get_raw_data(attached_basename)
     end
   end
 
@@ -903,7 +903,7 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
       content_type = MimeNew.for_ofc_x(test_filename)
       metadata = {:file_modified => file_modified, :content_type => content_type}
       raw_data = File.open(test_filename, "r"){|f| f.read}
-      import_format = {:data => raw_data, :metadata => metadata}
+      import_format = {:raw_data => raw_data, :metadata => metadata}
       att_names[user_class] = BufsEscape.escape(test_basename)
     #test
       basic_nodes[user_class].__import_attachment(att_names[user_class], import_format)
