@@ -2,7 +2,7 @@ puts "Loaded Bufs Fixtures"
 #This database has the necessary data for bootstrapping the fixture
 require 'couchrest'
 require 'fileutils'
-require 'tree'
+
 fix_db_name = "http://127.0.0.1:5984/bufs_test_fixture_files/"
 FixDB = CouchRest.database!(fix_db_name)
 FixDB.compact!
