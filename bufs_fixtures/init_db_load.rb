@@ -48,15 +48,16 @@ module InitLoader
   end
 end
 
-FixDB = CouchRest.database!('http://127.0.0.1:5984/bufs_test_fixture_files/"')
-
+newDB = CouchRest.database('http://127.0.0.1:5984/bufs_test_fixture_files/"')
+newDB.delete! if newDB
+NewDB = CouchRest.database!('http://127.0.0.1:5984/bufs_test_fixture_files/"')
 begin
-  FixDB.save_doc(InitLoader.view_record)
+  NewDB.save_doc(InitLoader.view_record)
 rescue RestClient::RequestFailed
   puts "Replacing view"
-  cur_rcd = FixDB.get(InitLoader.view_id)
-  FixDB.delete_doc(cur_rcd)
-  FixDB.save_doc(InitLoader.view_record)
+  cur_rcd = NewDB.get(InitLoader.view_id)
+  NewDB.delete_doc(cur_rcd)
+  NewDB.save_doc(InitLoader.view_record)
 end
 
 InitLoader.stored_files.each do |name, fname|
@@ -79,15 +80,15 @@ InitLoader.stored_files.each do |name, fname|
     end
     #rcd_data = doc_data.merge att_data
     data = File.open(fname, 'r'){|f| f.read}
-    FixDB.save_doc(doc_data)
-    FixDB.put_attachment(doc_data, bname, data, content_type)
+    NewDB.save_doc(doc_data)
+    NewDB.put_attachment(doc_data, bname, data, content_type)
   rescue RestClient::RequestFailed
     puts "Replacing test file"
-    cur_rcd = FixDB.get(doc_data['_id'])
-    FixDB.delete_doc(cur_rcd)
-    #FixDB.save_doc(rcd_data)
-    FixDB.save_doc(doc_data)
-    FixDB.put_attachment(doc_data, bname, fname, content_type)
+    cur_rcd = NewDB.get(doc_data['_id'])
+    NewDB.delete_doc(cur_rcd)
+    #NewDB.save_doc(rcd_data)
+    NewDB.save_doc(doc_data)
+    NewDB.put_attachment(doc_data, bname, fname, content_type)
 
   end
 end
