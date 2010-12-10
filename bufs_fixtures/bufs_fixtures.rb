@@ -120,13 +120,13 @@ FixDB.view('test_files/test_files')['rows'].each do |r|
 end
 
 
-puts "---------------------------------"
-puts "- Test Filenames and References -"
-puts "---------------------------------"
-BufsFixtures.test_files.each do |doc, fname|
+#puts "---------------------------------"
+#puts "- Test Filenames and References -"
+#puts "---------------------------------"
+#BufsFixtures.test_files.each do |doc, fname|
   
-  puts "#{doc.ljust(33)} ->  #{fname}"
-end
-puts "---------------------------------"
+#  puts "#{doc.ljust(33)} ->  #{fname}"
+#end
+#puts "---------------------------------"
 
 
