@@ -61,6 +61,7 @@ module BufsCouchRestViews
     self.set_view(db, design_doc, :my_category, map_fn)
   end
 
+  #TODO: Tied to datastructure
   def self.by_my_category(moab_data, user_datastore_id, match_key)
     db = moab_data[:db]
     design_doc = moab_data[:design_doc]
@@ -76,7 +77,7 @@ module BufsCouchRestViews
     records = rows.map{|r| r["value"]}
   end 
 
-
+  #TODO: Tied to datastructure
   def self.by_parent_categories(moab_data, user_datastore_id, match_keys)
     db = moab_data[:db]
     design_doc = moab_data[:design_doc]

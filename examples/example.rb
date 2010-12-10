@@ -18,6 +18,9 @@ require '../lib/moabs/moab_couchrest_env'
 #   - support customized operations on its data structures
 #None of the existing frameworks that I knew of did all of these, so that led to this one
 
+#Thinking about things slightly different
+#Define a data structure independent of any underlying model
+
 module DataStructureModels
   module Example
     #Required Keys on instantiation
@@ -28,10 +31,13 @@ module DataStructureModels
 end
 
 module ExampleDataStructure
+   
   #We define a field that cannot be modified  #TODO: can this be defaulted??
   StaticFieldAddOp = lambda{|this, other| Hash[:update_this => this] }
   StaticFieldSubtractOp = lambda{|this, other| Hash[:update_this => this]}
+
   StaticFieldOps = {:add => StaticFieldAddOp, :subtract => StaticFieldSubtractOp}
+  
   
   #We define a field where adding will replace the existing value for that field, and subtracting a matching value will set the value to nil
   ReplaceFieldAddOp = lambda {|this, other|
@@ -114,7 +120,8 @@ module ExampleDataStructure
                                               }
 
   KVListOps = {:add => KVListValAddOp, :subtract => KVListValSubtractOp, :get_keys => KVPGetKeyforValueOp}
-  
+
+  #the keys represent the data type, the values represent the operations to perform on those datatypes  
   Ops = {:id => StaticFieldOps, :label => ReplaceFieldOps, :tags => ListFieldOps, :kvps=> KVListOps}
 end
 
@@ -407,8 +414,8 @@ end
 #If you have CouchRest:
   #Lets create a couchrest instance to interface to our CouchDB
   require 'couchrest'
-  #example_couchdb_location = "http://bufs.younghawk.org:5984/example/"
-  example_couchdb_location = "http://bufs.couchone.com/example"
+  example_couchdb_location = "http://127.0.0.1:5984/example/"
+  #example_couchdb_location = "http://bufs.couchone.com/example"
   couchrest_instance = CouchRest.database!(example_couchdb_location)
 
   #TODO: Verify whether db_user_id is required, or whether its derived already.
@@ -422,3 +429,12 @@ end
   ExampleClass = BufsNodeFactory.make(couch_env)
   hello_world_node = ExampleClass.new({:id => "My ID", :label => "Hello World"})
   hello_world_node.__save
+  
+  puts "Node in memory"
+  p hello_world_node._user_data
+  puts "Node in CouchDB"
+  #p hello_world_node
+  p couchrest_instance.get(hello_world_node._model_metadata[:_id])
+  puts "Or you can test it from the command line using curl:"
+  puts "curl -X GET #{example_couchdb_location}/#{CGI.escape(hello_world_node._model_metadata[:_id])}"
+
