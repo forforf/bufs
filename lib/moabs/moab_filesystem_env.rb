@@ -105,6 +105,8 @@ module FileSystemEnv
         same_file = filename if filename == my_dest
         puts "File model attachments:"
         puts "Copy #{filename} to #{my_dest} if #{same_file.nil?}"
+        #was breaking if the dest path didn't exist
+        FileUtils.mkdir_p(File.dirname(my_dest)) unless File.exist?(File.dirname(my_dest))
         FileUtils.cp(filename, my_dest, :preserve => true, :verbose => false ) unless same_file
         #self.file_metadata = {filename => {'file_modified' => File.mtime(filename).to_s}}
       end
