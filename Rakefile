@@ -26,18 +26,22 @@ spec_set_2 = ['spec/node_element_operations_spec.rb']
 #model tests for multi-user
 spec_set_3 = ['spec/bufs_node_factory_spec.rb']
 
-#model tests for single-user (these will fail under multi-user scenarios)
-spec_set_3a = ['spec/couchrest_attachment_handler_spec.rb',
+#These tests would share common variable namespaces
+#and will clobber each other if ran in a common environment
+spec_set_3aa = ['spec/couchrest_attachment_handler_spec.rb']
               #'spec/bufs_base_node_spec.rb',
-              'spec/bufs_couchrest_spec.rb',
-              'spec/bufs_filesystem_spec.rb']
+spec_set_3a =  [ 'spec/bufs_couchrest_spec.rb']
+
+spec_set_3b = ['spec/bufs_filesystem_spec.rb']
 
 #Set up rake specs by spec sets"
 spec_sets = { "spec_set_0" => spec_set_0, 
               "spec_set_1" => spec_set_1,
               "spec_set_2" => spec_set_2,
               "spec_set_3" => spec_set_3,
-              "spec_set_3a"=> spec_set_3a 
+              "spec_set_3a"=> spec_set_3a,
+              "spec_set_3aa"=>spec_set_3aa,
+              "spec_set_3b"=> spec_set_3b
             }
               
 
