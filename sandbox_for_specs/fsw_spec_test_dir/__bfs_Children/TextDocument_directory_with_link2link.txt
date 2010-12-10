@@ -1,1 +1,0 @@
-/media-ec2/ec2a/projects/bufs/sandbox_for_specs/fsw_spec_test_dir/one_level_dir/test directory under one level/directory_with_link2link/TextDocument.txt

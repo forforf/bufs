@@ -1,5 +1,5 @@
 #require helper for cleaner require statements
-require File.join(File.dirname(__FILE__), '../lib/helpers/require_helper')
+require File.join(File.expand_path(File.dirname(__FILE__)), '../lib/helpers/require_helper')
 
 require 'spec'
 require 'couchrest'
@@ -20,7 +20,7 @@ describe CouchrestAttachment do
  #                                              :user_id => DummyUserID }
  #                         }
   #  BufsBaseNode.set_environment(CouchDBEnvironment, "BufsCouchRestEnv")
-  BufsDocLibs = [File.dirname(__FILE__) + '/../lib/glue_envs/bufs_couchrest_glue_env']
+  BufsDocLibs = [Bufs.glue('bufs_couchrest_glue_env')]
   BufsDocIncludes = [:CouchRestEnv]
   CouchDBEnvironment = {:bufs_info_doc_env => {:host => CouchDB.host,
                                                :path => CouchDB.uri,

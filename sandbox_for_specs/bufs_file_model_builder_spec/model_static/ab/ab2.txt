@@ -1,1 +1,0 @@
-{"filename"=>"ab2.txt", "data"=>"data from ab2.txt"}

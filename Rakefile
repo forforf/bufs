@@ -1,10 +1,17 @@
+#The specs in this rake file deal only with the core
+#bufs libraries
+
 require 'rake'
 require 'spec/rake/spectask'
 
-task :default => ['specs_with_rcov']
 
-#task :specs => ['spec_set_1', 'spec_set_3', 'spec_set_4']
-
+#Allows clearing of the task environment
+class Rake::Task
+  def abandon
+    @actions.clear
+  end
+end
+#task :default => ['specs_with_rcov']
 
 #Tests that fail in rake but work standalone
 spec_set_0 = ['spec/bufs_escape_spec.rb']
@@ -21,30 +28,44 @@ spec_set_3 = ['spec/bufs_node_factory_spec.rb']
 
 #model tests for single-user (these will fail under multi-user scenarios)
 spec_set_3a = ['spec/couchrest_attachment_handler_spec.rb',
-              'spec/bufs_base_node_spec.rb',
-              #'spec/node_element_operations_spec.rb',
+              #'spec/bufs_base_node_spec.rb',
               'spec/bufs_couchrest_spec.rb',
               'spec/bufs_filesystem_spec.rb']
 
-#graphing tests
-spec_set_4 = ['spec/grapher_spec.rb',
-              'spec/bufs_jsvis_data_spec.rb']
+#Set up rake specs by spec sets"
+spec_sets = { "spec_set_0" => spec_set_0, 
+              "spec_set_1" => spec_set_1,
+              "spec_set_2" => spec_set_2,
+              "spec_set_3" => spec_set_3,
+              "spec_set_3a"=> spec_set_3a 
+            }
+              
 
-#file system conversion tests
-spec_set_5 = ['spec/bind_user_file_system_spec.rb',
-              'spec/bufs_file_view_actions_spec.rb']
+#creates spec task spec_set_##
+spec_sets.each do |name, set|
+  desc "Run  #{name}"
+     Spec::Rake::SpecTask.new(name) do |t|
+        puts "Creating set: #{name}"
+        t.spec_files = spec_sets[name]
+        t.rcov = false
+     end
+end
+      
 
-desc "Run Specs with RCov"
-  Spec::Rake::SpecTask.new('specs_with_rcov') do |t|
-    t.spec_files = spec_set_1 + spec_set_3 + spec_set_4 + spec_set_5
-
-    t.rcov = true
-    #t.rcov_opts = ['--exclude', 'examples']
+desc "Runs all specs in their environments and continues if error is encountered" 
+task :specs do
+  spec_sets.each do |name, set|
+    puts "Running Test on #{name}"
+    begin
+      Rake::Task[name].invoke
+    rescue => e
+      puts "Rake Task #{name} Failed" 
+      puts "Error message: #{e.inspect}"
+      #puts "Trace:\n #{e.backtrace}"
+      puts "Moving on to next set"
+      next
+    end
+    puts "Clearing Task"
+    Rake::Task[name].abandon
   end
-
-desc "Run troublesome specs"
-  Spec::Rake::SpecTask.new('spec_set_2') do |t|
-    t.spec_files = spec_set_2
-    t.rcov = false
-  end
-
+end

@@ -1,1 +1,0 @@
-{"filename"=>"bc.txt", "data"=>"data from bc.txt"}

@@ -1,5 +1,5 @@
 #require helper for cleaner require statements
-require File.join(File.dirname(__FILE__), '../lib/helpers/require_helper')
+require File.join(File.expand_path(File.dirname(__FILE__)), '../lib/helpers/require_helper')
 
 require Bufs.fixtures 'bufs_fixtures'
 require Bufs.spec_helpers 'bufs_node_builder'
