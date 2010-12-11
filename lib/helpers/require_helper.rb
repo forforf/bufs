@@ -1,3 +1,6 @@
+#bootstrap requires follow module
+
+#Bufs Library Locations
 module Bufs
   @@top = File.join(File.dirname(__FILE__), '../..')  #main bufs directory
   @@lib = File.join(@@top, 'lib/')
@@ -40,6 +43,5 @@ module Bufs
   def self.glue(req_file)
     File.expand_path(File.join(@@glue, req_file))
   end
-
 end
-    
+

@@ -8,6 +8,7 @@ require Bufs.moabs 'moab_filesystem_env'
 
 #class ViewsMgr
 module BufsFileSystemViews
+
   #Dependency on BufsInfoDocEnvMethods
   attr_accessor :model_actor
 
@@ -73,6 +74,10 @@ end
 
 module BufsFileSystemEnv
 class GlueEnv
+  @@this_file = File.basename(__FILE__)
+  #Set Logger
+  @@log = BufsLog.set(@@this_file)
+
 
 #TODO: Rather than using File class directly, should a special class be used?
 #=begin
@@ -136,7 +141,7 @@ attr_accessor :fs_user_id,
 
   def query_all  #TODO move to ViewsMgr
     unless File.exists?(@user_datastore_selector)
-      puts "Warning: Can't query records. The File System Directory to work from does not exist: #{@user_datastore_selector}"
+      @@log.debug {"Warning: Can't query records. The File System Directory to work from does not exist: #{@user_datastore_selector}"} if @@log.debug?
     end
     all_nodes = []
     my_dir = @user_datastore_selector + '/' #TODO: Can this be removed?

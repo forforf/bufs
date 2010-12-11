@@ -71,6 +71,10 @@ module FileSystemEnv
 
   #TODO Make thread safe
   class FilesMgrInterface
+    @@this_file = File.basename(__FILE__)
+    #Set Logger
+    @@log = BufsLog.set(@@this_file)
+
     attr_accessor :attachment_location, :attachment_packages
 
     def self.get_att_doc(node)
@@ -103,8 +107,8 @@ module FileSystemEnv
         #FIXME: obj.attached_files is broken, list_attached_files should work
         #@attached_files << my_dest
         same_file = filename if filename == my_dest
-        puts "File model attachments:"
-        puts "Copy #{filename} to #{my_dest} if #{same_file.nil?}"
+        @@log.debug {"File model attachments:"} if @@log.debug?
+        @@log.debug { "Copy #{filename} to #{my_dest} if #{same_file.nil?}"} if @@log.debug?
         #was breaking if the dest path didn't exist
         FileUtils.mkdir_p(File.dirname(my_dest)) unless File.exist?(File.dirname(my_dest))
         FileUtils.cp(filename, my_dest, :preserve => true, :verbose => false ) unless same_file

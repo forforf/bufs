@@ -3,8 +3,13 @@ require File.join(File.dirname(__FILE__), '../helpers/require_helper')
 
 require Bufs.midas 'bufs_data_structure'
 require Bufs.moabs 'moab_couchrest_env'
+require Bufs.helpers 'log_helper'
 
 module BufsCouchRestViews
+  @@this_file = File.basename(__FILE__)
+  #Set Logger
+  @@log = BufsLog.set(@@this_file)
+
 
   def self.set_view(db, design_doc, view_name, opts={})
     #raise view_name if view_name == :parent_categories
@@ -27,14 +32,18 @@ module BufsCouchRestViews
                                        (design_doc['views'].keys.include? db_view_name)
       design_doc['_rev'] = view_rev_in_db #unless design_doc_uptodate
       res = design_doc.save #unless design_doc_uptodate
-      #puts "Save Design Doc Response: #{res.inspect}"
+      @@log.debug { "Save Design Doc Response: #{res.inspect}"} if @@log.debug?
       res
     rescue RestClient::RequestFailed
-      puts "Warning: Request Failed, assuming because the design doc was already saved?"
-      puts "Design doc_id: #{design_doc['_id'].inspect}"
-      puts "doc_rev: #{design_doc['_rev'].inspect}"
-      puts "db_rev: #{view_rev_in_db}"
-      puts "Code thinks doc is up to date? #{design_doc_uptodate.inspect}"
+      if @@log.warn?
+        @@log.warn { "Warning: Request Failed, assuming because the design doc was already saved?"}
+      end
+      if @@log.info?
+        @@log.info { "Design doc_id: #{design_doc['_id'].inspect}"}
+        @@log.info { "doc_rev: #{design_doc['_rev'].inspect}" }
+        @@log.info { "db_rev: #{view_rev_in_db}" }
+        @@log.info {"Code thinks doc is up to date? #{design_doc_uptodate.inspect}" }
+      end
     end
   end
 

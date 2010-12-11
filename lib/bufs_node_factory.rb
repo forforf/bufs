@@ -2,12 +2,19 @@
 require File.join(File.dirname(__FILE__), '/helpers/require_helper')
 
 require Bufs.lib 'bufs_base_node'
+require Bufs.helpers 'log_helper'
+
+this_file = File.basename(__FILE__)
+#Set Logger
+log = BufsLog.set(this_file, :debug)
+
 
 class BufsNodeFactory 
   def self.make(node_env)
-    raise "No Node Environment provided" unless node_env
-    raise "Empty Node Environment provided" if node_env.empty?
-    raise "Malformed Node Environment" unless node_env.keys.size == 1
+    BufsLog.log_raise "No Node Environment provided" unless node_env
+    BufsLog.log_raise "Empty Node Environment provided" if node_env.empty?
+    BufsLog.log_raise "Malformed Node Environment" unless node_env.respond_to?(:keys)
+    BufsLog.log_raise "Malformed Node Environment" unless node_env.keys.size == 1
     node_class_name = node_env.keys.first
     reqs = node_env[node_class_name][:requires]
     reqs.each {|r| require r} if reqs
@@ -37,4 +44,3 @@ class BufsNodeFactory
     docClass
   end
 end 
-  
