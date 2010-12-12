@@ -57,7 +57,7 @@ end
       
 
 desc "Runs all specs in their environments and continues if error is encountered" 
-task :specs do
+task :spec_sets do
   spec_sets.each do |name, set|
     puts "Running Test on #{name}"
     begin
