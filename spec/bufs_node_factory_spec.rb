@@ -452,14 +452,14 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     #defined in the Node Operations (see midas directory)
       new_data = {:link_name => "blah", :link_src =>"http:\\\\to.somewhere.blah"}
       add_method = "#{new_key_field}_add".to_sym
-      link_add_op = NodeElementOperations::LinkAddOp
+      link_add_op = DefaultOpSets::ListAddOpDef
     #test adding new data
       nodes[user_class].__send__(add_method, new_data)
     #verify new data was added appropriately
       updated_data = nodes[user_class].__send__(new_key_field)
       updated_data.should == new_data #old links version it would not be equal
       magically_transformed_data = link_add_op.call(nil, new_data)[:update_this]
-      updated_data.should == magically_transformed_data
+      magically_transformed_data.should == [updated_data] #added to a list
     end
   end
 

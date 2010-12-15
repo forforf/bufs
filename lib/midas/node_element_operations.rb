@@ -1,3 +1,8 @@
+#require helper for cleaner require statements
+require File.join(File.dirname(__FILE__), '../helpers/require_helper')
+
+require Bufs.helpers 'log_helper'
+
 
 #TODO This should be a class and instance assigned to a node class
 #     otherwise different node classes will clobber each other
@@ -48,18 +53,16 @@ module DefaultOpSets
   
   #We define a field where adding will add the value to the existing list, and subtracting will remove matching values from the list
   ListAddOpDef = lambda  do |this,other|
-    this = this || []
-    other = other || []
-    this = this + [other].flatten
+    this = [this].flatten
+    other = [other].flatten
+    this = this + other
     this.uniq!; this.compact!
     Hash[:update_this => this]
   end
                          
   ListSubtractOpDef = lambda do |this,other| 
-    this = [this] || []
-    other = [other] || []
-    this.flatten!
-    other.flatten!
+    this = [this].flatten
+    other = [other].flatten
     this -= other
     this.uniq!
     this.compact!
@@ -157,6 +160,8 @@ module DefaultOpSets
 end
 
 class NodeElementOperations
+  #Set Logger
+  @@log = BufsLog.set(self.name, :warn) 
   
   DefaultFieldOpSet = {:id => :static_ops,
                                 :data => :replace_ops,
@@ -170,11 +175,12 @@ class NodeElementOperations
   #:op_sets_mod => The module with the data operations that apply to the data fields
   #:field_op_set => The assignment of data fields to the data operations
   def initialize(op_data = {})
+    @@log.debug {"Node Element Initialized with: #{op_data.inspect}"} if @@log.debug?
     @ops_set_module = op_data[:op_sets_mod] ||DefaultOpSets
     #include any op set definitions (the definitions are contained in a module)
     self.class.__send__(:include, @ops_set_module)  #why is this private? am I doing something wrong?
-    
-    @field_op_set_sym = (op_data[:field_op_set] || {}).merge(DefaultFieldOpSet)
+    @field_op_set_sym = DefaultFieldOpSet.merge(op_data[:field_op_set] || {})
+    @@log.info {"Field Operations Set: #{@field_op_set_sym.inspect}"} if @@log.info?
     @field_op_defs = get_field_op_procs(@field_op_set_sym)
   end
   

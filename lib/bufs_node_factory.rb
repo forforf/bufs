@@ -2,14 +2,16 @@
 require File.join(File.dirname(__FILE__), '/helpers/require_helper')
 
 require Bufs.lib 'bufs_base_node'
+require Bufs.midas 'node_element_operations'
 require Bufs.helpers 'log_helper'
 
-this_file = File.basename(__FILE__)
-#Set Logger
-log = BufsLog.set(this_file, :debug)
+
 
 
 class BufsNodeFactory 
+  #this_file = File.basename(__FILE__)
+  #Set Logger
+  @@log = BufsLog.set(self.name, :warn)  
   
   def self.make(node_env)
     BufsLog.log_raise "No Node Environment provided" unless node_env
@@ -21,9 +23,9 @@ class BufsNodeFactory
     reqs.each {|r| require r} if reqs
     incs = node_env[node_class_name][:includes]
     #
-    neo_data = incs[:field_ops_map]
+    neo_data = incs[:field_op_set]
     #neo_defs = incs[:field_ops_def_mod]
-    neo = NodeElementOperations.new(:field_ops_assignment => neo_data)
+    neo = NodeElementOperations.new(:field_op_set => neo_data)
     #
     #incs_strs = incs.map{|i| "include #{i}"}
     #incs_str = incs_strs.join("\n")
