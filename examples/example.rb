@@ -52,6 +52,7 @@ module CouchRestNodeHelpers
   end
 end
 
+#Not used yet
 module FileSystemNodeHelpers
   def self.env_builder(node_class_id, root_path, fs_user_id)
       node_env = Hash[ node_class_id =>
@@ -324,15 +325,32 @@ end
   reqs = nil #we aren't using an external file to hold the modules to be included
   
   #changing default configuration
-  incls = [NodeElementOperations] #[ExampleDataStructure]
+  #incls = nil #[ExampleDataStructure]  #nil uses default
 
-  include NodeElementOperations
-  NodeElementOperations.configuration =  {:id => StaticFieldOps, :label => ReplaceFieldOps, :tags => ListFieldOps, :kvps=> KVListOps} 
+  #include NodeElementOperations
+  # this allows us to call the different defined operations
+  #This is the default
+  #NodeElementOperations.configuration =  {:id => :static_ops, :data => :replace_ops }
+  # used to be {:id => StaticFieldOps, :label => ReplaceFieldOps , :tags => ListFieldOps, :kvps=> KVListOps} 
+  #set custom node operations 
+  
+  #incls = {:id => StaticFieldOps, :label => ReplaceFieldOps, :tags => ListFieldOps, :kvps=> KVListOps} 
+  incls = {:field_ops_map =>{:id => :static_ops, 
+                                         :label => :replace_ops, 
+                                         :tags => :list_ops, 
+                                         :kvps => :key_value_ops}
+              #:field_ops_def_mod => nil }
+            }
   user_id = "Me"
   couch_env = CouchRestNodeHelpers.env_builder(node_class_id, reqs, incls, couchrest_instance, user_id)
   #p couch_env
+  
+  #Testing with Class for NodeElementOperations
+  #node_ops = NewNodeElementOperations.new.data_ops
+  
+  
   ExampleClass = BufsNodeFactory.make(couch_env)
-  hello_world_node = ExampleClass.new({:id => "My ID", :label => "Hello World"})
+  hello_world_node = ExampleClass.new({:id => "My ID", :data => "Hello World"})
   hello_world_node.__save
   
   puts "Node in memory"
@@ -355,17 +373,29 @@ end
   #TODO: Provide a default operation set for unspecified tags
   #TODO: Also allow user to set the default  operation to use for undefined tags
   hello_world_node.__set_userdata_key(:random_field, nil)
-  p hello_world_node._user_data
+  #p hello_world_node._user_data
   puts
   puts "Node Element Operations in action"
-  puts "Lets Add \"WontAdd\" to the id field"
-  puts "and \"A New Hello World\" to the label field"
+  puts "Lets Add \"WontAdd\" to the :id field"
+  puts "and \"A New Hello World\" to the :data field"
   puts "and \"tag3\" to the tags field"
-  puts "and \"random\" to the random_field field (well not yet, it creates an error)"
   hello_world_node.id_add "WontAdd"
-  hello_world_node.label_add "A New Hello World"
+  p hello_world_node
+  hello_world_node.data_add "A New Hello World"
   hello_world_node.tags_add "tag3"
-  #hello_world_node.random_field_add "random"
+  
+  #this was testing wrong op names
+  #p hello_world_node.tags_blue "taggity tag"
+  #p hello_world_node.tagssss
+  
+  puts "We can't add  \"random\" to the random_field field until we define the operation"
+  random_op = {:random_field => :replace_ops}
+  
+  #p hello_world_node.class.data_struc
+  hello_world_node.class.data_struc.set_op(random_op)
+  hello_world_node.__set_userdata_key(:random_field, nil)
+  #p hello_world_node.class.data_struc
+  hello_world_node.random_field_add "random"
   p hello_world_node._user_data
   puts
   puts "Ok, now lets subtract (later)"

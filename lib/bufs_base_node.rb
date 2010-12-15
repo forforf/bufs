@@ -246,9 +246,10 @@ class BufsBaseNode
   # been defined for that key name will be loaded in and assigned methods in
   # the form methodname_operation
   def __set_userdata_key(attr_var, attr_value)
-    ops = NodeElementOperations::Ops
+    ops = self.class.data_struc.field_op_defs #data_ops #|| NodeElementOperations.ops
+    #ops = NodeElementOperations::Ops
     #incorporates predefined methods
-    add_op_method(attr_var, ops[attr_var]) if ops[attr_var]
+    add_op_method(attr_var, ops[attr_var]) if (ops && ops[attr_var])
     unless self.class.metadata_keys.include? attr_var.to_sym
       @_user_data[attr_var] = attr_value
     else
@@ -456,6 +457,32 @@ class BufsBaseNode
     #att_doc_id = current_node_doc['attachment_doc_id']
     #current_node_attachment_doc = self.class.user_attachClass.get(att_doc_id)
     #current_node_attachment_doc.read_attachment(attachment_name)
+  end
+  
+  def method_missing(meth_sym, *args, &block)
+    meth_str = meth_sym.to_s
+    return_value = "method_not_found_here"
+    @_user_data.keys.each do |existing_methods_base|
+      meth_regex_str ="^#{existing_methods_base}_"
+      meth_regex = Regexp.new(meth_regex_str)
+      if meth_str.match(meth_regex)
+        return_value = @_user_data[existing_methods_base]
+        break
+      end
+    end
+    
+    if return_value == "method_not_found_here"
+      raise NoMethodError, <<-ERRORINFO
+        base class: BufsBaseNode
+        actual class: #{self.class}
+        method: #{meth_sym.inspect}
+        args: #{args.inspect}
+      ERRORINFO
+    else
+      puts "Warning: Method #{meth_sym.inspect} not defined for all fields\
+        returning value of the field in those cases"
+      return return_value
+    end
   end
 #-----------------------------------------------------------
 #------------------------------------------------------------

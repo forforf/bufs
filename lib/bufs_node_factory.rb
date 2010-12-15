@@ -10,6 +10,7 @@ log = BufsLog.set(this_file, :debug)
 
 
 class BufsNodeFactory 
+  
   def self.make(node_env)
     BufsLog.log_raise "No Node Environment provided" unless node_env
     BufsLog.log_raise "Empty Node Environment provided" if node_env.empty?
@@ -19,8 +20,13 @@ class BufsNodeFactory
     reqs = node_env[node_class_name][:requires]
     reqs.each {|r| require r} if reqs
     incs = node_env[node_class_name][:includes]
-    incs_strs = incs.map{|i| "include #{i}"}
-    incs_str = incs_strs.join("\n")
+    #
+    neo_data = incs[:field_ops_map]
+    #neo_defs = incs[:field_ops_def_mod]
+    neo = NodeElementOperations.new(:field_ops_assignment => neo_data)
+    #
+    #incs_strs = incs.map{|i| "include #{i}"}
+    #incs_str = incs_strs.join("\n")
     user_id = node_env[node_class_name][:user_id] #TODO Remove when not needed for testing
     #TODO: Make setting the environment thread safe
     class_environment = node_env[node_class_name][:class_env]
@@ -30,15 +36,19 @@ class BufsNodeFactory
     #Security TODO: remove spaces and other 
 
     #---- Dynamic Class Definitions ----
+    incs_str = ""  #staged for deletion, this is here so it doesn't break below
     dyn_user_class_def = "class #{user_doc_class_name} < BufsBaseNode
-      #{incs_str}
+      # #{incs_str}
       
-      class << self; attr_accessor :user_attachClass end
+      class << self; attr_accessor :user_attachClass, :data_struc end
 
       end"
 
     BufsNodeFactory.class_eval(dyn_user_class_def)
     docClass = BufsNodeFactory.const_get(user_doc_class_name)
+    #
+    docClass.data_struc = neo
+    #
     glue_name = node_env[node_class_name][:glue_name]
     docClass.set_environment(class_environment, glue_name)
     docClass
