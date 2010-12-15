@@ -389,6 +389,4 @@ describe NodeElementOperations, "NodeElementOperation defined but not default ke
  
 end
 
-#send operation defined for one field to another (what should it do?)  issue?
-
 #complete non-default with proc from scratch
