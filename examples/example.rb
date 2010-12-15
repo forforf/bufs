@@ -398,4 +398,7 @@ end
   hello_world_node.random_field_add "random"
   p hello_world_node._user_data
   puts
+  puts "TESTING"
+  p hello_world_node.class.all
+  
   puts "Ok, now lets subtract (later)"

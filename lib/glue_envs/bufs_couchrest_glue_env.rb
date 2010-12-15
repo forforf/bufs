@@ -9,6 +9,12 @@ module BufsCouchRestViews
   @@this_file = File.basename(__FILE__)
   #Set Logger
   @@log = BufsLog.set(@@this_file)
+  
+  #Constants (pulling out magic text embedded in program)
+  #Name of the record field whose value determines the boundaries of 
+  #the data that belongs to the bufs class. In other words, every couchdb record
+  #associated with this class will have the same "bufs_namespace" value.
+  BufsNamespace = "bufs_namespace"
 
 
   def self.set_view(db, design_doc, view_name, opts={})
@@ -49,7 +55,7 @@ module BufsCouchRestViews
 
   def self.set_view_all(db, design_doc, db_namespace)
     view_name = "all_bufs"
-    namespace_id = "bufs_namespace"
+    namespace_id = BufsNamespace
     map_str = "function(doc) {
 		  if (doc['#{namespace_id}'] == '#{db_namespace}') {
 		     emit(doc['_id'], doc);
@@ -164,6 +170,7 @@ class GlueEnv
     @user_datastore_id = CouchRestEnv.set_collection_namespace(db_name_path, db_user_id)
     @design_doc = CouchRestEnv.set_couch_design(@db, db_user_id)#, @collection_namespace)
     @moab_data = {:db => @db, :design_doc => @design_doc}
+    #
     @define_query_all = "by_all_bufs".to_sym #CouchRestEnv.query_for_all_collection_records
     @metadata_keys = CouchRestEnv.set_db_metadata_keys #(@collection_namespace)
     @required_instance_keys = DataStructureModels::Bufs::RequiredInstanceKeys
