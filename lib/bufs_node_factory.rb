@@ -4,13 +4,10 @@ require File.join(File.dirname(__FILE__), '/helpers/require_helper')
 require Bufs.lib 'bufs_base_node'
 require Bufs.helpers 'log_helper'
 
-this_file = File.basename(__FILE__)
-#Set Logger
-log = BufsLog.set(this_file, :debug)
-
-
 class BufsNodeFactory 
-  
+  #Set Logger
+  @@log = BufsLog.set(self.name, :debug)
+
   def self.make(node_env)
     BufsLog.log_raise "No Node Environment provided" unless node_env
     BufsLog.log_raise "Empty Node Environment provided" if node_env.empty?
@@ -22,6 +19,7 @@ class BufsNodeFactory
     incs = node_env[node_class_name][:includes]
     #
     neo_data = incs[:field_ops_map]
+    @@log.debug {"User Provided Field Operations: #{neo_data.inspect}"} if @@log.debug?
     #neo_defs = incs[:field_ops_def_mod]
     neo = NodeElementOperations.new(:field_ops_assignment => neo_data)
     #
