@@ -2,6 +2,7 @@
 require File.join(File.dirname(__FILE__), '/helpers/require_helper')
 
 require Bufs.lib 'bufs_base_node'
+require Bufs.midas 'node_element_operations'
 require Bufs.helpers 'log_helper'
 
 class BufsNodeFactory 
@@ -21,7 +22,7 @@ class BufsNodeFactory
     neo_data = incs[:field_ops_map]
     @@log.debug {"User Provided Field Operations: #{neo_data.inspect}"} if @@log.debug?
     #neo_defs = incs[:field_ops_def_mod]
-    neo = NodeElementOperations.new(:field_ops_assignment => neo_data)
+    neo = NodeElementOperations.new(:field_op_set => neo_data)
     #
     #incs_strs = incs.map{|i| "include #{i}"}
     #incs_str = incs_strs.join("\n")

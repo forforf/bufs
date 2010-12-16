@@ -4,6 +4,8 @@ require File.join(File.dirname(__FILE__), '/helpers/require_helper')
 #bufs libraries
 require Bufs.helpers 'hash_helpers'
 require Bufs.lib 'bufs_escape'
+require Bufs.helpers 'log_helper'
+
 
 #This is the base abstract class used.  Each user would get a unique
 #class derived from this one.  In other words, a class context
@@ -78,6 +80,9 @@ end
 
 
 class BufsBaseNode
+#this_file = File.basename(__FILE__)
+#Set Logger
+@@log = BufsLog.set("BufsBaseNode", :warn)
 
 #TODO Figure out a way to distinguish method calls from dynamically set data
 # that were assigned as instance variables
@@ -247,8 +252,10 @@ class BufsBaseNode
   # the form methodname_operation
   def __set_userdata_key(attr_var, attr_value)
     ops = self.class.data_struc.field_op_defs #data_ops #|| NodeElementOperations.ops
+    #@@log.debug {"Ops Def: #{ops.inspect}"} if @@log.debug?
     #ops = NodeElementOperations::Ops
     #incorporates predefined methods
+    #@@log.debug {"Setting method #{attr_var.inspect}, #{ops[attr_var].inspect}"} if @@log.debug?
     add_op_method(attr_var, ops[attr_var]) if (ops && ops[attr_var])
     unless self.class.metadata_keys.include? attr_var.to_sym
       @_user_data[attr_var] = attr_value
@@ -274,6 +281,7 @@ class BufsBaseNode
   #to (this).  This allows a more natural form of calling these operations.  In other words
   # description_add(new_string) can be used, rather than description_add(current_string, new_string).
   def __method_wrapper(param, unbound_op)
+    @@log.debug {"__method_wrapper with #{param.inspect}, #{unbound_op.inspect}"} if @@log.debug?
     #What I want is to call obj.param_op(other)   example: obj.links_add(new_link)
     #which would then add new_link to obj.links
     #however, the predefined operation (add in the example) has no way of knowing
@@ -489,6 +497,7 @@ class BufsBaseNode
   private
 
   def add_op_method(param, ops)
+    @@log.debug {"Addion Op method #{param.inspect}, #{ops.inspect}"} if @@log.debug?
        ops.each do |op_name, op_proc|
          method_name = "#{param.to_s}_#{op_name.to_s}".to_sym
          wrapped_op = __method_wrapper(param, op_proc)

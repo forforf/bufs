@@ -29,7 +29,10 @@ module CouchRestNodeHelpers
   def self.env_builder(node_class_id, db, db_user_id)
       node_env = Hash[ node_class_id =>
                       Hash[ :requires => UserNodeSpecHelpers::BufsNodeLibs,
-                            :includes => UserNodeSpecHelpers::BufsNodeIncludes,
+                            #:includes => UserNodeSpecHelpers::BufsNodeIncludes,
+                            :includes => {:field_op_set => {:my_category => :static_ops,
+                                                                            :parent_categories => :list_ops,
+                                                                            :links => :replace_ops } },
                             :glue_name => "BufsCouchRestEnv",
                             :class_env =>
                             Hash[ :bufs_info_doc_env =>
@@ -47,7 +50,10 @@ module FileSystemNodeHelpers
   def self.env_builder(node_class_id, root_path, fs_user_id)
       node_env = Hash[ node_class_id =>
                       Hash[ :requires => UserNodeSpecHelpers::BufsFileLibs,
-                            :includes => UserNodeSpecHelpers::BufsFileIncludes,
+                            #:includes => UserNodeSpecHelpers::BufsFileIncludes,
+                            :includes => {:field_op_set => {:my_category => :static_ops,
+                                                                            :parent_categories => :list_ops,
+                                                                            :links => :replace_ops } },
                             :glue_name => "BufsFileSystemEnv",
                             :class_env =>
                             Hash[ :bufs_file_system_env =>

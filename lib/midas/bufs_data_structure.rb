@@ -7,6 +7,7 @@ module DataStructureModels
   end
 end
 
+=begin
 module NodeElementOperations
   #TODO the hash inside the proc is confusing (the curly braces) update to better readability
   MyCategoryAddOp = lambda {|this,other|   Hash[:update_this => this]  } #my cat is not allowed to change
@@ -80,4 +81,4 @@ module NodeElementOperations
 
   Ops = {:my_category => MyCategoryOps, :parent_categories => ParentCategoryOps, :links => LinkOps}
 end
-
+=end
