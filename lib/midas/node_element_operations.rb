@@ -168,20 +168,40 @@ class NodeElementOperations
                                 :name => :replace_ops,   #convenience field for a node name
                                 :tags => :list_ops}         #convenience field for a list of tags
                                 #:kvlist => :key_list_ops}   #convenience field for a list of lists
+  
+  #Default works for node element operations, but not glue operations  
+  DefaultKeyFields = { :required_keys => [:id], :primary_key => :id}
     
-  attr_accessor :field_op_defs, :field_op_set_sym
+  attr_accessor :field_op_defs, 
+                     :field_op_set_sym,
+                     :required_instance_keys ,
+                     :required_save_keys,
+                     :node_key
   
   #With no parameters - Defaults are used
   #:op_sets_mod => The module with the data operations that apply to the data fields
   #:field_op_set => The assignment of data fields to the data operations
   def initialize(op_data = {})
     @@log.debug {"Node Element Initialized with: #{op_data.inspect}"} if @@log.debug?
+    
+    #set the module with the operation definition and include them
     @ops_set_module = op_data[:op_sets_mod] ||DefaultOpSets
-    #include any op set definitions (the definitions are contained in a module)
     self.class.__send__(:include, @ops_set_module)  #why is this private? am I doing something wrong?
+    
+    #set the mapping between fields and the type of operations supported by those fields
     @field_op_set_sym = DefaultFieldOpSet.merge(op_data[:field_op_set] || {})
     @@log.info {"Field Operations Set: #{@field_op_set_sym.inspect}"} if @@log.info?
     @field_op_defs = get_field_op_procs(@field_op_set_sym)
+    
+    #set the key fields that will work as node/record identifiers or other key fields
+    key_fields = op_data[:key_fields]||DefaultKeyFields
+    raise "key_fields are required" unless key_fields
+
+    #we are no longer differentiating between keys required for insantiation and persistence
+    #this can be added in the future easily though.
+    @required_instance_keys = key_fields[:required_keys]
+    @required_save_keys = key_fields[:required_keys]
+    @node_key = key_fields[:primary_key]
   end
   
   def set_op(ops)

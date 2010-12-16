@@ -13,18 +13,61 @@ BufsDocLibs = [ Bufs.glue('bufs_couchrest_glue_env') ]
 
   DBDummyUserID = 'StubID1'
   BufsDocIncludes = [:CouchRestEnv]
-  CouchDBEnvironment = {:bufs_info_doc_env => {:host => DBCouchDB.host,
+  CouchDBEnvironment = {:couchrest_env => {:host => DBCouchDB.host,
                                                :path => DBCouchDB.uri,
                                                :user_id => DBDummyUserID},
-                        :requires => BufsDocLibs,
-                        :includes => BufsDocIncludes,
-                        :glue_name => "BufsCouchRestEnv" }  #may not be final form
+                                    :field_op_set => {:my_category => :static_ops,
+                                                              :parent_categories => :list_ops,
+                                                              :links => :replace_ops },
+                                    :requires => BufsDocLibs,
+                                    :includes => BufsDocIncludes,
+                                    :glue_name => "BufsCouchRestEnv" }  #may not be final form
 
 
 #TODO Tesing CouchRest implementation, need generic spec
 #invoked this way for spec since we're testing the abstract class
 #BufsBaseNode.__send__(:include, CouchRestEnv)
-BufsBaseNode.set_environment(CouchDBEnvironment, CouchDBEnvironment[:glue_name])
+
+#Setting Up Environment (improved abstracted way)
+module CouchEnv
+  def self.set_env
+    #user class id
+    node_class_id = "Dummy" #Not needed in base class testing"
+
+    #binding data (note this occurs in two different places in the env)
+    
+    key_fields = {:required_keys => [:my_category],
+                         :primary_key => :my_category }
+    #data model
+    field_op_set ={:my_category => :static_ops,
+                             :parent_categories => :list_ops,
+                             :links => :replace_ops }
+    #op_set_mod => <Using default definitions>
+    
+    data_model = {:field_op_set => field_op_set, :key_fields => key_fields}
+    
+    #persistence layer model
+    pmodel_env = {:host => DBCouchDB.host,
+                          :path => DBCouchDB.uri,
+                          :user_id => DBDummyUserID}
+    persist_model = {:name => "couchrest", :env => pmodel_env, :key_fields => key_fields}
+    
+    #final env model
+    env = { :node_class_id => node_class_id,
+                :data_model => data_model,
+                :persist_model => persist_model }
+  end
+end
+
+base_env = CouchEnv.set_env
+neo_env = base_env[:data_model]
+neo = NodeElementOperations.new(neo_env)
+BufsBaseNode.data_struc = neo
+
+persist_env = base_env[:persist_model]
+
+BufsBaseNode.set_environment(persist_env)
+#BufsBaseNode.set_environment(CouchDBEnvironment, CouchDBEnvironment[:glue_name])
 
 describe BufsBaseNode, "Basic Document Operations (no attachments)" do
   include BufsNodeBuilder
@@ -44,7 +87,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     BufsBaseNode.myGlueEnv.user_datastore_id.should == "#{db_name}_#{DBDummyUserID}"
   end
 
-  it "should initialize correctly" do
+  it "it should initialize correctly" do
     #check initial conditions
     BufsBaseNode.all.size.should == 0
     #test
@@ -321,14 +364,14 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     #now add(old_key => new_val) -> old_key => new_val
     new_data = {:link_name => "blah", :link_src =>"http:\\to.somewhere.blah"}
     add_method = "#{new_key_field}_add".to_sym
-    LinkAddOp = NodeElementOperations::LinkAddOp
+    link_add_op = DefaultOpSets::ListAddOpDef
     #test adding new data
     basic_node.__send__(add_method, new_data)
     #verify new data was added appropriately
     updated_data = basic_node.__send__(new_key_field)
     updated_data.should == new_data   #formerly was not ==
-    magically_transformed_data = LinkAddOp.call(nil, new_data)[:update_this]
-    updated_data.should == magically_transformed_data
+    magically_transformed_data = link_add_op.call(nil, new_data)[:update_this]
+    magically_transformed_data.should == [updated_data]
   end
 
   it "should be able to use the all method to change data structure" do

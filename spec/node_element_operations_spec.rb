@@ -47,7 +47,7 @@ describe NodeElementOperations, "Defaults" do
   before(:each) do
     @default_fields = [:id, :data, :name, :tags]#, :kvlist]
     @default_operations = [:add, :subtract]
-    #@default_init_field_values = {}
+    #@key_fields = {:required_keys => [:id], :primary_key => :id}}
   end
   
   it "should initialize to default when no parameters are used" do

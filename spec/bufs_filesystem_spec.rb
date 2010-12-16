@@ -14,8 +14,11 @@ TestFSModelBaseDir = BufsFixtures::ProjectLocation  + 'sandbox_for_specs/file_sy
   ModelDir = "tmp_test" #'BufsFileSystem_DefaultModel'
   FSDummyUserID = 'StubID1'
   BufsFileIncludes = [:FileSystemEnv]
-  FileEnvironment = {:bufs_file_system_env => {:path => File.join(TestFSModelBaseDir,ModelDir),
+  FileEnvironment = {:filesystem_env => {:path => File.join(TestFSModelBaseDir,ModelDir),
                                                :user_id => FSDummyUserID},
+                            :field_op_set => {:my_category => :static_ops,
+                                                              :parent_categories => :list_ops,
+                                                              :links => :replace_ops },
                         :requires => BufsFileLibs,
                         :includes => BufsFileIncludes,
                         :glue_name => "BufsFileSystemEnv" }  #may not be final form
@@ -24,7 +27,50 @@ TestFSModelBaseDir = BufsFixtures::ProjectLocation  + 'sandbox_for_specs/file_sy
 #TODO Tesing CouchRest implementation, need generic spec
 #invoked this way for spec since we're testing the abstract class
 #BufsBaseNode.__send__(:include, BufsInfoDocEnvMethods)
-BufsBaseNode.set_environment(FileEnvironment, FileEnvironment[:glue_name])
+
+#Setting Up Environment (improved abstracted way)
+module FilesystemEnv
+  def self.set_env
+    #user class id
+    node_class_id = "Dummy" #Not needed in base class testing"
+
+    #binding data (note this occurs in two different places in the env)
+    
+    key_fields = {:required_keys => [:my_category],
+                         :primary_key => :my_category }
+    #data model
+    field_op_set ={:my_category => :static_ops,
+                             :parent_categories => :list_ops,
+                             :links => :replace_ops }
+    #op_set_mod => <Using default definitions>
+    
+    data_model = {:field_op_set => field_op_set, :key_fields => key_fields}
+    
+    #persistence layer model
+    pmodel_env = {#:host => not used in filesystem,
+                          :path => File.join(TestFSModelBaseDir,ModelDir),
+                          :user_id => FSDummyUserID}
+    persist_model = {:name => "filesystem", :env => pmodel_env, :key_fields => key_fields}
+    
+    #final env model
+    env = { :node_class_id => node_class_id,
+                :data_model => data_model,
+                :persist_model => persist_model }
+  end
+end
+
+#neo = NodeElementOperations.new(:field_op_set => FileEnvironment[:field_op_set])
+#BufsBaseNode.data_struc = neo
+#BufsBaseNode.set_environment(FileEnvironment, FileEnvironment[:glue_name])
+
+base_env = FilesystemEnv.set_env
+neo_env = base_env[:data_model]
+neo = NodeElementOperations.new(neo_env)
+BufsBaseNode.data_struc = neo
+
+persist_env = base_env[:persist_model]
+
+BufsBaseNode.set_environment(persist_env)
 
 describe BufsBaseNode, "Basic Document Operations (no attachments)" do
   include BufsNodeBuilder
@@ -333,14 +379,14 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     #defined in the Node Operations (see midas directory)
     new_data = {:link_name => "blah", :link_src =>"http:\\\\to.somewhere.blah"}
     add_method = "#{new_key_field}_add".to_sym
-    LinkAddOp = NodeElementOperations::LinkAddOp
+    link_add_op = DefaultOpSets::ListAddOpDef
     #test adding new data
     basic_node.__send__(add_method, new_data)
     #verify new data was added appropriately
     updated_data = basic_node.__send__(new_key_field)
     updated_data.should == new_data  #old links version it would not be equal
-    magically_transformed_data = LinkAddOp.call(nil, new_data)[:update_this]
-    updated_data.should == magically_transformed_data
+    magically_transformed_data = link_add_op.call(nil, new_data)[:update_this]
+    magically_transformed_data.should == [updated_data]
   end
 end
 

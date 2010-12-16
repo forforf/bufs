@@ -2,9 +2,12 @@
 require File.join(File.dirname(__FILE__), '/helpers/require_helper')
 
 #bufs libraries
+require Bufs.midas 'node_element_operations'
 require Bufs.helpers 'hash_helpers'
+require Bufs.helpers 'camel'
 require Bufs.lib 'bufs_escape'
 require Bufs.helpers 'log_helper'
+
 
 
 #This is the base abstract class used.  Each user would get a unique
@@ -91,7 +94,8 @@ class BufsBaseNode
 
   #Class Accessors
   class << self; attr_accessor :myGlueEnv, #uppercased to highlight its supporting the class
-                               :metadata_keys
+                                           :data_struc,
+                                           :metadata_keys
   end
 
   ##Instance Accessors
@@ -113,15 +117,27 @@ class BufsBaseNode
 
   #Class Methods
   #Setting up the Class Environment - The class environment holds all
-  # model-specific implementation details
-  def self.set_environment(env, glue_name)
-    reqs = env[:requires]  #nil if being created from factory
+  # model-specific implementation details (not used when created by factory?)
+  def self.set_environment(persist_env)
+    #reqs = env[:requires]  #nil if being created from factory
     #incs = env[:includes] 
-    reqs.each {|r| require r} if reqs   #load software libraries needed
+    #reqs.each {|r| require r} if reqs   #load software libraries needed
     #incs.each {|mod| include Module.const_get(mod)} if incs  #include the modules to mix in to the node
-    glueModule = Object.const_get(glue_name)
+    model_name = persist_env[:name]
+    model_env = persist_env[:env]
+    key_fields = persist_env[:key_fields]
+    
+    glue_file_name = "bufs_#{model_name}_glue_env"
+    
+    #dynamic require (maybe just keep this static?)
+    require Bufs.glue glue_file_name
+    
+    glue_lc_name = "bufs_#{model_name}_env"
+    glue_const_name = Camel.ize(glue_lc_name)
+    glueModule = Object.const_get(glue_const_name)
     glueClass = glueModule::GlueEnv
-    @myGlueEnv = glueClass.new(env)
+    
+    @myGlueEnv = glueClass.new(persist_env)
     @metadata_keys = @myGlueEnv.metadata_keys 
   end
 

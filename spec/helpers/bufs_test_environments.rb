@@ -23,10 +23,38 @@ module UserNodeSpecHelpers
   BufsFileIncludes = [:FileSystemEnv]
 end
 
+module NodeHelper
+  def self.env_builder(model_name, node_class_id, user_id, path, host = nil)
+        #binding data (note this occurs in two different places in the env)
+    
+    key_fields = {:required_keys => [:my_category],
+                         :primary_key => :my_category }
+    #data model
+    field_op_set ={:my_category => :static_ops,
+                             :parent_categories => :list_ops,
+                             :links => :replace_ops }
+    #op_set_mod => <Using default definitions>
+    
+    data_model = {:field_op_set => field_op_set, :key_fields => key_fields}
+    
+    #persistence layer model
+    pmodel_env = { :host => host,
+                          :path => path,
+                          :user_id => user_id}
+    persist_model = {:name => model_name, :env => pmodel_env, :key_fields => key_fields}
+    
+    #final env model
+    env = { :node_class_id => node_class_id,
+                :data_model => data_model,
+                :persist_model => persist_model }
+  end
+end
 #for testing CouchRest model
 module CouchRestNodeHelpers
 
   def self.env_builder(node_class_id, db, db_user_id)
+    raise "Don't Use this to build environments anymore"
+=begin
       node_env = Hash[ node_class_id =>
                       Hash[ :requires => UserNodeSpecHelpers::BufsNodeLibs,
                             #:includes => UserNodeSpecHelpers::BufsNodeIncludes,
@@ -35,7 +63,7 @@ module CouchRestNodeHelpers
                                                                             :links => :replace_ops } },
                             :glue_name => "BufsCouchRestEnv",
                             :class_env =>
-                            Hash[ :bufs_info_doc_env =>
+                            Hash[ :couchrest_env =>
                                   Hash[ :host => db.host,
                                         :path => db.uri,
                                         :user_id => db_user_id
@@ -44,10 +72,16 @@ module CouchRestNodeHelpers
                           ]
                     ]
   end
+=end
+  end
+
+
 end
 
 module FileSystemNodeHelpers
   def self.env_builder(node_class_id, root_path, fs_user_id)
+    raise "Don't Use this to build environments anymore"
+=begin
       node_env = Hash[ node_class_id =>
                       Hash[ :requires => UserNodeSpecHelpers::BufsFileLibs,
                             #:includes => UserNodeSpecHelpers::BufsFileIncludes,
@@ -56,7 +90,7 @@ module FileSystemNodeHelpers
                                                                             :links => :replace_ops } },
                             :glue_name => "BufsFileSystemEnv",
                             :class_env =>
-                            Hash[ :bufs_file_system_env =>
+                            Hash[ :filesystem_env =>
                                   Hash[ :path => root_path,
                                         :user_id => fs_user_id
                                       ]
@@ -64,7 +98,8 @@ module FileSystemNodeHelpers
                           ]
                     ]
   end
-
+=end
+ end   
 end
 
 module NodeHelpers

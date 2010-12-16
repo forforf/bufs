@@ -72,7 +72,9 @@ module BufsFileSystemViews
 end 
 
 
-module BufsFileSystemEnv
+module BufsFilesystemEnv
+  EnvName = :filesystem_env
+  
 class GlueEnv
   @@this_file = File.basename(__FILE__)
   #Set Logger
@@ -105,30 +107,35 @@ attr_accessor :fs_user_id,
                              :moab_data
 #=end
 
-  def initialize(env)
-    env_name = :bufs_file_system_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
+  def initialize(persist_env)
+    filesystem_env = persist_env[:env]
+    key_fields = persist_env[:key_fields]
+    #env_name = :bufs_file_system_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
     #puts "GlueFileSys env keys: #{env.keys.inspect}" 
-    fs_path = env[env_name][:path]
+    #fs_path = env[env_name][:path]
+    
+    #fs_user_id = env[env_name][:user_id]
+    #@user_id = fs_user_id
+    fs_path = filesystem_env[:path]
+    @user_id = filesystem_env[:user_id]
+    
     FileUtils.mkdir_p(fs_path) unless File.exists?(fs_path)
-    fs_user_id = env[env_name][:user_id]
-    @user_id = fs_user_id
-
     #@collection_namespace = FileSystemEnv.set_collection_namespace(fs_path, fs_user_id)
     #TODO: user_datastore_selector gets .model added at it at some point magically, set in one place to maintain consistency
-    @user_datastore_selector = FileSystemEnv.set_user_datastore_selector(fs_path, fs_user_id)
-    @user_datastore_id = FileSystemEnv.set_user_datastore_id(fs_path, fs_user_id)
+    @user_datastore_selector = FileSystemEnv.set_user_datastore_selector(fs_path, @user_id)
+    @user_datastore_id = FileSystemEnv.set_user_datastore_id(fs_path, @user_id)
 
     @fs_metadata_keys = FileSystemEnv.set_fs_metadata_keys #(@collection_namespace)
     @metadata_keys = @fs_metadata_keys #TODO spaghetti code alert
     @base_metadata_keys = FileSystemEnv::BaseMetadataKeys
-    @required_instance_keys = DataStructureModels::Bufs::RequiredInstanceKeys
-    @required_save_keys = DataStructureModels::Bufs::RequiredSaveKeys
-    @node_key = DataStructureModels::Bufs::NodeKey
+    @required_instance_keys = key_fields[:required_keys] #DataStructureModels::Bufs::RequiredInstanceKeys
+    @required_save_keys = key_fields[:required_keys] #DataStructureModels::Bufs::RequiredSaveKeys
+    @node_key = key_fields[:primary_key] #DataStructureModels::Bufs::NodeKey
     @version_key = FileSystemEnv::VersionKey
     @model_key = FileSystemEnv::ModelKey
     @namespace_key = FileSystemEnv::NamespaceKey
     #@user_datastore_selector = FileSystemEnv.set_namespace(fs_path, fs_user_id)
-    @namespace = FileSystemEnv.set_namespace(fs_path, fs_user_id)
+    @namespace = FileSystemEnv.set_namespace(fs_path, @user_id)
     #BufsInfoDocEnvMethods.set_view_all(@db, @design_doc, @collection_namespace)
     #@user_attachClass = attachClass  
     @data_file_name = FileSystemEnv.set_data_file_name

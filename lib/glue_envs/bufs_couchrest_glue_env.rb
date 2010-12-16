@@ -11,10 +11,9 @@ module BufsCouchRestViews
   @@log = BufsLog.set(@@this_file)
   
   #Constants (pulling out magic text embedded in program)
-  #Name of the record field whose value determines the boundaries of 
-  #the data that belongs to the bufs class. In other words, every couchdb record
-  #associated with this class will have the same "bufs_namespace" value.
-  BufsNamespace = "bufs_namespace"
+  #Changing these will break compatibility with earlier records
+  BufsAllViewsName = "all_bufs"   #view name stored in the couch db design doc
+  BufsNamespace = "bufs_namespace"  #couch db record that the bufs node class name is stored
 
 
   def self.set_view(db, design_doc, view_name, opts={})
@@ -54,20 +53,22 @@ module BufsCouchRestViews
   end
 
   def self.set_view_all(db, design_doc, db_namespace)
-    view_name = "all_bufs"
+    view_name = BufsAllViewsName
     namespace_id = BufsNamespace
     map_str = "function(doc) {
 		  if (doc['#{namespace_id}'] == '#{db_namespace}') {
 		     emit(doc['_id'], doc);
 		  }
 	       }"
-    map_fn = { :map => map_str } #returned from synced block
+    map_fn = { :map => map_str }
     self.set_view(db, design_doc, view_name, map_fn)
   end
   
-  def self.tmp_my_cat_view(db, design_doc, user_datastore_id)
+  #Set static views.
+#=begin
+  def self.set_my_cat_view(db, design_doc, user_datastore_id)
     map_str = "function(doc) {
-                   if (doc.bufs_namespace =='#{user_datastore_id}' && doc.my_category ){
+                   if (doc.#{BufsNamespace} =='#{user_datastore_id}' && doc.my_category ){
                      emit(doc.my_category, doc);
                   }
                }"
@@ -75,7 +76,7 @@ module BufsCouchRestViews
     #TODO: Tied to datastructure
     self.set_view(db, design_doc, :my_category, map_fn)
   end
-
+#=end
   #TODO: Tied to datastructure
   def self.by_my_category(moab_data, user_datastore_id, match_key)
     db = moab_data[:db]
@@ -112,7 +113,8 @@ module BufsCouchRestViews
 
 end
 
-module BufsCouchRestEnv
+module BufsCouchrestEnv
+  EnvName = :couchrest_env  #name for couchrest environments
 
 class GlueEnv
 
@@ -141,17 +143,22 @@ class GlueEnv
                                :moab_data,
                                :attachClass 
 
-  def initialize(env)
-    env_name = :bufs_info_doc_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
-    couch_db_host = env[env_name][:host]
-    db_name_path = env[env_name][:path]
+  def initialize(persist_env)
+    couchrest_env = persist_env[:env]
+    key_fields = persist_env[:key_fields]
+    #env_name = :bufs_info_doc_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
+    #couch_db_host = env[env_name][:host]
+    #db_name_path = env[env_name][:path]
+    #db_user_id = env[env_name][:user_id] #TODO Change to "data_set_id at some point
+    couch_db_host = couchrest_env[:host]
+    db_name_path = couchrest_env[:path]
+    @user_id = couchrest_env[:user_id]
     #FIXME: Major BUG!! when setting multiple environments in that this may cross-contaminate across users
     #if those users share the same db.  Testing up to date has been users on different dbs, so not an issue to date
     #also, one solution might be to force users to their own db? (what about sharing though?)
     #The problem is that there is one "query_all" per database, and it gets set to the last user class
-    #that sets it.  
-    db_user_id = env[env_name][:user_id] #TODO Change to "data_set_id at some point
-    @user_id = db_user_id
+    #that sets it.  [Is this still a bug? 12/16/10 ]
+    #@user_id = db_user_id
     #user_attach_class_name = "UserAttach#{db_user_id}"
     #the rescue is so that testing works
     #begin
@@ -160,7 +167,8 @@ class GlueEnv
     #  puts "Warning:: Multiuser support for attachments not enabled. Using generic Attachment Class"
     #  attachClass = CouchrestAttachment
     #end
-    @db_user_id = db_user_id
+    #@db_user_id = db_user_id
+    @db_user_id = @user_id
     couch_db_location = CouchRestEnv.set_db_location(couch_db_host, db_name_path)
     @db = CouchRest.database!(couch_db_location)
     @model_save_params = {:db => @db}
@@ -173,18 +181,18 @@ class GlueEnv
     #
     @define_query_all = "by_all_bufs".to_sym #CouchRestEnv.query_for_all_collection_records
     @metadata_keys = CouchRestEnv.set_db_metadata_keys #(@collection_namespace)
-    @required_instance_keys = DataStructureModels::Bufs::RequiredInstanceKeys
-    @required_save_keys = DataStructureModels::Bufs::RequiredSaveKeys
+    @required_instance_keys = key_fields[:required_keys] #DataStructureModels::RequiredInstanceKeys
+    @required_save_keys = key_fields[:required_keys] #DataStructureModels::Bufs::RequiredSaveKeys
     @model_key = CouchRestEnv::ModelKey
     @version_key = CouchRestEnv::VersionKey
     @namespace_key = CouchRestEnv::NamespaceKey
-    @node_key = DataStructureModels::Bufs::NodeKey
+    @node_key = key_fields[:primary_key] #DataStructureModels::Bufs::NodeKey
     #TODO: namespace is identical to collection_namespace?
     @namespace = CouchRestEnv.set_namespace(db_name_path, db_user_id)
     @views = BufsCouchRestViews
     @views.set_view_all(@db, @design_doc, @collection_namespace)
     
-    @views.tmp_my_cat_view(@db, @design_doc, @user_datastore_id)
+    @views.set_my_cat_view(@db, @design_doc, @user_datastore_id)
     
     attach_class_name = "MoabAttachmentHandler#{db_user_id}"
     @attachClass = CouchRestEnv.set_attach_class(@db.root, attach_class_name) 
