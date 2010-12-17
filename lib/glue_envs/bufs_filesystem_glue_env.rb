@@ -139,7 +139,7 @@ attr_accessor :fs_user_id,
     #BufsInfoDocEnvMethods.set_view_all(@db, @design_doc, @collection_namespace)
     #@user_attachClass = attachClass  
     @data_file_name = FileSystemEnv.set_data_file_name
-    @model_save_params = {:nodes_save_path => @user_datastore_selector, :data_file => @data_file_name}
+    @model_save_params = {:nodes_save_path => @user_datastore_selector, :data_file => @data_file_name, :node_key => @node_key}
     @_files_mgr_class = FileSystemEnv::FilesMgrInterface
     @views = BufsFileSystemViews
     @moab_data = {:data_file_name => @data_file_name}

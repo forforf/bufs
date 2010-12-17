@@ -119,18 +119,17 @@ class BufsBaseNode
   #Setting up the Class Environment - The class environment holds all
   # model-specific implementation details (not used when created by factory?)
   def self.set_environment(persist_env)
-    #reqs = env[:requires]  #nil if being created from factory
-    #incs = env[:includes] 
-    #reqs.each {|r| require r} if reqs   #load software libraries needed
-    #incs.each {|mod| include Module.const_get(mod)} if incs  #include the modules to mix in to the node
     model_name = persist_env[:name]
     model_env = persist_env[:env]
     key_fields = persist_env[:key_fields]
     
+    #dynamically determine what's needed
     glue_file_name = "bufs_#{model_name}_glue_env"
+    moab_file_name = "moab_#{model_name}_env"
     
     #dynamic require (maybe just keep this static?)
     require Bufs.glue glue_file_name
+    require Bufs.moabs moab_file_name
     
     glue_lc_name = "bufs_#{model_name}_env"
     glue_const_name = Camel.ize(glue_lc_name)

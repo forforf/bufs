@@ -88,6 +88,7 @@ module FileSystemEnv
 
     def initialize(node_env, node_key)
       #for bufs node_key is the value of :my_category
+      @node_key = node_key
       @attachment_location = File.join(node_env.user_datastore_selector, node_key)
     end
 
@@ -280,12 +281,15 @@ module FileSystemEnv
     end  
 
     def self.save(model_save_params, data)
+      
       #TODO: Figure out how to separate node_id and my_category, still munged currently
       parent_path = model_save_params[:nodes_save_path]
+      node_key = model_save_params[:node_key]
       #model_dir = self.model_dir_name
       #TODO, should the node_path come from some other data type (i.e., datastore_selector?)
       #TODO Fix filename dependency with :my_category
-      node_path = File.join(parent_path, data[:my_category])
+      
+      node_path = File.join(parent_path, data[node_key])
       file_name = model_save_params[:data_file]
       save_path = File.join(node_path, file_name)  
       #raise "Path not found to save data: #{parent_path}" unless File.exist?(parent_path)

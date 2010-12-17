@@ -1,7 +1,7 @@
-require '../lib/bufs_node_factory'  #<-- eventually will be gem 'bufs'
-require '../lib/moabs/moab_couchrest_env'
-require '../lib/glue_envs/bufs_couchrest_glue_env'
-require '../lib/midas/node_element_operations'
+require '../lib/bufs'  #<-- eventually will be gem 'bufs'
+#require '../lib/moabs/moab_couchrest_env'
+#equire '../lib/glue_envs/bufs_couchrest_glue_env'
+#require '../lib/midas/node_element_operations'
 
 #We need to define the datastructure we'll be starting with.  We can change it dynamically as well,
 #but it is usually helpful to have a defined base to start from
@@ -33,9 +33,7 @@ module NodeHelper
     key_fields = {:required_keys => [:id],
                          :primary_key => :id }
 
-    #TODO: Can't use default key fields due to dependency with model
-    #key_fields = nil #it will use default
-    
+
     #data model
     field_op_set =nil
     #op_set_mod => <Using default definitions>
@@ -62,54 +60,59 @@ end
   example_couchdb_location = "http://127.0.0.1:5984/example/"
   #example_couchdb_location = "http://bufs.couchone.com/example"
   couchrest_instance = CouchRest.database!(example_couchdb_location)
-
-  #TODO: Verify whether db_user_id is required, or whether its derived already.
-  #TODO: It might be better if the node_class_id should be defaulted to the user name (or derivative)
-  node_class_id = :MyExample
-  reqs = nil #we aren't using an external file to hold the modules to be included
   
-  #changing default configuration
-  #incls = nil #[ExampleDataStructure]  #nil uses default
+  #while we're at it, lets create a filesystem store as well
+  filestore_loc = "/tmp/bufs_test/"
 
-  #include NodeElementOperations
-  # this allows us to call the different defined operations
-  #This is the default
-  #NodeElementOperations.configuration =  {:id => :static_ops, :data => :replace_ops }
-  # used to be {:id => StaticFieldOps, :label => ReplaceFieldOps , :tags => ListFieldOps, :kvps=> KVListOps} 
-  #set custom node operations 
-  
-  #incls = {:id => StaticFieldOps, :label => ReplaceFieldOps, :tags => ListFieldOps, :kvps=> KVListOps} 
-  incls = {:field_ops_map =>{:id => :static_ops, 
-                                         :label => :replace_ops, 
-                                         :tags => :list_ops, 
-                                         :kvps => :key_value_ops}
-              #:field_ops_def_mod => nil }
-            }
+  couch_class_id = :CouchClass
+  file_class_id = :FileClass
   user_id = "Me"
-  path = couchrest_instance.uri
-  host = couchrest_instance.host
-  couch_env = NodeHelper.env_builder("couchrest", node_class_id, user_id, path, host)
+  
+  cr_path = couchrest_instance.uri
+  cr_host = couchrest_instance.host
+  
+  fs_path = filestore_loc
+  #filesystem doesn't require host
+  #building the couchrest environment
+  couch_env = NodeHelper.env_builder("couchrest", couch_class_id, user_id, cr_path, cr_host)
+  
+  #building the filesystem environment
+  filesys_env = NodeHelper.env_builder("filesystem", file_class_id, user_id, fs_path)
   #p couch_env
   
   #Testing with Class for NodeElementOperations
   #node_ops = NewNodeElementOperations.new.data_ops
   
+  #In the future you won't need seperate classes for the models.
   
-  ExampleClass = BufsNodeFactory.make(couch_env)
-  hello_world_node = ExampleClass.new({:id => "My ID", :data => "Hello World"})
-  hello_world_node.__save
+  ExampleCouchClass = BufsNodeFactory.make(couch_env)
+  ExampleFileClass = BufsNodeFactory.make(filesys_env)
+  a_couch_node = ExampleCouchClass.new({:id => "My_ID1", :data => "Hello World from couchrest"})
   
-  puts "Node in memory"
-  p hello_world_node._user_data
+  
+  a_file_node = ExampleFileClass.new({:id => "My_ID2", :data =>"Hellow World from filesystem" })
+  
+ 
+  puts "Nodes in memory"
+  p a_couch_node._user_data
+  p a_file_node._user_data
+  
+  a_couch_node.__save 
+  a_file_node.__save
   puts "Node in CouchDB"
   #p hello_world_node
-  p couchrest_instance.get(hello_world_node._model_metadata[:_id])
+  p couchrest_instance.get(a_couch_node._model_metadata[:_id])
   puts
-  puts "Or you can test it from the command line using curl:"
-  puts "curl -X GET #{example_couchdb_location}/#{CGI.escape(hello_world_node._model_metadata[:_id])}"
+  puts "Or you can get the couch node from the command line using curl:"
+  puts "curl -X GET #{example_couchdb_location}/#{CGI.escape(a_couch_node._model_metadata[:_id])}"
   puts
+  puts "The file data should be at (look for .node_data.json)"
+  puts "ls -al #{File.join(a_file_node._model_metadata[:files_namespace], a_file_node._user_data[:id])}/"
   puts "We can also add a field dynamically, for example a \"tags\" field"
   puts "Node after dynamically adding new data element"
+  
+  #after this hello_world node is the same as a couch node
+  hello_world_node = a_couch_node
   hello_world_node.__set_userdata_key(:tags, ["tag1", "tag2"])
   p hello_world_node._user_data
   puts "You don't have to add a field defined in the element operations"

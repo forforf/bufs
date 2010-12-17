@@ -13,14 +13,14 @@ class BufsNodeFactory
     BufsLog.log_raise "Empty Node Environment provided" if node_env.empty?
     BufsLog.log_raise "Malformed Node Environment" unless node_env.respond_to?(:keys)
     BufsLog.log_raise "Malformed Node Environment" unless node_env.keys.include? :persist_model
-    BufsLog.log_raise "Malformed Node Environment" unless node_env.keys.include? :data_model
+    #BufsLog.log_raise "Malformed Node Environment" unless node_env.keys.include? :data_model
     #node_class_name = node_env.keys.first
     #reqs = node_env[node_class_name][:requires]
     #reqs.each {|r| require r} if reqs
     #incs = node_env[node_class_name][:includes]
     #@@log.debug {"User Provided Field Operations: #{incs.inspect}"} if @@log.debug?
     
-    neo_env = node_env[:data_model]
+    neo_env = node_env[:data_model] || {}
     
     #neo_defs = incs[:field_ops_def_mod]
     neo = NodeElementOperations.new(neo_env)

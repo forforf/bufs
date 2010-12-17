@@ -23,6 +23,7 @@ module UserNodeSpecHelpers
   BufsFileIncludes = [:FileSystemEnv]
 end
 
+#TODO: Combine this and the next module
 module NodeHelper
   def self.env_builder(model_name, node_class_id, user_id, path, host = nil)
         #binding data (note this occurs in two different places in the env)
@@ -50,57 +51,6 @@ module NodeHelper
   end
 end
 #for testing CouchRest model
-module CouchRestNodeHelpers
-
-  def self.env_builder(node_class_id, db, db_user_id)
-    raise "Don't Use this to build environments anymore"
-=begin
-      node_env = Hash[ node_class_id =>
-                      Hash[ :requires => UserNodeSpecHelpers::BufsNodeLibs,
-                            #:includes => UserNodeSpecHelpers::BufsNodeIncludes,
-                            :includes => {:field_op_set => {:my_category => :static_ops,
-                                                                            :parent_categories => :list_ops,
-                                                                            :links => :replace_ops } },
-                            :glue_name => "BufsCouchRestEnv",
-                            :class_env =>
-                            Hash[ :couchrest_env =>
-                                  Hash[ :host => db.host,
-                                        :path => db.uri,
-                                        :user_id => db_user_id
-                                      ]
-                                ]
-                          ]
-                    ]
-  end
-=end
-  end
-
-
-end
-
-module FileSystemNodeHelpers
-  def self.env_builder(node_class_id, root_path, fs_user_id)
-    raise "Don't Use this to build environments anymore"
-=begin
-      node_env = Hash[ node_class_id =>
-                      Hash[ :requires => UserNodeSpecHelpers::BufsFileLibs,
-                            #:includes => UserNodeSpecHelpers::BufsFileIncludes,
-                            :includes => {:field_op_set => {:my_category => :static_ops,
-                                                                            :parent_categories => :list_ops,
-                                                                            :links => :replace_ops } },
-                            :glue_name => "BufsFileSystemEnv",
-                            :class_env =>
-                            Hash[ :filesystem_env =>
-                                  Hash[ :path => root_path,
-                                        :user_id => fs_user_id
-                                      ]
-                                ]
-                          ]
-                    ]
-  end
-=end
- end   
-end
 
 module NodeHelpers
   DefaultNodeParams = {:my_category => 'default',

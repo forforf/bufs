@@ -17,10 +17,12 @@ module MakeUserClasses
     node_class_id2 = "BufsInfoNode#{@user2_id}"
     node_class_id3 = "BufsFile#{@user3_id}"
     node_class_id4 = "BufsFile#{@user4_id}"
-    node_env1 = CouchRestNodeHelpers.env_builder(node_class_id1, SampleCouchDB, @user1_id)
-    node_env2 = CouchRestNodeHelpers.env_builder(node_class_id2, SampleCouchDB, @user2_id)
-    node_env3 = FileSystemNodeHelpers.env_builder(node_class_id3, FileSystem, @user3_id)
-    node_env4 = FileSystemNodeHelpers.env_builder(node_class_id4, FileSystem, @user4_id)
+    couchpath = SampleCouchDB.uri
+    couchhost = SampleCouchDB.host
+    node_env1 = NodeHelper.env_builder("couchrest", node_class_id1, @user1_id, couchpath, couchhost)
+    node_env2 = NodeHelper.env_builder("couchrest", node_class_id2, @user2_id, couchpath, couchhost)
+    node_env3 = NodeHelper.env_builder("filesystem", node_class_id3, @user3_id, FileSystem)
+    node_env4 = NodeHelper.env_builder("filesystem", node_class_id4, @user4_id, FileSystem)
     User1Class =  BufsNodeFactory.make(node_env1)
     User2Class =  BufsNodeFactory.make(node_env2)
     User3Class =  BufsNodeFactory.make(node_env3)
