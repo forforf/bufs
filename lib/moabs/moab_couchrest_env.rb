@@ -95,7 +95,7 @@ module CouchRestEnv
       #attachment package has now been created
       #create the attachment record
       #The attachment handler (bia_class) will deal with creating vs updating
-      user_id = node.my_GlueEnv.db_user_id
+      user_id = node.my_GlueEnv.user_id
       node_id = node._model_metadata[:_id]
       #TODO: There is probably a cleaner way to do add attachments, but low on the priority list
       record = bia_class.add_attachment_package(node_id, bia_class, attachment_package)
@@ -228,6 +228,7 @@ module CouchRestEnv
     }
   end
 
+
   def self.set_namespace(db_name_path, db_user_id)
     @@mutex.synchronize {
       #namespace = "#{db.to_s}::#{db_user_id}"
@@ -238,13 +239,8 @@ module CouchRestEnv
     }
   end
 
-  def self.set_user_datastore_selector(db, db_user_id)
-    @@mutex.synchronize {
-      "#{db.to_s}::#{db_user_id}"
-    }
-  end
-
-  def self.set_user_datastore_id
+  #TODO: Convert namespace to be identical to this?
+  def self.set_user_datastore_location(db, db_user_id)
     @@mutex.synchronize {
       "#{db.to_s}::#{db_user_id}"
     }
@@ -279,10 +275,9 @@ module CouchRestEnv
     "by_all_bufs".to_sym
   end
 
-  #collection_namespace corresponds to the namespace that is used to distinguish between unique
-  #data sets (i.e., users) within the model
-  def self.generate_model_key(collection_namespace, node_key)
-    "#{collection_namespace}::#{node_key}"
+  #bufs_base_node calls this (through glue)
+  def self.generate_model_key(namespace, node_key)
+    "#{namespace}::#{node_key}"
   end
 
   def self.set_attach_class(db_root_location, attach_class_name)

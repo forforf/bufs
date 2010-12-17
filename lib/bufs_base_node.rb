@@ -175,7 +175,7 @@ class BufsBaseNode
     records = if @myGlueEnv.views.respond_to? view_method_name
       @myGlueEnv.views.__send__(view_method_name,
                                   @myGlueEnv.moab_data,
-                                  @myGlueEnv.user_datastore_id, 
+                                  @myGlueEnv.user_datastore_location, 
                                   match_keys)
     else
       #TODO: Think of a more elegant way to handle an unknown view
@@ -563,7 +563,8 @@ class BufsBaseNode
     id = metadata[model_key] 
     namespace = metadata[namespace_key] 
     rev = metadata[version_key]
-    namespace = @my_GlueEnv.user_datastore_id unless namespace
+    #if metadata key fields doen't exist we have to create them
+    namespace = @my_GlueEnv.user_datastore_location unless namespace
     id = @my_GlueEnv.generate_model_key(namespace, node_key)  unless id
     updated_key_metadata = {model_key => id, namespace_key => namespace}
     updated_key_metadata.delete(version_key) unless rev 

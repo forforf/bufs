@@ -6,9 +6,8 @@ require Bufs.moabs 'moab_couchrest_env'
 require Bufs.helpers 'log_helper'
 
 module BufsCouchRestViews
-  @@this_file = File.basename(__FILE__)
   #Set Logger
-  @@log = BufsLog.set(@@this_file)
+  @@log = BufsLog.set(self.name)
   
   #Constants (pulling out magic text embedded in program)
   #Changing these will break compatibility with earlier records
@@ -66,9 +65,9 @@ module BufsCouchRestViews
   
   #Set static views.
 #=begin
-  def self.set_my_cat_view(db, design_doc, user_datastore_id)
+  def self.set_my_cat_view(db, design_doc, user_datastore_location)
     map_str = "function(doc) {
-                   if (doc.#{BufsNamespace} =='#{user_datastore_id}' && doc.my_category ){
+                   if (doc.#{BufsNamespace} =='#{user_datastore_location}' && doc.my_category ){
                      emit(doc.my_category, doc);
                   }
                }"
@@ -78,11 +77,11 @@ module BufsCouchRestViews
   end
 #=end
   #TODO: Tied to datastructure
-  def self.by_my_category(moab_data, user_datastore_id, match_key)
+  def self.by_my_category(moab_data, user_datastore_location, match_key)
     db = moab_data[:db]
     design_doc = moab_data[:design_doc]
     map_str = "function(doc) {
-                   if (doc.bufs_namespace =='#{user_datastore_id}' && doc.my_category ){
+                   if (doc.bufs_namespace =='#{user_datastore_location}' && doc.my_category ){
                      emit(doc.my_category, doc);
                   }
                }"
@@ -94,11 +93,11 @@ module BufsCouchRestViews
   end 
 
   #TODO: Tied to datastructure
-  def self.by_parent_categories(moab_data, user_datastore_id, match_keys)
+  def self.by_parent_categories(moab_data, user_datastore_location, match_keys)
     db = moab_data[:db]
     design_doc = moab_data[:design_doc]
     map_str = "function(doc) {
-                if (doc.bufs_namespace == '#{user_datastore_id}' && doc.parent_categories) {
+                if (doc.bufs_namespace == '#{user_datastore_location}' && doc.parent_categories) {
                        emit(doc.parent_categories, doc);
                     };
                 };"
@@ -110,20 +109,21 @@ module BufsCouchRestViews
     rows = raw_res["rows"]
     records = rows.map{|r| r["value"] if r["value"]["parent_categories"].include? match_keys}
   end
-
 end
 
 module BufsCouchrestEnv
   EnvName = :couchrest_env  #name for couchrest environments
 
 class GlueEnv
-
-  attr_accessor :db_user_id,
-                      :user_id, #need to add to spec and mesh with db_user_id
+  #Set Logger
+  @@log = BufsLog.set("BufsFileSystem-#{self.name}", :warn)
+  
+  attr_accessor :user_id,
+                      #:db_user_id, #need to add to spec and mesh with db_user_id
                                :db,
-                               :user_datastore_selector,
-                               :user_datastore_id,
-                               :collection_namespace,
+                               :user_datastore_location,
+                               :user_datastore_location,
+                               #:collection_namespac,
                                :design_doc,
                                :query_all,
                                :attachment_base_id,
@@ -157,7 +157,7 @@ class GlueEnv
     #if those users share the same db.  Testing up to date has been users on different dbs, so not an issue to date
     #also, one solution might be to force users to their own db? (what about sharing though?)
     #The problem is that there is one "query_all" per database, and it gets set to the last user class
-    #that sets it.  [Is this still a bug? 12/16/10 ]
+    #that sets it.  [Is this still a bug? 12/16/10  I think not]
     #@user_id = db_user_id
     #user_attach_class_name = "UserAttach#{db_user_id}"
     #the rescue is so that testing works
@@ -167,16 +167,14 @@ class GlueEnv
     #  puts "Warning:: Multiuser support for attachments not enabled. Using generic Attachment Class"
     #  attachClass = CouchrestAttachment
     #end
-    #@db_user_id = db_user_id
-    @db_user_id = @user_id
     couch_db_location = CouchRestEnv.set_db_location(couch_db_host, db_name_path)
     @db = CouchRest.database!(couch_db_location)
     @model_save_params = {:db => @db}
     
-    @collection_namespace = CouchRestEnv.set_collection_namespace(db_name_path, db_user_id)
-    @user_datastore_selector = CouchRestEnv.set_user_datastore_selector(@db, @db_user_id)
-    @user_datastore_id = CouchRestEnv.set_collection_namespace(db_name_path, db_user_id)
-    @design_doc = CouchRestEnv.set_couch_design(@db, db_user_id)#, @collection_namespace)
+    #@collection_namespace = CouchRestEnv.set_collection_namespace(db_name_path, @user_id)
+    #@user_datastore_location = CouchRestEnv.set_user_datastore_location(@db, @user_id)
+    @user_datastore_location = CouchRestEnv.set_collection_namespace(db_name_path, @user_id)
+    @design_doc = CouchRestEnv.set_couch_design(@db, @user_id)#, @collection_namespace)
     @moab_data = {:db => @db, :design_doc => @design_doc}
     #
     @define_query_all = "by_all_bufs".to_sym #CouchRestEnv.query_for_all_collection_records
@@ -188,13 +186,13 @@ class GlueEnv
     @namespace_key = CouchRestEnv::NamespaceKey
     @node_key = key_fields[:primary_key] #DataStructureModels::Bufs::NodeKey
     #TODO: namespace is identical to collection_namespace?
-    @namespace = CouchRestEnv.set_namespace(db_name_path, db_user_id)
+    @namespace = CouchRestEnv.set_namespace(db_name_path, @user_id)
     @views = BufsCouchRestViews
-    @views.set_view_all(@db, @design_doc, @collection_namespace)
+    @views.set_view_all(@db, @design_doc, @user_datastore_location)
     
-    @views.set_my_cat_view(@db, @design_doc, @user_datastore_id)
+    @views.set_my_cat_view(@db, @design_doc, @user_datastore_location)
     
-    attach_class_name = "MoabAttachmentHandler#{db_user_id}"
+    attach_class_name = "MoabAttachmentHandler#{@user_id}"
     @attachClass = CouchRestEnv.set_attach_class(@db.root, attach_class_name) 
     @_files_mgr_class = CouchRestEnv::FilesMgrInterface
     #@_files_mgr_class.model_params = {:attachment_actor_class => @user_attachClass}

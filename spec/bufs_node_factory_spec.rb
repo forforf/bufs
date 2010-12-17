@@ -79,7 +79,7 @@ describe BufsNodeFactory, "Making the Class" do
     #users should be in different directories
     filesystem_users = @user_classes.select{|u| u.to_s =~ /BufsFile/}
     filesystem_users.size.should == 2
-    user_dirs = filesystem_users.map{|f| f.myGlueEnv.user_datastore_selector}
+    user_dirs = filesystem_users.map{|f| f.myGlueEnv.user_datastore_location}
     user_dirs[0].should_not == user_dirs[1]
   end
 end
