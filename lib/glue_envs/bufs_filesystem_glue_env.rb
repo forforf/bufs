@@ -9,7 +9,7 @@ require Bufs.moabs 'moab_filesystem_env'
 #class ViewsMgr
 module BufsFileSystemViews
   #Set Logger
-  @@log = BufsLog.set(self.name)
+  @@log = BufsLog.set(self.name, :warn)
 
   #Dependency on BufsInfoDocEnvMethods
   attr_accessor :model_actor
@@ -82,7 +82,7 @@ class GlueEnv
   #outside world that maps to the specific implementations of the
   #underlying persistent layers
   #Set Logger
-  @@log = BufsLog.set("BufsFileSystem-#{self.name}", :warn)
+  @@log = BufsLog.set(self.name, :warn)
   
   #used to identify metadata for models (should be consistent across models)
   ModelKey = :_id 
@@ -92,7 +92,7 @@ class GlueEnv
   MoabDataStoreDir = ".model"
   MoabDatastoreName = ".node_data.json"
   
-  include FileSystemEnv
+  #include FileSystemEnv
 
 #TODO: Rather than using File class directly, should a special class be used?
 #=begin
@@ -102,7 +102,6 @@ attr_accessor :user_id,
 			     :user_datastore_location,
 			     #:design_doc,
 			     #:query_all
-			     #:fs_metadata_keys,
 			     :metadata_keys,
 			     :required_instance_keys,
 			     :required_save_keys,
@@ -113,9 +112,9 @@ attr_accessor :user_id,
 			     :version_key,
 			     :namespace_key,
 			     :_files_mgr_class,
-                             :views,
+           :views,
 			     :model_save_params,
-                             :moab_data
+           :moab_data
 #=end
 
   def initialize(persist_env)
@@ -129,31 +128,14 @@ attr_accessor :user_id,
     @required_save_keys = key_fields[:required_keys] #DataStructureModels::Bufs::RequiredSaveKeys
     @node_key = key_fields[:primary_key] #DataStructureModels::Bufs::NodeKey
 
-
-    #via Moab Mixin Constants(FileSystemEnv)
     @moab_datastore_name = MoabDatastoreName
     @version_key = VersionKey  #
     @model_key = ModelKey
     @namespace_key = NamespaceKey
-    @metadata_keys = [@version_key, @model_key, @namespace_key] #FileSystemEnv::BaseMetadataKeys
-    #@metadata_keys = [@version_key, @namespace_key]
-    #via Moab Mixin methods (FileSystemEnv)
-    #@user_datastore_location = fs_set_user_datastore_location(fs_path, @user_id)
-    @user_datastore_location = File.join(fs_path, @user_id, MoabDataStoreDir)
-
-    #@collection_namespace = FileSystemEnv.set_collection_namespace(fs_path, fs_user_id)
-    
-
-    #@fs_metadata_keys = FileSystemEnv::BaseMetadataKeys #.set_fs_metadata_keys #(@collection_namespace)
-    #@base_metadata_keys = FileSystemEnv::BaseMetadataKeys
-
-    #@user_datastore_selector = FileSystemEnv.set_namespace(fs_path, fs_user_id)
-    #@namespace = FileSystemEnv.set_namespace(fs_path, @user_id)
-    #BufsInfoDocEnvMethods.set_view_all(@db, @design_doc, @collection_namespace)
-    #@user_attachClass = attachClass  
-    
+    @metadata_keys = [@version_key, @model_key, @namespace_key] 
+    @user_datastore_location = File.join(fs_path, @user_id, MoabDataStoreDir)    
     @model_save_params = {:nodes_save_path => @user_datastore_location, :data_file => @moab_datastore_name, :node_key => @node_key}
-    @_files_mgr_class = FileSystemEnv::FilesMgrInterface
+    @_files_mgr_class = FilesystemEnv::FilesMgrInterface
     @views = BufsFileSystemViews
     @moab_data = {:moab_datastore_name => @moab_datastore_name}
     #@views_mgr = ViewsMgr.new({:data_file => @data_file_name})

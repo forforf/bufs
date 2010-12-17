@@ -6,6 +6,10 @@ require Bufs.moabs 'moab_couchrest_env'
 require Bufs.helpers 'log_helper'
 
 module BufsCouchRestViews
+  #FIXME MAJOR BUG
+  #Views should be an instance to a user class
+  #not a module, otherwise, last one set gets all the goodies
+  
   #Set Logger
   @@log = BufsLog.set(self.name)
   
@@ -116,27 +120,35 @@ module BufsCouchrestEnv
 
 class GlueEnv
   #Set Logger
-  @@log = BufsLog.set("BufsFileSystem-#{self.name}", :warn)
+  @@log = BufsLog.set(self.name, :debug)
+  
+  include CouchRest::Mixins::Views::ClassMethods
+  
+  #used to identify metadata for models (should be consistent across models)
+  ModelKey = :_id
+  VersionKey = :_rev
+  NamespaceKey = :bufs_namespace
+  CouchMetadataKeys = [:_pos, :_deleted_conflicts] #possibly more, these keys are ignored
+  QueryAllStr = "by_all_bufs".to_sym
+  AttachClassBaseName = "MoabAttachmentHandler"
+  DesignDocBaseName = "CouchRestEnv" #used to be module name
   
   attr_accessor :user_id,
-                      #:db_user_id, #need to add to spec and mesh with db_user_id
                                :db,
                                :user_datastore_location,
-                               :user_datastore_location,
-                               #:collection_namespac,
                                :design_doc,
                                :query_all,
                                :attachment_base_id,
-                               :db_metadata_keys,
+                               #:db_metadata_keys,
                                :metadata_keys,
-                               :base_metadata_keys,
+                               #:base_metadata_keys,
                                :required_instance_keys,
                                :required_save_keys,
                                :node_key,
                                :model_key,
                                :version_key,
                                :namespace_key,
-                               :namespace,
+                               #:namespace,
                                :_files_mgr_class,
                                :views,
                                :model_save_params,
@@ -146,10 +158,6 @@ class GlueEnv
   def initialize(persist_env)
     couchrest_env = persist_env[:env]
     key_fields = persist_env[:key_fields]
-    #env_name = :bufs_info_doc_env  #"#{self.to_s}_env".to_sym  <= (same thing but not needed yet)
-    #couch_db_host = env[env_name][:host]
-    #db_name_path = env[env_name][:path]
-    #db_user_id = env[env_name][:user_id] #TODO Change to "data_set_id at some point
     couch_db_host = couchrest_env[:host]
     db_name_path = couchrest_env[:path]
     @user_id = couchrest_env[:user_id]
@@ -157,7 +165,7 @@ class GlueEnv
     #if those users share the same db.  Testing up to date has been users on different dbs, so not an issue to date
     #also, one solution might be to force users to their own db? (what about sharing though?)
     #The problem is that there is one "query_all" per database, and it gets set to the last user class
-    #that sets it.  [Is this still a bug? 12/16/10  I think not]
+    #that sets it.  [Is this still a bug? 12/16/10]
     #@user_id = db_user_id
     #user_attach_class_name = "UserAttach#{db_user_id}"
     #the rescue is so that testing works
@@ -167,45 +175,119 @@ class GlueEnv
     #  puts "Warning:: Multiuser support for attachments not enabled. Using generic Attachment Class"
     #  attachClass = CouchrestAttachment
     #end
-    couch_db_location = CouchRestEnv.set_db_location(couch_db_host, db_name_path)
+    couch_db_location = set_db_location(couch_db_host, db_name_path)
     @db = CouchRest.database!(couch_db_location)
     @model_save_params = {:db => @db}
     
     #@collection_namespace = CouchRestEnv.set_collection_namespace(db_name_path, @user_id)
     #@user_datastore_location = CouchRestEnv.set_user_datastore_location(@db, @user_id)
-    @user_datastore_location = CouchRestEnv.set_collection_namespace(db_name_path, @user_id)
-    @design_doc = CouchRestEnv.set_couch_design(@db, @user_id)#, @collection_namespace)
+    @user_datastore_location = set_namespace(db_name_path, @user_id)
+    @design_doc = set_couch_design(@db, @user_id)#, @collection_namespace)
     @moab_data = {:db => @db, :design_doc => @design_doc}
     #
-    @define_query_all = "by_all_bufs".to_sym #CouchRestEnv.query_for_all_collection_records
-    @metadata_keys = CouchRestEnv.set_db_metadata_keys #(@collection_namespace)
+    @define_query_all = QueryAllStr #CouchRestEnv.query_for_all_collection_records
+    
     @required_instance_keys = key_fields[:required_keys] #DataStructureModels::RequiredInstanceKeys
     @required_save_keys = key_fields[:required_keys] #DataStructureModels::Bufs::RequiredSaveKeys
-    @model_key = CouchRestEnv::ModelKey
-    @version_key = CouchRestEnv::VersionKey
-    @namespace_key = CouchRestEnv::NamespaceKey
-    @node_key = key_fields[:primary_key] #DataStructureModels::Bufs::NodeKey
-    #TODO: namespace is identical to collection_namespace?
-    @namespace = CouchRestEnv.set_namespace(db_name_path, @user_id)
+    @model_key = ModelKey #CouchRestEnv::ModelKey
+    @version_key = VersionKey #CouchRestEnv::VersionKey
+    @namespace_key = NamespaceKey #CouchRestEnv::NamespaceKey
+    @metadata_keys = [@model_key, @version_key, @namespace_key] + CouchMetadataKeys #CouchRestEnv.set_db_metadata_keys #(@collection_namespace)
+    @node_key = key_fields[:primary_key] 
     @views = BufsCouchRestViews
     @views.set_view_all(@db, @design_doc, @user_datastore_location)
     
     @views.set_my_cat_view(@db, @design_doc, @user_datastore_location)
     
-    attach_class_name = "MoabAttachmentHandler#{@user_id}"
+    attach_class_name = "#{AttachClassBaseName}#{@user_id}"
     @attachClass = CouchRestEnv.set_attach_class(@db.root, attach_class_name) 
+    #TODO: Have to do the above, but want to do the below
+    #@attachClass = set_attach_class(@db.root, attach_class_name)
     @_files_mgr_class = CouchRestEnv::FilesMgrInterface
-    #@_files_mgr_class.model_params = {:attachment_actor_class => @user_attachClass}
-    #@_files_mgr_class = CouchRestEnv::FilesMgr.new(:attachment_actor_class => @user_attachClass)
-    #@views_mgr = DataStoreModels::CouchRest::ViewsMgr.new(:db => @db, :design_doc => @design_doc)
+  end
+  
+  #TODO Need to fix some naming issues before bringing this method over into the glue environment
+  #def set_attach_class(db_root_location, attach_class_name)
+  #  dyn_attach_class_def = "class #{attach_class_name} < CouchrestAttachment
+  #    use_database CouchRest.database!(\"http://#{db_root_location}/\")
+  # 
+  #    def self.namespace
+  #      CouchRest.database!(\"http://#{db_root_location}/\")
+  #    end
+  #  end"
+  #  
+  #  self.class.class_eval(dyn_attach_class_def)
+  #  self.class.const_get(attach_class_name)
+  #end  
+  
+  def set_db_location(couch_db_host, db_name_path)
+      couch_db_host.chop if couch_db_host =~ /\/$/ #removes any trailing slash
+      db_name_path = "/#{db_name_path}" unless db_name_path =~ /^\// #check for le
+      couch_db_location = "#{couch_db_host}#{db_name_path}"
   end
 
-  def query_all  #TODO move to ViewsMgr and change the confusing accessor/method clash
-   #breaks everything -> self.set_view(@db, @design_doc, @collection_namespace)
-   raw_res = @design_doc.view @define_query_all
-   raw_data = raw_res["rows"]
-   raw_data.map {|d| d['value']}
+  #TODO: MAJOR Refactoring may have broken compatibility with already persisted data, need to 
+  #figure out tool to migrate persisted data when changes occur
+  def set_namespace(db_name_path, db_user_id)
+      lose_leading_slash = db_name_path.split("/")
+      lose_leading_slash.shift
+      db_name = lose_leading_slash.join("")
+      namespace = "#{db_name}_#{db_user_id}"
   end
+    
+  def set_user_datastore_location(db, db_user_id)
+      "#{db.to_s}::#{db_user_id}"
+  end  
+  
+  def set_couch_design(db, user_id) #, view_name)
+      design_doc = CouchRest::Design.new
+      design_doc.name = "#{DesignDocBaseName}_#{user_id}_Design"
+      #example of a map function that can be passed as a parameter if desired (currently not needed)
+      #map_function = "function(doc) {\n  if(doc['#{@@collection_namespace}']) {\n   emit(doc['_id'], 1);\n  }\n}"
+      #design_doc.view_by collection_namespace.to_sym #, {:map => map_function }
+      design_doc.database = db
+      begin
+        design_doc = db.get(design_doc['_id'])
+      rescue RestClient::ResourceNotFound
+        design_doc.save
+      end
+      design_doc
+  end  
+  
+  def query_all  #TODO move to ViewsMgr and change the confusing accessor/method clash
+    #breaks everything -> self.set_view(@db, @design_doc, @collection_namespace)
+    raw_res = @design_doc.view @define_query_all
+    raw_data = raw_res["rows"]
+    raw_data.map {|d| d['value']}
+  end
+ 
+  def save(new_data)
+    db = @model_save_params[:db]
+    raise "No database found to save data" unless db
+    raise "No id found in data: #{new_data.inspect}" unless new_data[:_id]
+    model_data = HashKeys.sym_to_str(new_data) 
+    raise "No id found in model data: #{model_data.inspect}" unless model_data['_id']
+    #db.save_doc(model_data)
+    begin
+      #TODO: Genericize this
+      res = db.save_doc(model_data)
+    rescue RestClient::RequestFailed => e
+      #TODO Update specs to test for this
+      if e.http_code == 409
+        doc_str = "Document Conflict in the Database." 
+        @@log.warn { doc_str } if @@log.warn?
+        #existing_doc = db.get(model_data['_id'])
+        rev = existing_doc['_rev']
+        data_with_rev = model_data.merge({'_rev' => rev})
+        res = db.save_doc(data_with_rev)
+      else
+	raise "Request Failed -- Response: #{res.inspect} Error:#{e}"\
+	      "\nAdditonal Data: model params: #{model_save_params.inspect}"\
+	      "\n                model data: #{model_data.inspect}"\
+	      "\n                all data: #{new_data.inspect}"
+      end
+    end
+  end 
 
   def get(id)
     #maybe put in some validations to ensure its from the proper collection namespace?
@@ -218,17 +300,32 @@ class GlueEnv
     rtn
   end
 
-  def save(model_data)
-    CouchRestEnv.save(@model_save_params, model_data)
-  end
-
+  #def xsave(model_data)
+  #  CouchRestEnv.save(@model_save_params, model_data)
+  #end
   def destroy_node(node)
-    CouchRestEnv::destroy_node(node)
-    node = nil
+    #att_doc = node.my_GlueEnv.attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
+    att_doc = node.my_GlueEnv.attachClass.get(node.my_GlueEnv.attachClass.uniq_att_doc_id(node._model_metadata[:_id]))
+    #raise "Destroying Attachment #{att_doc.inspect} from #{node._model_metadata[:_id].inspect}"
+    att_doc.destroy if att_doc
+    begin
+      self.destroy(node)
+    rescue ArgumentError => e
+      puts "Rescued Error: #{e} while trying to destroy #{node.my_category} node"
+      node = node.class.get(node._model_metadata['_id'])
+      self.destroy(node)
+    end
   end
+ 
 
+  #def xdestroy_node(node)
+  #  CouchRestEnv::destroy_node(node)
+  #  node = nil
+  #end
+
+  #duplicative to above but provides consistent generic model key
   def generate_model_key(namespace, node_key)
-    CouchRestEnv.generate_model_key(namespace, node_key)
+    "#{namespace}::#{node_key}"
   end
 
   #some models have additional processing required, but not this one

@@ -1,17 +1,13 @@
 #require helper for cleaner require statements
 require File.join(File.dirname(__FILE__), '../helpers/require_helper')
 
-#require 'cgi'
 require 'time'
 require 'json'
-#require 'monitor'
 
 require Bufs.helpers 'mime_types_new'
-#require Bufs.moabs 'files_manager_base' #Not implemented yet
-
-#File Node Helpers
 
 #TODO: Move this into a MonkeyPatch named module (called by file glue)
+# Bufs.monkey_patch punching_dir  or something
 class Dir  #monkey patch  (duck punching?)
   def self.working_entries(dir=Dir.pwd)
     ignore_list = ['thumbs.db','all_child_files']
@@ -35,21 +31,6 @@ class Dir  #monkey patch  (duck punching?)
   end
 end
 
-module FileSystemEnv
-  ##Uncomment all mutexs and monitors for thread safety for this module (untested)
-  #TODO Test for thread safety
-  #@@mutex = Mutex.new
-  #@@monitor = Monitor.new
-
-  #ModelKey = :_id  #not used
-  #VersionKey = :_rev #to have timestamp
-  #NamespaceKey = :files_namespace
- 
-  #set in glue
-  #BaseMetadataKeys = [ModelKey, VersionKey, NamespaceKey]
-  
-  #MoabDataStoreDir = ".model"
-  #MoabDatastoreName = ".node_data.json"
   
   #File hanlding notes
   # The file handling is bound to the model, and can't be abstracted away. This means files can't be handled
@@ -75,9 +56,7 @@ module FileSystemEnv
       #                 }
       #
       # filename_key = model_filenames to delete
-
-
-  #TODO Make thread safe
+module FilesystemEnv
   class FilesMgrInterface
     #Set Logger
     @@log = BufsLog.set(self.name)
@@ -148,15 +127,6 @@ module FileSystemEnv
       else
         file_modified_at = File.mtime(raw_data_filename).to_s     
       end
-      #@file_metadata = {'file_modified' => file_modified_at}
-      #@attached_files << raw_data_filename
-
-      #attachment_package[unesc_attach_name] = {'data' => raw_data, 'md' => file_metadata}
-      #bia = bia_class.get(node.my_attachment_doc_id)
-      #record = bia_class.add_attachment_package(node, attachment_package)
-      #@record_ref = record['_id']
-      #add raw data only supports a single file, but returns it as an array so that the return
-      #type is consisentent with other methods that ad files.
       [esc_attach_name]
     end
 
@@ -204,8 +174,10 @@ module FileSystemEnv
        return nil unless node.attachment_doc_id
        atts = list_files(node)
        rtn = atts.keys
-    end
-    #TODO: make private
+    end 
+     
+    private 
+    
     def subtract_some(node, model_basenames)
       if node.attached_files
         #TODO: replace the duplicative namespaces with path to the node dir
@@ -218,7 +190,7 @@ module FileSystemEnv
         #subtract_all(node) if rem_atts.empty?
       end
     end
-    #TODO: make private
+    
     def subtract_all(node)
       root_path = node.my_GlueEnv.user_datastore_location
       node_loc  = node._user_data[node.my_GlueEnv.node_key]
@@ -230,78 +202,6 @@ module FileSystemEnv
       FileUtils.rm(attached_filenames)
     end
   end
-
-
-  #Class Environment
-  
-  #Sets the specific environment needed for this particular class.
-  #The goal is to have the class environment completed abstracted from the
-  #operations (i.e. methods) of the class. Perfect abstraction would yield
-  #a model class that could be readily applied to differnt models, and perhaps 
-  #elimivgnate the need for an abstract class to encapsulate the modesl (the current approach) 
-  #The class variables should be able to be reused across all models (yet to be seen if this is possible)
-  #The structure of the environment is a hash (which can contain multiple class environments)
-  #           { env_name => env_options_for_that_particular_class }
-  #
-  # Thus all classes would have a set_environment class method, but each class would have its own
-  # environmental variables and structures
-
-
-  #def fs_set_user_datastore_location(fs_name_path, fs_user_id)
-  #    File.join(fs_name_path, fs_user_id, MoabDataStoreDir)
-  #end
-
-  #Not used
-  #model namespace
-  #def self.set_namespace(fs_name_path, fs_user_id)
-  #  @@mutex.synchronize {
-  #    namespace = File.join(fs_name_path, fs_user_id)
-  #  }
-  #end
-
-
-  #Node Actions
-    
-    #collection_namespace corresponds to the namespace that is used to distinguish between unique
-    #data sets (i.e., users) within the model
-    #def fs_generate_model_key(collection_namespace, node_key)
-    #  "#{collection_namespace}::#{node_key}"
-      #File.join(collection_namespace,node_key)
-    #end  
-=begin
-    def fs_save(model_save_params, data)
-      parent_path = model_save_params[:nodes_save_path]
-      node_key = model_save_params[:node_key]
-      node_path = File.join(parent_path, data[node_key])
-      file_name = model_save_params[:data_file]
-      save_path = File.join(node_path, file_name)  
-      model_data = HashKeys.sym_to_str(data)
-      FileUtils.mkdir_p(node_path) unless File.exist?(node_path)
-      rev = Time.now.hash #<- I would use File.mtime, but how to get the mod time before saving?
-      model_data['_rev'] = rev
-      f = File.open(save_path, 'w')
-      f.write(model_data.to_json)
-      f.close
-      model_data['rev'] = model_data['_rev'] #TODO <-Investigate to see if it could be consistent
-      return model_data
-    end
-=end
-    #handled by glue
-    #def self.destroy_node(node)
-    #  att_doc = node.class.user_attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
-    #  att_doc.destroy if att_doc
-    #  begin
-    #    self.destroy(node)
-    #  rescue ArgumentError => e
-    #    puts "Rescued Error: #{e} while trying to destroy #{node.my_category} node"
-    #    node = node.class.get(node._model_metadata['_id'])
-    #    self.destroy(node)
-    #  end
-    #end
-
-    #def self.destroy(node)
-    #  node.class.class_env.db.delete_doc('_id' => node._model_metadata[ModelKey], '_rev' => node._model_metadata[VersionKey])
-    #end
-
 end
+
 

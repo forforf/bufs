@@ -8,16 +8,12 @@ require Bufs.moabs '/couchrest_attachment_handler'
 #require Bufs.moabs 'files_manager_base'  #Not implemented yet
 
 module CouchRestEnv
-  ##Uncomment all mutexs and monitors for thread safety for this module (untested)
-  #TODO Test for thread safety
-  @@mutex = Mutex.new
-  @@monitor = Monitor.new
   include CouchRest::Mixins::Views::ClassMethods
 
-  ModelKey = :_id
-  VersionKey = :_rev
-  NamespaceKey = :bufs_namespace
-  BaseMetadataKeys = [ModelKey, VersionKey, NamespaceKey]
+  #ModelKey = :_id
+  #VersionKey = :_rev
+  #NamespaceKey = :bufs_namespace
+  #BaseMetadataKeys = [ModelKey, VersionKey, NamespaceKey]
 
   #The file handling is bound to the model, and can't be abstracted away. This means files can't be handle
   #via the dynamic methods used for other data structures.
@@ -196,89 +192,7 @@ module CouchRestEnv
     end
   end
 
-  #Class Environment
-  
-  #Sets the specific environment needed for this particular class.
-  #The goal is to have the class environment completed abstracted from the
-  #operations (i.e. methods) of the class. Perfect abstraction would yield
-  #a model class that could be readily applied to differnt models, and perhaps 
-  #eliminate the need for an abstract class to encapsulate the models (the current approach) 
-  #The class variables should be able to be reused across all models (yet to be seen if this is possible)
-  #The structure of the environment is a hash (which can contain multiple class environments)
-  #           { env_name => env_options_for_that_particular_class }
-  #
-  # Thus all classes would have a set_environment class method, but each class would have its own
-  # environmental variables and structures
-
-  def self.set_db_location(couch_db_host, db_name_path)
-    @@mutex.synchronize {
-      couch_db_host.chop if couch_db_host =~ /\/$/ #removes any trailing slash
-      db_name_path = "/#{db_name_path}" unless db_name_path =~ /^\// #check for le
-      couch_db_location = "#{couch_db_host}#{db_name_path}"
-    }
-  end
-
-  #assigns a unique namespace to the collection of nodes belonging to this class
-  def self.set_collection_namespace(db_name_path, db_user_id)
-    @@mutex.synchronize {
-      lose_leading_slash = db_name_path.split("/")
-      lose_leading_slash.shift
-      db_name = lose_leading_slash.join("")
-      collection_namespace = "#{db_name}_#{db_user_id}"
-    }
-  end
-
-
-  def self.set_namespace(db_name_path, db_user_id)
-    @@mutex.synchronize {
-      #namespace = "#{db.to_s}::#{db_user_id}"
-      lose_leading_slash = db_name_path.split("/")
-      lose_leading_slash.shift
-      db_name = lose_leading_slash.join("")
-      namespace = "#{db_name}_#{db_user_id}"
-    }
-  end
-
-  #TODO: Convert namespace to be identical to this?
-  def self.set_user_datastore_location(db, db_user_id)
-    @@mutex.synchronize {
-      "#{db.to_s}::#{db_user_id}"
-    }
-  end
-
-  def self.set_couch_design(db, user_id) #, view_name)
-    @@mutex.synchronize {
-      design_doc = CouchRest::Design.new
-      design_doc.name = "#{self.to_s}_#{user_id}_Design"
-      #example of a map function that can be passed as a parameter if desired (currently not needed)
-      #map_function = "function(doc) {\n  if(doc['#{@@collection_namespace}']) {\n   emit(doc['_id'], 1);\n  }\n}"
-      #design_doc.view_by collection_namespace.to_sym #, {:map => map_function }
-      design_doc.database = db
-      begin
-        design_doc = db.get(design_doc['_id'])
-      rescue RestClient::ResourceNotFound
-        design_doc.save
-      end
-      design_doc
-    }
-  end
-
-  def self.set_db_metadata_keys #(collection_namespace)
-    #more_keys = ['_id', '_rev', '_pos', '_deleted_conflicts', 'bufs_namespace']
-    base_keys = BaseMetadataKeys
-    db_metadata_keys = base_keys + [:_pos, :_deleted_conflicts] #+ more_keys
-    
-  end
-
-  #TODO: this is a bit convoluted to just return the query string, simplify.
-  def self.query_for_all_collection_records
-    "by_all_bufs".to_sym
-  end
-
-  #bufs_base_node calls this (through glue)
-  def self.generate_model_key(namespace, node_key)
-    "#{namespace}::#{node_key}"
-  end
+#------------------------- CouchRestEnv below this -----------------------------------------------------
 
   def self.set_attach_class(db_root_location, attach_class_name)
     dyn_attach_class_def = "class #{attach_class_name} < CouchrestAttachment
@@ -293,41 +207,7 @@ module CouchRestEnv
     self.const_get(attach_class_name)
   end
 
-  #Nodal Actions
-  def self.save(model_save_params, data)
-    db = model_save_params[:db]
-    raise "No database found to save data" unless db
-    raise "No id found in data: #{data.inspect}" unless data[:_id]
-    model_data = HashKeys.sym_to_str(data) #data.inject({}){|memo,(k,v)| memo["#{k}"] = v; memo}
-    raise "No id found in model data: #{model_data.inspect}" unless model_data['_id']
-    #db.save_doc(model_data)
-    begin
-      #TODO: Genericize this
-      res = db.save_doc(model_data)
-    rescue RestClient::RequestFailed => e
-      #TODO Update specs to test for this
-      if e.http_code == 409
-        puts "Document Conflict in the Database,"\
-        " record exists or there is database corruption. "\
-        " Will attempt to continue with pre-existing record."\
-	      #" Error Code was 409. Need to ensure current revs are maintained/current"\
-	      #"\nAdditonal Data: model params: #{model_save_params.inspect}"\
-	      #"\n                model data: #{model_data.inspect}"\
-	      #"\n                all data: #{data.inspect}"
-	#TODO: Update the below to the new class scheme
-        existing_doc = db.get(model_data['_id'])
-        rev = existing_doc['_rev']
-        data_with_rev = model_data.merge({'_rev' => rev})
-        res = db.save_doc(data_with_rev)
-      else
-	raise "Request Failed -- Response: #{res.inspect} Error:#{e}"\
-	      "\nAdditonal Data: model params: #{model_save_params.inspect}"\
-	      "\n                model data: #{model_data.inspect}"\
-	      "\n                all data: #{data.inspect}"
-      end
-    end
-  end
-
+=begin
   #TODO: Test in spec that attachments are being deleted
   def self.destroy_node(node)
     #att_doc = node.my_GlueEnv.attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
@@ -342,10 +222,10 @@ module CouchRestEnv
       self.destroy(node)
     end
   end
-
-  def self.destroy(node)
-    node.my_GlueEnv.db.delete_doc('_id' => node._model_metadata[ModelKey], 
-				  '_rev' => node._model_metadata[VersionKey])
-  end
+=end
+  #def self.destroy(node)
+  #  node.my_GlueEnv.db.delete_doc('_id' => node._model_metadata[ModelKey], 
+	#			  '_rev' => node._model_metadata[VersionKey])
+  #end
 
 end
