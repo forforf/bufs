@@ -11,7 +11,7 @@ module BufsCouchRestViews
   #not a module, otherwise, last one set gets all the goodies
   
   #Set Logger
-  @@log = BufsLog.set(self.name)
+  @@log = BufsLog.set(self.name, :warn)
   
   #Constants (pulling out magic text embedded in program)
   #Changing these will break compatibility with earlier records
@@ -120,7 +120,7 @@ module BufsCouchrestEnv
 
 class GlueEnv
   #Set Logger
-  @@log = BufsLog.set(self.name, :debug)
+  @@log = BufsLog.set(self.name, :warn)
   
   include CouchRest::Mixins::Views::ClassMethods
   
@@ -228,11 +228,13 @@ class GlueEnv
 
   #TODO: MAJOR Refactoring may have broken compatibility with already persisted data, need to 
   #figure out tool to migrate persisted data when changes occur
+  #TODO: MAJOR Namespace should not be bound to the underlying model it should be bound to user data only
   def set_namespace(db_name_path, db_user_id)
       lose_leading_slash = db_name_path.split("/")
       lose_leading_slash.shift
       db_name = lose_leading_slash.join("")
-      namespace = "#{db_name}_#{db_user_id}"
+      #namespace = "#{db_name}_#{db_user_id}"
+      namespace = "#{db_user_id}"
   end
     
   def set_user_datastore_location(db, db_user_id)
@@ -276,7 +278,7 @@ class GlueEnv
       if e.http_code == 409
         doc_str = "Document Conflict in the Database." 
         @@log.warn { doc_str } if @@log.warn?
-        #existing_doc = db.get(model_data['_id'])
+        existing_doc = db.get(model_data['_id'])
         rev = existing_doc['_rev']
         data_with_rev = model_data.merge({'_rev' => rev})
         res = db.save_doc(data_with_rev)
@@ -309,12 +311,19 @@ class GlueEnv
     #raise "Destroying Attachment #{att_doc.inspect} from #{node._model_metadata[:_id].inspect}"
     att_doc.destroy if att_doc
     begin
-      self.destroy(node)
+      db_destroy(node)
     rescue ArgumentError => e
       puts "Rescued Error: #{e} while trying to destroy #{node.my_category} node"
       node = node.class.get(node._model_metadata['_id'])
-      self.destroy(node)
+      db_destroy(node)
     end
+  end
+  
+
+  def db_destroy(node)
+    @@log.debug { "ID: #{node._model_metadata[@model_key]}" } if @@log.debug
+    @db.delete_doc('_id' => node._model_metadata[@model_key],
+    '_rev' => node._model_metadata[@version_key])
   end
  
 
@@ -325,7 +334,9 @@ class GlueEnv
 
   #duplicative to above but provides consistent generic model key
   def generate_model_key(namespace, node_key)
+    #TODO: Make sure namespace is portable across model migrations
     "#{namespace}::#{node_key}"
+    #"#{node_key}"
   end
 
   #some models have additional processing required, but not this one
@@ -344,7 +355,7 @@ class GlueEnv
     list_of_native_records.each do |r|
       begin
         att_doc_id = r['_id'] + CouchrestAttachment::AttachmentID
-        #puts "Node ID: #{r['_id'].inspect}"
+        @@log.debug { "Node ID: #{r['_id'].inspect}" } if @@log.debug?
         #puts "DB: #{@db.all.inspect}"
         @db.delete_doc(r)
         begin
@@ -354,7 +365,7 @@ class GlueEnv
         end
         @db.delete_doc(att_doc) if att_doc
       rescue RestClient::RequestFailed
-        puts "Warning:: Failed to delete document?"
+        @@log.warn{ "Warning:: Failed to delete document?" } if @@log.warn?
       end
     end
     nil #TODO ok to return nil if all docs destroyed? also, not verifying

@@ -578,7 +578,7 @@ class BufsBaseNode
     metadata
   end
 
-
+  #TODO: Can't this be simplified (inject -> inject -> merge?)
   def inject_node_metadata
     inject_metadata(@_user_data)
   end

@@ -90,21 +90,6 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
   include MakeUserClasses
   include NodeHelpers
 
-=begin
-  before(:all) do
-    @user1_id = "User001"
-    @user2_id = "User002"
-    node_class_id1 = "BufsInfoNode#{@user1_id}"
-    node_class_id2 = "BufsInfoNode#{@user2_id}"
-    node_env1 = CouchRestNodeHelpers.env_builder(node_class_id1, CouchDB, @user1_id)
-    node_env2 = CouchRestNodeHelpers.env_builder(node_class_id2, CouchDB2, @user2_id)
-
-    @user1_class = BufsNodeFactory.make(node_env1)
-    @user2_class = BufsNodeFactory.make(node_env2)
-
-    @user_classes = [@user1_class, @user2_class]
-  end
-=end
   before(:each) do
     @user_classes = [User1Class, User2Class, User3Class, User4Class]
   end
@@ -251,37 +236,6 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
       end
     end
   end
-
-
-  #TODO Setup a test to verify datastructure can change dynamically
-  #i.e. add new parameters, check them, set them and delete them
-=begin
-  it "should have a dynamic methods set up for user data" do
-    #set initial conditions
-    orig_parent_cats = {}
-    doc_params = {}
-    doc_existing_new_parent_cats = {}
-    @user_classes.each do |user_class|
-      orig_parent_cats[user_class] = ["#{user_class}-orig_cat1", "#{user_class}-orig_cat2"]
-      doc_params[user_class] = get_default_params.merge({:my_category => "#{user_class}-cat_test2",
-                                                      :parent_categories => orig_parent_cats[user_class]})
-      doc_existing_new_parent_cats[user_class] = make_doc_no_attachment(user_class, doc_params[user_class])
-      doc_existing_new_parent_cats[user_class].save
-    end
-    #verify initial conditions
-    @user_classes.each do |user_class|
-      doc_params[user_class].keys.each do |param|
-        doc_id = doc_existing_new_parent_cats[user_class]._model_metadata['_id']
-        db_doc = user_class.get(doc_id)
-        #raise db_doc._model_metadata.inspect
-        db_param = db_doc.node_data_hash[param]
-        doc_existing_new_parent_cats[user_class].node_data_hash[param].should == db_param
-        #test accessor method
-        doc_existing_new_parent_cats[user_class].__send__(param).should == db_param
-      end
-    end
-  end
-=end
 
   it "should add categories to existing categories and existing doc" do
     #set initial conditions
@@ -962,6 +916,41 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     this_other_node.class.should_not == other_node2.class
     this_other_node.my_category.should == my_cat2
     this_other_node.attached_files.first.should == BufsEscape.escape(test_basename)
+  end
+end
+
+describe "Cleanup" do
+  include MakeUserClasses
+    before(:all) do
+    @test_files = BufsFixtures.test_files
+  end
+
+  before(:each) do
+    @user_classes = [User1Class, User2Class,  User3Class, User4Class]
+  end
+
+  after(:each) do
+    @user_classes.each do |user_class|
+      user_class.destroy_all
+    end
+  end
+  
+  it "should leave underlying persistence models empty" do
+    #initial conditions
+    #check initial conditions
+    #persistence models used in specs
+    CouchDB.class.should == CouchRest::Database
+    File.exist?(FileSystem1).should == true
+    File.exist?(FileSystem2).should == true
+    #test
+    @user_classes.each do |user_class| 
+      user_class.destroy_all
+    end
+    doc_ids_in_db = CouchDB.documents['rows'].map{|i| i['id'] unless i['id'] =~ /^_design/ }.compact!
+    doc_ids_in_db.should == []
+    Dir.glob("#{FileSystem1}/#{@user_id3}/.model/**", File::FNM_DOTMATCH).should == []
+    Dir.glob("#{FileSystem2}/#{@user_id4}/.model/**", File::FNM_DOTMATCH).should == []
+    #note: A failure may mean changes were made to primary keys
   end
 end
 

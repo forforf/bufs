@@ -84,7 +84,8 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     lose_leading_slash = db_name_path.split("/")
     lose_leading_slash.shift
     db_name = lose_leading_slash.join("")
-    BufsBaseNode.myGlueEnv.user_datastore_id.should == "#{db_name}_#{DBDummyUserID}"
+    #BufsBaseNode.myGlueEnv.user_datastore_location.should == "#{db_name}_#{DBDummyUserID}"
+    BufsBaseNode.myGlueEnv.user_datastore_location.should == "#{DBDummyUserID}"
   end
 
   it "it should initialize correctly" do
@@ -152,7 +153,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     
     #check results
     doc_params.keys.each do |param|
-      namespace = BufsBaseNode.myGlueEnv.user_datastore_id
+      namespace = BufsBaseNode.myGlueEnv.user_datastore_location
       node_id = doc_to_save.my_category
       doc_id = BufsBaseNode.myGlueEnv.generate_model_key(namespace, node_id)
       db_param = DBCouchDB.get(doc_id)[param]
@@ -534,6 +535,13 @@ describe BufsBaseNode, "Attachment Operations" do
     attached_basenames = basic_node.attached_files
     attached_basenames.size.should == 1
     attached_basenames.first.should == BufsEscape.escape(test_basename)
+    att_node_id = basic_node._model_metadata[:_id]
+    att_node = basic_node._model_metadata[:_id]
+    att_node = BufsBaseNode.get(att_node_id)
+    att_node.should_not == nil
+    atts = basic_node.my_GlueEnv.attachClass.get(basic_node.attachment_doc_id)
+    atts.should_not == nil
+    atts
     #test
     basic_node.__destroy_node
     #check results
@@ -779,6 +787,18 @@ describe BufsBaseNode, "Attachment Operations" do
     #verify results
     basic_node.attached_files.size.should == 1
     basic_node.attached_files.first.should == att_name
+  end
+  
+    it "should leave underlying CouchDB empty of our data" do
+    #initial conditions
+    #check initial conditions
+    #persistence model
+    DBCouchDB.class.should == CouchRest::Database
+    #test
+    BufsBaseNode.destroy_all
+    doc_ids_in_db = DBCouchDB.documents['rows'].map{|i| i['id'] unless i['id'] =~ /^_design/ }.compact!
+    doc_ids_in_db.should == []
+    #note: A failure may mean changes were made to primary keys
   end
  
   #TODO No export attachment test

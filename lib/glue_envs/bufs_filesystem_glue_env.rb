@@ -201,6 +201,7 @@ attr_accessor :user_id,
   def generate_model_key(namespace, node_key)
     #was in FileSystemEnv mixin
     #fs_generate_model_key(namespace, node_key)
+    #TODO: Make sure namespace is portable across model migrations
     "#{namespace}::#{node_key}"
   end
 
