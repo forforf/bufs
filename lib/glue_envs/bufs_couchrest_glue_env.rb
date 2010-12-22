@@ -1,11 +1,9 @@
-#require helper for cleaner require statements
-require File.join(File.dirname(__FILE__), '../helpers/require_helper')
-
+#Bufs directory structure defined in lib/helpers/require_helpers
 require Bufs.midas 'bufs_data_structure'
-require Bufs.moabs 'moab_couchrest_env'
+require Bufs.glue '/couchrest/couchrest_files_mgr'
 require Bufs.helpers 'log_helper'
 
-module BufsCouchRestViews
+module CouchRestViews
   #FIXME MAJOR BUG
   #Views should be an instance to a user class
   #not a module, otherwise, last one set gets all the goodies
@@ -54,6 +52,7 @@ module BufsCouchRestViews
       end
     end
   end
+
 
   def self.set_view_all(db, design_doc, db_namespace)
     view_name = BufsAllViewsName
@@ -114,15 +113,48 @@ module BufsCouchRestViews
     records = rows.map{|r| r["value"] if r["value"]["parent_categories"].include? match_keys}
   end
 end
+  module CouchrestViews
+    DefineViews = {
+      :value_match => nil, 
+      :included_match => nil,
+      :key_of_included_match => nil
+    }
+    
+    def view_map(namespace_label, datastore_location, field_name)
+      "function(doc) {
+          if (doc.#{namespace_label} =='#{user_datastore_location}' && doc.#{field_name} ){
+               emit(doc.#{field_name}, doc);
+          }
+     }"
+    end
+   
+    def set_view_value_match(db, design_doc, namespace_key, user_datastore_location, field_name)
+      map_function = { :map => view_map(namespace_key, user_datastore_location, field_name) } 
+      CouchRestViews.set_view(db, design_doc, field_name, map_function)
+    end
+    
+    
+    def call_view(field_name, moab_data, namespace_key, user_datastore_location, match_key, view_name = nil)
+      db = moab_data[:db]
+      design_doc = moab_data[:design_doc]
+      set_view_value_match(db, design_doc, namespace_key, user_datastore_location, field_name)
+      view_name = view_name || "by_#{field_name}"
+      raw_results = design_doc.view view_name, :key => match_key
+      rows = raw_results["rows"]
+      records = rows.map{|r| r["value"]}
+    end
+    
+  end
 
 module BufsCouchrestEnv
-  EnvName = :couchrest_env  #name for couchrest environments
+  #EnvName = :couchrest_env  #name for couchrest environments
 
 class GlueEnv
   #Set Logger
   @@log = BufsLog.set(self.name, :warn)
   
   include CouchRest::Mixins::Views::ClassMethods
+  include CouchrestViews
   
   #used to identify metadata for models (should be consistent across models)
   ModelKey = :_id
@@ -133,34 +165,37 @@ class GlueEnv
   AttachClassBaseName = "MoabAttachmentHandler"
   DesignDocBaseName = "CouchRestEnv" #used to be module name
   
+                      
   attr_accessor :user_id,
-                               :db,
                                :user_datastore_location,
-                               :design_doc,
-                               :query_all,
-                               :attachment_base_id,
-                               #:db_metadata_keys,
                                :metadata_keys,
-                               #:base_metadata_keys,
                                :required_instance_keys,
                                :required_save_keys,
                                :node_key,
                                :model_key,
                                :version_key,
                                :namespace_key,
-                               #:namespace,
                                :_files_mgr_class,
                                :views,
                                :model_save_params,
                                :moab_data,
-                               :attachClass 
+                               #accessors specific to this persitence model
+                                :db,
+                                :design_doc,
+                                :query_all,
+                                :attachment_base_id,
+                                :attachClass 
 
-  def initialize(persist_env)
+  def initialize(persist_env, data_model_bindings)
     couchrest_env = persist_env[:env]
-    key_fields = persist_env[:key_fields]
     couch_db_host = couchrest_env[:host]
     db_name_path = couchrest_env[:path]
     @user_id = couchrest_env[:user_id]
+    
+    #data_model_bindings from NodeElementOperations
+    key_fields = data_model_bindings[:key_fields] 
+    initial_views_data = data_model_bindings[:views]
+    
     #FIXME: Major BUG!! when setting multiple environments in that this may cross-contaminate across users
     #if those users share the same db.  Testing up to date has been users on different dbs, so not an issue to date
     #also, one solution might be to force users to their own db? (what about sharing though?)
@@ -183,7 +218,7 @@ class GlueEnv
     #@user_datastore_location = CouchRestEnv.set_user_datastore_location(@db, @user_id)
     @user_datastore_location = set_namespace(db_name_path, @user_id)
     @design_doc = set_couch_design(@db, @user_id)#, @collection_namespace)
-    @moab_data = {:db => @db, :design_doc => @design_doc}
+    
     #
     @define_query_all = QueryAllStr #CouchRestEnv.query_for_all_collection_records
     
@@ -194,16 +229,26 @@ class GlueEnv
     @namespace_key = NamespaceKey #CouchRestEnv::NamespaceKey
     @metadata_keys = [@model_key, @version_key, @namespace_key] + CouchMetadataKeys #CouchRestEnv.set_db_metadata_keys #(@collection_namespace)
     @node_key = key_fields[:primary_key] 
-    @views = BufsCouchRestViews
+    @views = CouchRestViews
     @views.set_view_all(@db, @design_doc, @user_datastore_location)
     
     @views.set_my_cat_view(@db, @design_doc, @user_datastore_location)
     
+    #set new view
+    initial_views_data.each do |view_name, view_data|
+      set_view_value_match(@db, @design_doc, @namespace_key, @user_datastore_location, view_data[:field])
+    end
+    
+    #@views.set_new_views(xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)
+    
     attach_class_name = "#{AttachClassBaseName}#{@user_id}"
-    @attachClass = CouchRestEnv.set_attach_class(@db.root, attach_class_name) 
+    @attachClass = set_attach_class(@db.root, attach_class_name) 
+    @moab_data = {:db => @db, 
+                            :design_doc => @design_doc, 
+                            :attachClass => @attachClass}
     #TODO: Have to do the above, but want to do the below
     #@attachClass = set_attach_class(@db.root, attach_class_name)
-    @_files_mgr_class = CouchRestEnv::FilesMgrInterface
+    @_files_mgr_class = CouchrestInterface::FilesMgr
   end
   
   #TODO Need to fix some naming issues before bringing this method over into the glue environment
@@ -254,7 +299,20 @@ class GlueEnv
         design_doc.save
       end
       design_doc
-  end  
+    end  
+    
+    def set_attach_class(db_root_location, attach_class_name)
+    dyn_attach_class_def = "class #{attach_class_name} < CouchrestAttachment
+      use_database CouchRest.database!(\"http://#{db_root_location}/\")
+ 
+      def self.namespace
+        CouchRest.database!(\"http://#{db_root_location}/\")
+      end
+    end"
+    
+    self.class.class_eval(dyn_attach_class_def)
+    self.class.const_get(attach_class_name)
+  end
   
   def query_all  #TODO move to ViewsMgr and change the confusing accessor/method clash
     #breaks everything -> self.set_view(@db, @design_doc, @collection_namespace)
@@ -302,12 +360,11 @@ class GlueEnv
     rtn
   end
 
-  #def xsave(model_data)
-  #  CouchRestEnv.save(@model_save_params, model_data)
-  #end
+  #Not tested in factory tests (but is in couchrest tests)
   def destroy_node(node)
     #att_doc = node.my_GlueEnv.attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
-    att_doc = node.my_GlueEnv.attachClass.get(node.my_GlueEnv.attachClass.uniq_att_doc_id(node._model_metadata[:_id]))
+    attachClass = node.my_GlueEnv.moab_data[:attachClass]
+    att_doc = attachClass.get(attachClass.uniq_att_doc_id(node._model_metadata[:_id]))
     #raise "Destroying Attachment #{att_doc.inspect} from #{node._model_metadata[:_id].inspect}"
     att_doc.destroy if att_doc
     begin

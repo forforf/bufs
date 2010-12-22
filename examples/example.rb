@@ -38,13 +38,13 @@ module NodeHelper
     field_op_set =nil
     #op_set_mod => <Using default definitions>
     
-    data_model = {:field_op_set => field_op_set, :key_fields => key_fields}
+    data_model = {:field_op_set => field_op_set, :key_fields => key_fields, :views => nil}
     
     #persistence layer model
     pmodel_env = { :host => host,
                           :path => path,
                           :user_id => user_id}
-    persist_model = {:name => model_name, :env => pmodel_env, :key_fields => key_fields}
+    persist_model = {:name => model_name, :env => pmodel_env}
     
     #final env model
     env = { :node_class_id => node_class_id,
@@ -90,7 +90,7 @@ end
   a_couch_node = ExampleCouchClass.new({:id => "My_ID1", :data => "Hello World from couchrest"})
   
   
-  a_file_node = ExampleFileClass.new({:id => "My_ID2", :data =>"Hellow World from filesystem" })
+  a_file_node = ExampleFileClass.new({:id => "My_ID2", :data =>"Hello World from filesystem" })
   
  
   puts "Nodes in memory"
@@ -146,6 +146,10 @@ end
   #p hello_world_node.class.data_struc
   hello_world_node.random_field_add "random"
   p hello_world_node._user_data
-  puts
+  
+  puts "Calling views (filtering records)"
+  p hello_world_node.class.call_new_view(:id, "My_ID1")
+  p a_file_node.class.call_new_view(:data, "Hello World from filesystem")
+
   
   puts "Ok, now lets subtract (later)"

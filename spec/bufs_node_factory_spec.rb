@@ -74,7 +74,9 @@ describe BufsNodeFactory, "Making the Class" do
     #raise @user_classes.inspect
     couchrest_users = @user_classes.select{|u| u.to_s =~ /BufsInfoNode/}
     couchrest_users.size.should == 2
-    couchrest_users[0].myGlueEnv.db.should_not == couchrest_users[1].myGlueEnv.db
+    user0_db = couchrest_users[0].myGlueEnv.moab_data[:db]
+    user1_db = couchrest_users[1].myGlueEnv.moab_data[:db]
+    user0_db.should_not == user1_db
 
     #users should be in different directories
     filesystem_users = @user_classes.select{|u| u.to_s =~ /BufsFile/}
@@ -407,16 +409,16 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     #initial conditions for  adding data
     #NOTE: :links has a special operations for add and subtract
     #defined in the Node Operations (see midas directory)
-      new_data = {:link_name => "blah", :link_src =>"http:\\\\to.somewhere.blah"}
+      new_data = {:link_name => ["blah"], :link_src =>["http:\\\\to.somewhere.blah"]}
       add_method = "#{new_key_field}_add".to_sym
-      link_add_op = DefaultOpSets::ListAddOpDef
+      link_add_op = DefaultOpSets::KListAddOpDef
     #test adding new data
       nodes[user_class].__send__(add_method, new_data)
     #verify new data was added appropriately
       updated_data = nodes[user_class].__send__(new_key_field)
       updated_data.should == new_data #old links version it would not be equal
       magically_transformed_data = link_add_op.call(nil, new_data)[:update_this]
-      magically_transformed_data.should == [updated_data] #added to a list
+      magically_transformed_data.should == updated_data  #added to a list
     end
   end
 
@@ -916,6 +918,43 @@ describe BufsNodeFactory, "Document Operations with Attachments" do
     this_other_node.class.should_not == other_node2.class
     this_other_node.my_category.should == my_cat2
     this_other_node.attached_files.first.should == BufsEscape.escape(test_basename)
+  end
+end
+
+#Note these tests use the default categories, rather than the buf categories
+describe BufsNodeFactory, "Portable Views" do
+  include MakeUserClasses
+  include NodeHelpers
+
+  before(:each) do
+    @user_classes = [User1Class, User2Class, User3Class, User4Class]
+  end
+
+  after(:each) do
+    @user_classes.each do |user_class|
+      user_class.destroy_all
+    end
+  end
+
+  it "should perform basic collection operations properly" do
+    user_docs = {}
+    @user_classes.each do |user_class|
+      user_docs[user_class] = user_class.new({:my_category => "#{user_class.name}_data2"})
+    end
+
+    #user1_doc = @user1_class.new({:my_category => "user1_data"})
+    #user2_doc = @user2_class.new({:my_category => "user2_data"})
+    user_docs.each do |user_class, node|
+      node.__save
+    end
+    #user1_doc.__save
+    #user2_doc.__save
+    #@user1_class.all.first.my_category.should == "user1_data"  
+    #@user2_class.all.first.my_category.should == "user2_data"
+
+    @user_classes.each do |user_class|
+      user_class.all.first.my_category.should == "#{user_class.name}_data2"
+    end
   end
 end
 

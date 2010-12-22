@@ -1,10 +1,10 @@
 #require helper for cleaner require statements
-require File.join(File.dirname(__FILE__), '../helpers/require_helper')
+#require File.join(File.dirname(__FILE__), '../helpers/require_helper')
 
-require 'couchrest'
-require 'monitor'
+#require 'couchrest'
+#require 'monitor'
 
-require Bufs.moabs '/couchrest_attachment_handler'
+#require Bufs.moabs '/couchrest_attachment_handler'
 #require Bufs.moabs 'files_manager_base'  #Not implemented yet
 
 module CouchRestEnv
@@ -40,7 +40,7 @@ module CouchRestEnv
       # filename_key = model_filenames to delete
   
   
-  class FilesMgrInterface
+  class OldFilesMgrInterface
 
     attr_accessor :attachment_doc_class
 
@@ -194,38 +194,18 @@ module CouchRestEnv
 
 #------------------------- CouchRestEnv below this -----------------------------------------------------
 
-  def self.set_attach_class(db_root_location, attach_class_name)
-    dyn_attach_class_def = "class #{attach_class_name} < CouchrestAttachment
-      use_database CouchRest.database!(\"http://#{db_root_location}/\")
+  #def self.set_attach_class(db_root_location, attach_class_name)
+  #  dyn_attach_class_def = "class #{attach_class_name} < CouchrestAttachment
+  #    use_database CouchRest.database!(\"http://#{db_root_location}/\")
  
-      def self.namespace
-        CouchRest.database!(\"http://#{db_root_location}/\")
-      end
-    end"
+  #    def self.namespace
+  #      CouchRest.database!(\"http://#{db_root_location}/\")
+  #    end
+  #  end"
     
-    self.class_eval(dyn_attach_class_def)
-    self.const_get(attach_class_name)
-  end
-
-=begin
-  #TODO: Test in spec that attachments are being deleted
-  def self.destroy_node(node)
-    #att_doc = node.my_GlueEnv.attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
-    att_doc = node.my_GlueEnv.attachClass.get(node.my_GlueEnv.attachClass.uniq_att_doc_id(node._model_metadata[:_id]))
-    #raise "Destroying Attachment #{att_doc.inspect} from #{node._model_metadata[:_id].inspect}"
-    att_doc.destroy if att_doc
-    begin
-      self.destroy(node)
-    rescue ArgumentError => e
-      puts "Rescued Error: #{e} while trying to destroy #{node.my_category} node"
-      node = node.class.get(node._model_metadata['_id'])
-      self.destroy(node)
-    end
-  end
-=end
-  #def self.destroy(node)
-  #  node.my_GlueEnv.db.delete_doc('_id' => node._model_metadata[ModelKey], 
-	#			  '_rev' => node._model_metadata[VersionKey])
+  #  self.class_eval(dyn_attach_class_def)
+  #  self.const_get(attach_class_name)
   #end
+
 
 end

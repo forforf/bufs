@@ -159,7 +159,32 @@ module DefaultOpSets
     
 end
 
+module DataModelViews
+
+  OpIdToViewType = {
+      :static_ops => :value_match,
+      :replace_ops => :value_match,
+      :list_ops => :included_match,
+      :key_list_ops => :key_of_included_match
+  }
+  #note: currently "get" is defined as part of the node, and returns the unique record for a given key
+  #keep there or move here?
+  
+  #views return a list of matches (which may be empty)
+  
+  def default_views(field_op_set)
+    views = {}
+    field_op_set.each do |field, op_id|
+      view_name = "by_#{field.to_s}"
+      type_of_view = OpIdToViewType[op_id] || :value_match
+      views[view_name] = {:field => field.to_sym, :type_of_view => type_of_view}
+    end
+    views
+  end
+end
+
 class NodeElementOperations
+  include DataModelViews
   #Set Logger
   @@log = BufsLog.set(self.name, :warn) 
   
@@ -173,10 +198,12 @@ class NodeElementOperations
   DefaultKeyFields = { :required_keys => [:id], :primary_key => :id}
     
   attr_accessor :field_op_defs, 
-                     :field_op_set_sym,
+                     :field_op_set_sym,  #used in model for views
                      :required_instance_keys ,
                      :required_save_keys,
-                     :node_key
+                     :node_key,
+                     :key_fields,
+                     :views
   
   #With no parameters - Defaults are used
   #:op_sets_mod => The module with the data operations that apply to the data fields
@@ -194,14 +221,15 @@ class NodeElementOperations
     @field_op_defs = get_field_op_procs(@field_op_set_sym)
     
     #set the key fields that will work as node/record identifiers or other key fields
-    key_fields = op_data[:key_fields]||DefaultKeyFields
-    raise "key_fields are required" unless key_fields
+    @key_fields = op_data[:key_fields]||DefaultKeyFields
+    raise "key_fields are required" unless @key_fields
 
     #we are no longer differentiating between keys required for insantiation and persistence
     #this can be added in the future easily though.
-    @required_instance_keys = key_fields[:required_keys]
-    @required_save_keys = key_fields[:required_keys]
-    @node_key = key_fields[:primary_key]
+    @required_instance_keys = @key_fields[:required_keys]
+    @required_save_keys = @key_fields[:required_keys]
+    @node_key = @key_fields[:primary_key]
+    @views = default_views(@field_op_set_sym)  #TODO: Allow custom views in the future
   end
   
   def set_op(ops)

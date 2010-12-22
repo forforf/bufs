@@ -1,10 +1,6 @@
-#require helper for cleaner require statements
-require File.join(File.dirname(__FILE__), '../helpers/require_helper')
-
-#require 'monitor'
-
+#Bufs directory organization defined in lib/helpers/require_helper.rb
 require Bufs.midas 'bufs_data_structure'
-require Bufs.moabs 'moab_filesystem_env'
+require Bufs.glue 'filesystem/filesystem_files_mgr'
 
 #class ViewsMgr
 module BufsFileSystemViews
@@ -19,6 +15,7 @@ module BufsFileSystemViews
   #  @model_actor = model_actor #provides the model actor that can provide views
   #  @data_file = model_actor[:data_file]
   #end
+  
 
   #TODO create an index to speed queries? sync issues?
   def self.by_my_category(moab_data, user_datastore_location, match_keys)
@@ -56,16 +53,16 @@ module BufsFileSystemViews
     all_wkg_entries.each do |entry|
       wkg_dir = File.join(user_datastore_location, entry)
       if File.exists?(wkg_dir)
-	data_file_path = File.join(wkg_dir, data_file)
-	json_data  = JSON.parse(File.open(data_file_path){|f| f.read})
-	node_data = HashKeys.str_to_sym(json_data)
-	match_keys.each do |k|
-	  pc = node_data[:parent_categories]
-	  if pc && pc.include?(k)
-	    matching_node_data << node_data
-	    break  #we don't need to loop through each parent cat, if one already matches
-	  end
-	end
+	      data_file_path = File.join(wkg_dir, data_file)
+	      json_data  = JSON.parse(File.open(data_file_path){|f| f.read})
+	      node_data = HashKeys.str_to_sym(json_data)
+	        match_keys.each do |k|
+	        pc = node_data[:parent_categories]
+	        if pc && pc.include?(k)
+	          matching_node_data << node_data
+	          break  #we don't need to loop through each parent cat, if one already matches
+	        end
+        end
       end
     end
     #we now have all mathcing data
@@ -73,9 +70,57 @@ module BufsFileSystemViews
   end
 end 
 
+module FilesystemViews
+
+  def call_view(field_name, moab_data, namespace_key, user_datastore_location, match_key, view_name = nil)
+    data_file = moab_data[:moab_datastore_name]
+    matching_records = []
+    all_file_records = Dir.working_entries(user_datastore_location)
+    all_file_records.each do |file_record|
+      record_path = File.join(user_datastore_location, file_record)
+      if File.exists?(record_path)
+        data_file_path = File.join(record_path, data_file)
+        json_data = JSON.parse(File.open(data_file_path){|f| f.read})
+        record = HashKeys.str_to_sym(json_data)
+        field_data = record[field_name]
+        if field_data == match_key
+          matching_records << record
+        end
+      end
+    end
+    matching_records
+  end
+
+  def self.by_my_category(moab_data, user_datastore_location, match_keys)
+    data_file = moab_data[:moab_datastore_name]
+    #raise "nt: #{nodetest.my_category.inspect}" if nodetest
+    #raise "No category provided for search" unless my_cat
+    #puts "Searching for #{my_cat.inspect}"
+    match_keys = [match_keys].flatten
+    my_dir = user_datastore_location
+    bfss = nil
+    match_keys.each do |match_key|
+      my_cat_dir = match_key
+      wkg_dir = File.join(my_dir, my_cat_dir)
+      if File.exists?(wkg_dir)
+	bfss = bfss || []
+	data_file_path = File.join(wkg_dir, data_file)
+	node_data  = JSON.parse(File.open(data_file_path){|f| f.read})
+	#bfs = self.new(node_data)
+	bfss << node_data #bfs
+      end
+      #return bfss   #returned as an array for compatibility with other search and node types
+    #else
+    #  puts "Warning: #{wkg_dir.inspect} was not found"
+    #  return nil
+    end
+    return bfss
+  end
+end
+
 
 module BufsFilesystemEnv
-  EnvName = :filesystem_env
+  #EnvName = :filesystem_env
   
 class GlueEnv
   #This class provides a generic persistence layer interface to the
@@ -83,6 +128,8 @@ class GlueEnv
   #underlying persistent layers
   #Set Logger
   @@log = BufsLog.set(self.name, :warn)
+  
+  include FilesystemViews
   
   #used to identify metadata for models (should be consistent across models)
   ModelKey = :_id 
@@ -95,18 +142,11 @@ class GlueEnv
   #include FileSystemEnv
 
 #TODO: Rather than using File class directly, should a special class be used?
-#=begin
 attr_accessor :user_id,
-			     :moab_datastore_name,
-			     #:collection_namespace,
-			     :user_datastore_location,
-			     #:design_doc,
-			     #:query_all
+           :user_datastore_location,
 			     :metadata_keys,
 			     :required_instance_keys,
 			     :required_save_keys,
-			     #:base_metadata_keys,
-			     #:namespace,
 			     :node_key,
 			     :model_key,
 			     :version_key,
@@ -114,16 +154,23 @@ attr_accessor :user_id,
 			     :_files_mgr_class,
            :views,
 			     :model_save_params,
-           :moab_data
-#=end
-
-  def initialize(persist_env)
+           :moab_data,
+           #accessors specific to this persitence model
+            :moab_datastore_name
+            
+            
+  def initialize(persist_env, data_model_bindings)
     
     #via environmental settings
     filesystem_env = persist_env[:env]
-    key_fields = persist_env[:key_fields]
+    #key_fields = persist_env[:key_fields]
     fs_path = filesystem_env[:path]
     @user_id = filesystem_env[:user_id]
+    
+    #data_model_bindings from NodeElementOperations
+    key_fields = data_model_bindings[:key_fields] 
+    initial_views_data = data_model_bindings[:views]
+    
     @required_instance_keys = key_fields[:required_keys] #DataStructureModels::Bufs::RequiredInstanceKeys
     @required_save_keys = key_fields[:required_keys] #DataStructureModels::Bufs::RequiredSaveKeys
     @node_key = key_fields[:primary_key] #DataStructureModels::Bufs::NodeKey
@@ -135,7 +182,7 @@ attr_accessor :user_id,
     @metadata_keys = [@version_key, @model_key, @namespace_key] 
     @user_datastore_location = File.join(fs_path, @user_id, MoabDataStoreDir)    
     @model_save_params = {:nodes_save_path => @user_datastore_location, :data_file => @moab_datastore_name, :node_key => @node_key}
-    @_files_mgr_class = FilesystemEnv::FilesMgrInterface
+    @_files_mgr_class = FilesystemInterface::FilesMgr
     @views = BufsFileSystemViews
     @moab_data = {:moab_datastore_name => @moab_datastore_name}
     #@views_mgr = ViewsMgr.new({:data_file => @data_file_name})

@@ -33,12 +33,73 @@ require Bufs.helpers 'log_helper'
 #   :_files_mgr - points to the FilesMgr object that handles
 #    files
 
-
-#TODO: Figure out what I was thinking with these method missing error messages
+#TODO: Have Persistent Layer GlueEnv inherit from this GlueEnv
+# Or better see if it can follow the FilesMgr interface
 class GlueEnv
+  
+  attr_accessor :glue_interface,
+                      #common accessors
+                      :user_id,
+                      :user_datastore_location,
+                      :metadata_keys,
+                      :required_instance_keys,
+                      :required_save_keys,
+                      :node_key,
+                      :model_key,
+                      :version_key,
+                      :namespace_key,
+                      :_files_mgr_class,
+                      :views,
+                      :model_save_params,
+                      :moab_data
+  
+  
   def method_missing(name)
-    raise NameError,"#{name} not found in #{self.class}. Has it been"\
-                    " overwritten to support the persistent model yet?"
+    raise NameError,"Method #{name} was not found in #{self.class}. Has it been"\
+                    " built into the persistent model interface yet?"
+                  end
+                  
+  def initialize(glue_interface)
+    #glue interface is the GlueEnv object for the persistence layer
+    @glue_interface = glue_interface
+    common_accessors = [ :user_id, :user_datastore_location, :metadata_keys, :required_instance_keys, :required_save_keys,
+                                    :node_key, :model_key, :version_key, :namespace_key, :_files_mgr_class,
+                                    :views, :model_save_params, :moab_data ]
+    common_accessors.each do |acc_sym|
+      accessor = "@#{acc_sym.to_s}".to_sym
+      accessor_value = @glue_interface.__send__(acc_sym)
+      self.instance_variable_set(accessor, accessor_value)
+    end
+  end
+  
+  #common methods
+  def destroy_bulk(list_of_native_records)
+    @glue_interface.destroy_bulk(list_of_native_records)
+  end
+  
+  def destroy_node(node)
+    @glue_interface.destroy_node(node)
+  end
+  
+  def generate_model_key(namespace, node_key)
+    #so far the model key is "#{namespace}::#{node_key}" in all persitence models
+    @glue_interface.generate_model_key(namespace, node_key)
+  end
+  
+  def get(id)
+    @glue_interface.get(id)
+  end
+
+  def query_all
+    @glue_interface.query_all
+  end
+  
+  def raw_all
+    @glue_interface.raw_all
+  end
+  
+  def save(new_data)
+    @glue_interface.save(new_data)
   end
 end
 
@@ -46,7 +107,7 @@ class FilesMgr
 
   #def method_missing(name)
   #  raise NameError,"#{name} not found in #{self.class}. Has it been"\
-                    " overwritten to support file/attachment management yet?"
+  #                  " overwritten to support file/attachment management yet?"
 
     #Allow dynamically adding of user data
     #TODO Add name checking to make sure its not misspelled or other clues that its not data
@@ -76,6 +137,7 @@ class FilesMgr
     @moab_interface.get_raw_data(node, basename)
   end
 
+  #todo change name to get_files_metadata
   def get_attachments_metadata(node)
     @moab_interface.get_attachments_metadata(node)
   end
@@ -118,25 +180,32 @@ class BufsBaseNode
   #Class Methods
   #Setting up the Class Environment - The class environment holds all
   # model-specific implementation details (not used when created by factory?)
-  def self.set_environment(persist_env)
+  def self.set_environment(persist_env, data_model_bindings)
     model_name = persist_env[:name]
     model_env = persist_env[:env]
-    key_fields = persist_env[:key_fields]
+    #key_fields = data_model_bindings[:key_fields]
+    #initial_views_data = data_model_bindings[:data_ops_set]
     
     #dynamically determine what's needed
     glue_file_name = "bufs_#{model_name}_glue_env"
-    moab_file_name = "moab_#{model_name}_env"
+    #moab_file_name = "moab_#{model_name}_env"
     
     #dynamic require (maybe just keep this static?)
     require Bufs.glue glue_file_name
-    require Bufs.moabs moab_file_name
+    #require Bufs.moabs moab_file_name
     
     glue_lc_name = "bufs_#{model_name}_env"
     glue_const_name = Camel.ize(glue_lc_name)
     glueModule = Object.const_get(glue_const_name)
     glueClass = glueModule::GlueEnv
     
-    @myGlueEnv = glueClass.new(persist_env)
+    #orig
+    #@myGlueEnv = glueClass.new(persist_env, data_model_bindings)
+    #/orig
+    #new
+    persistent_model_glue_obj = glueClass.new(persist_env, data_model_bindings)
+    @myGlueEnv = GlueEnv.new(persistent_model_glue_obj)
+
     @metadata_keys = @myGlueEnv.metadata_keys 
   end
 
@@ -170,6 +239,17 @@ class BufsBaseNode
     added_data = add_keys_values.merge(removed_data) #so that add doesn't overwrite existing keys
   end
 
+  def self.call_new_view(view_name, match_key)
+    results = if @myGlueEnv.respond_to? :call_view
+      @myGlueEnv.call_view(view_name, 
+                                     @myGlueEnv.moab_data,
+                                     @myGlueEnv.namespace_key,
+                                     @myGlueEnv.user_datastore_location,
+                                     match_key)
+    end
+    results
+  end
+  
   def self.call_view(param, match_keys, data_structure_changes = {})
     view_method_name = "by_#{param}".to_sym #using CouchDB style for now
     records = if @myGlueEnv.views.respond_to? view_method_name
@@ -249,6 +329,7 @@ class BufsBaseNode
     @_user_data, @_model_metadata = filter_user_from_model_data(init_params)
     instance_data_validations(@_user_data)
     node_key = get__user_data_id(@_user_data)
+    
     moab_file_mgr = @my_GlueEnv._files_mgr_class.new(@my_GlueEnv, node_key)
     @_files_mgr = FilesMgr.new(moab_file_mgr)
     @_model_metadata = update__model_metadata(@_model_metadata, node_key)

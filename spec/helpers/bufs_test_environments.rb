@@ -32,8 +32,9 @@ module NodeHelper
                          :primary_key => :my_category }
     #data model
     field_op_set ={:my_category => :static_ops,
+                          :description => :replace_ops,
                              :parent_categories => :list_ops,
-                             :links => :replace_ops }
+                             :links => :key_list_ops }
     #op_set_mod => <Using default definitions>
     
     data_model = {:field_op_set => field_op_set, :key_fields => key_fields}

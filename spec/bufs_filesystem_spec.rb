@@ -67,10 +67,10 @@ base_env = FilesystemEnv.set_env
 neo_env = base_env[:data_model]
 neo = NodeElementOperations.new(neo_env)
 BufsBaseNode.data_struc = neo
-
+data_model_bindings = {:key_fields => neo.key_fields, :data_ops_set => neo.field_op_set_sym}
 persist_env = base_env[:persist_model]
 
-BufsBaseNode.set_environment(persist_env)
+BufsBaseNode.set_environment(persist_env, data_model_bindings)
 
 describe BufsBaseNode, "Basic Document Operations (no attachments)" do
   include BufsNodeBuilder
@@ -83,8 +83,8 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     #TODO: Figure out if both datastore selector and datastore id are necessary (may require integration of other models)
     #TODO:  retrieve base model from BufsBaseNode glue env
     base_model_dir = ".model"
-    BufsBaseNode.myGlueEnv.user_datastore_selector.should == File.join(TestFSModelBaseDir, ModelDir, FSDummyUserID, base_model_dir)
-    BufsBaseNode.myGlueEnv.user_datastore_id.should == File.join(TestFSModelBaseDir, ModelDir, FSDummyUserID, base_model_dir)
+    BufsBaseNode.myGlueEnv.user_datastore_location.should == File.join(TestFSModelBaseDir, ModelDir, FSDummyUserID, base_model_dir)
+    #BufsBaseNode.myGlueEnv.user_datastore_id.should == File.join(TestFSModelBaseDir, ModelDir, FSDummyUserID, base_model_dir)
   end
 
   it "should initialize correctly" do
@@ -154,7 +154,7 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     #check results
     doc_params.keys.each do |param|
       #TODO convert to datastore selector if possible
-      namespace = BufsBaseNode.myGlueEnv.user_datastore_id
+      namespace = BufsBaseNode.myGlueEnv.user_datastore_location
       node_id = doc_to_save.my_category
       doc_id = BufsBaseNode.myGlueEnv.generate_model_key(namespace, node_id)
       db_param = doc_to_save.class.get(doc_id).__send__(param.to_sym)
@@ -177,8 +177,8 @@ describe BufsBaseNode, "Basic Document Operations (no attachments)" do
     #test
     doc_to_save.__save
     #verify results
-    puts "doc to save: #{doc_to_save.my_category}"
-    puts "doc to save id: #{doc_to_save._model_metadata[:_id]}"
+   # puts "doc to save: #{doc_to_save.my_category}"
+    #puts "doc to save id: #{doc_to_save._model_metadata[:_id]}"
     saved_doc = BufsBaseNode.get(doc_to_save._model_metadata[:_id])
     doc_to_save.my_category.should == saved_doc.my_category
   end
@@ -444,7 +444,7 @@ describe BufsBaseNode, "Attachment Operations" do
     basic_node.files_subtract(attached_basenames)
     #check_results
     basic_node.attached_files.size.should == 0
-    root_path = basic_node.my_GlueEnv.user_datastore_selector
+    root_path = basic_node.my_GlueEnv.user_datastore_location
     node_loc = basic_node._user_data[basic_node.my_GlueEnv.node_key]
     node_path = File.join(root_path, node_loc)
     attached_filenames = attached_basenames.map{|b| 
@@ -477,7 +477,7 @@ describe BufsBaseNode, "Attachment Operations" do
     att_node_id = basic_node._model_metadata[:_id]
     att_node = BufsBaseNode.get(att_node_id)
     att_node.should == nil
-    root_path = basic_node.my_GlueEnv.user_datastore_selector
+    root_path = basic_node.my_GlueEnv.user_datastore_location
     node_loc = basic_node._user_data[basic_node.my_GlueEnv.node_key]
     node_path = File.join(root_path, node_loc)
     File.exists?(node_path).should == false #any attachments would be in that dir too
@@ -685,10 +685,10 @@ describe BufsBaseNode, "Attachment Operations" do
     #check initial conditions
     data = File.open(test_filename, 'r'){|f| f.read}
     #data.should == "Simple Text File\n"
-    node_ns = basic_node.my_GlueEnv.namespace
-    node_dir = File.join(node_ns, '.model', basic_node.my_category)
+    node_ns = basic_node.my_GlueEnv.user_datastore_location
+    node_dir = File.join(node_ns, basic_node.my_category)
     node_file = File.join(node_dir, test_basename)
-    puts "Node File to test: #{node_file.inspect}"
+    #puts "Node File to test: #{node_file.inspect}"
     node_exist = File.exist?(node_file)
     node_exist.should == true
     node_file_data = File.open( node_file, 'r'){|f| f.read}

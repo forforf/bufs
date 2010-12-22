@@ -24,6 +24,10 @@ class BufsNodeFactory
     
     #neo_defs = incs[:field_ops_def_mod]
     neo = NodeElementOperations.new(neo_env)
+    data_model_bindings = {:key_fields => neo.key_fields,
+                                      #:data_ops_set => neo.field_op_set_sym,
+                                      :views => neo.views}
+    
     #
     #incs_strs = incs.map{|i| "include #{i}"}
     #incs_str = incs_strs.join("\n")
@@ -50,7 +54,7 @@ class BufsNodeFactory
     #
     #glue_name = node_env[node_class_name][:glue_name]
 
-    docClass.set_environment(class_environment)
+    docClass.set_environment(class_environment, data_model_bindings)
     docClass
   end
 end 

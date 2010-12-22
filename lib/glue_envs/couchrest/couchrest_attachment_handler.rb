@@ -1,9 +1,7 @@
-#require helper for cleaner require statements
-require File.join(File.dirname(__FILE__), '../helpers/require_helper')
-
 require 'cgi'
 require 'couchrest'
 
+#Bufs directory organization defined in lib/helpers/require_helper.rb
 require Bufs.lib 'bufs_escape'
 require Bufs.helpers 'mime_types_new'
 

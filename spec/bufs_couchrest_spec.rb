@@ -44,7 +44,8 @@ module CouchEnv
                              :links => :replace_ops }
     #op_set_mod => <Using default definitions>
     
-    data_model = {:field_op_set => field_op_set, :key_fields => key_fields}
+    data_model = {:field_op_set => field_op_set,
+                          :key_fields => key_fields } #views => nil
     
     #persistence layer model
     pmodel_env = {:host => DBCouchDB.host,
@@ -63,10 +64,11 @@ base_env = CouchEnv.set_env
 neo_env = base_env[:data_model]
 neo = NodeElementOperations.new(neo_env)
 BufsBaseNode.data_struc = neo
+data_model_bindings = {:key_fields => neo.key_fields, :data_ops_set => neo.field_op_set_sym, :views => neo.views}
 
 persist_env = base_env[:persist_model]
 
-BufsBaseNode.set_environment(persist_env)
+BufsBaseNode.set_environment(persist_env, data_model_bindings)
 #BufsBaseNode.set_environment(CouchDBEnvironment, CouchDBEnvironment[:glue_name])
 
 describe BufsBaseNode, "Basic Document Operations (no attachments)" do
@@ -539,7 +541,7 @@ describe BufsBaseNode, "Attachment Operations" do
     att_node = basic_node._model_metadata[:_id]
     att_node = BufsBaseNode.get(att_node_id)
     att_node.should_not == nil
-    atts = basic_node.my_GlueEnv.attachClass.get(basic_node.attachment_doc_id)
+    atts = basic_node.my_GlueEnv.moab_data[:attachClass].get(basic_node.attachment_doc_id)
     atts.should_not == nil
     atts
     #test
@@ -548,7 +550,7 @@ describe BufsBaseNode, "Attachment Operations" do
     att_node_id = basic_node._model_metadata[:_id]
     att_node = BufsBaseNode.get(att_node_id)
     att_node.should == nil
-    atts = basic_node.my_GlueEnv.attachClass.get(basic_node.attachment_doc_id)
+    atts = basic_node.my_GlueEnv.moab_data[:attachClass].get(basic_node.attachment_doc_id)
     atts.should == nil
   end
   
@@ -574,7 +576,7 @@ describe BufsBaseNode, "Attachment Operations" do
     att_node_id = basic_node._model_metadata[:_id]
     att_node = BufsBaseNode.get(att_node_id)
     att_node.should == nil
-    atts = basic_node.my_GlueEnv.attachClass.get(basic_node.attachment_doc_id)
+    atts = basic_node.my_GlueEnv.moab_data[:attachClass].get(basic_node.attachment_doc_id)
     atts.should == nil
   end
 
