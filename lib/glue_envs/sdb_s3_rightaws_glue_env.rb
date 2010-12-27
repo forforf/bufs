@@ -5,7 +5,7 @@ require Bufs.helpers 'hash_helpers'
 require Bufs.helpers 'log_helper'
 
 #require 'right_aws'
-require 'aws_sdb'  #this is a local gem, not published yet
+require 'aws_sdb'
 require 'json'
 
 module SdbS3Env
@@ -78,23 +78,43 @@ attr_accessor :user_id,
   def query_all  #TODO move to ViewsMgr
     sdb = @model_save_params[:sdb]
     domain = @model_save_params[:domain]
-    query = "select * from `#{domain}`"
-    raw_data = sdb.select(query).first
-    data = {}
-    #puts "QA Raw: #{raw_data.inspect}"
-    raw_data.each do |k,v|
-      data[k] = from_sdb(v)
-    end
-    #puts "QA: #{data.inspect}"
-    data.values
+    #block_until_all_free #this takes too long
+    
+    sdb.query(domain)
   end
 
   def get(id)
     sdb = @model_save_params[:sdb]
     domain = @model_save_params[:domain]
+
+    #check to see if the record is in the process of being saved, and blocks until it finishes
+    #block_when_busy(id)
+=begin
+    if @record_locker[id] == :thread_starting
+      @@log.info { "Blocked while waiting for thread finishes saving data (init)" } if @@log.info?
+      until @record_locker[id] != :thread_starting do
+        sleep 0.01
+      end
+      if @record_locker[id].class == Thread
+        @@log.info { "Blocked while waiting for thread to finish saving data (running)[1]"} if @@log.info?
+        @record_locker[id].join
+      else
+        raise "record locker went into unknown state: #{@record_locker[id].inspect}"
+      end
+    elsif @record_locker[id].class == Thread
+      @@log.info { "Blocked while waiting for thread to finish saving data (running)[2]"} if @@log.info?
+      @record_locker[id].join
+    elsif @record_locker[id] == nil
+      #do nothing
+    else #something unexpected happened
+      raise "record locker went into unkwown state: #{@record_locker[id].inspect}"
+    end
+=end  
+
     raw_data = sdb.get_attributes(domain, id)
-    #puts "Raw Data: #{raw_data.inspect}"
-    data = from_sdb(raw_data)
+    #attrib_data = raw_data[:attributes]  #right_aws
+    #data = from_sdb(attrib_data) #right_aws
+    
   end
 
   def save(new_data)
@@ -105,17 +125,41 @@ attr_accessor :user_id,
     #I should try to be consistent on this
     node_key = @model_save_params[:node_key]
     model_data = to_sdb(HashKeys.sym_to_str(new_data))
-    sdb.put_attributes(domain, new_data[node_key], model_data)
-
+    
+    @record_locker[new_data[node_key]] = :thread_starting
+    #get will check and see if the thread has joined
+    t = Thread.new do
+      #t.abort_on_exception = true
+      @record_locker[new_data[node_key]] = t
+      sdb.put_attributes(domain, new_data[node_key], model_data)
+    
+      #make sure the data is available before moving on
+      #performance hit, but data assurance
+    
+      if new_data[node_key]  #do this if the data is not nil
+        @@log.info { "Entered Ensure Save Loop for saving (threaded): #{new_data[node_key].inspect}"} if @@log.info?
+        sleep_base_time = 0.2
+        sleep_increment = 0.1
+        sleep_maximum = 10
+        sleep_time = sleep_base_time
+        
+        save_data = sdb.get_attributes(domain, new_data[node_key])[:attributes]
+        until save_data != {}
+          
+          @@log.info{ "Checking if data is saved: #{save_data.inspect} [1]" } if @@log.info?
+          sleep sleep_time
+          sleep_time += sleep_increment
+          break if sleep_time > sleep_maximum
+          save_data = sdb.get_attributes(domain, new_data[node_key])[:attributes]
+          @@log.info{ "Checking if data is saved: #{save_data.inspect} [2]" } if @@log.info?
+        end
+      end
+      
+      @@log.info {"Finished Saving Data: #{new_data[node_key].inspect}"} if @@log.info?
+    end
   end
 
   def destroy_node(node)
-    sdb = @model_save_params[:sdb]
-    domain = @model_save_params[:domain]
-    node_key = @model_save_params[:node_key]
-    item_name = node.__send__node_key
-    p item_name
-    
   end
   
     #namespace is used to distinguish between unique
@@ -176,7 +220,7 @@ attr_accessor :user_id,
     JSON.parse("[#{str}]")[0]
     #JSON.parse(str)
   end
-=begin
+
   def block_when_busy(id)
         #check to see if the record is in the process of being saved, and blocks until it finishes
     if @record_locker[id] == :thread_starting
@@ -230,6 +274,5 @@ attr_accessor :user_id,
       @record_locker.delete(id)
     end
   end #def
-=end
 end#class
 end#module

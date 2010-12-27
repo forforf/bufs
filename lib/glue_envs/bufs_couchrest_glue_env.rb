@@ -361,26 +361,27 @@ class GlueEnv
   end
 
   #Not tested in factory tests (but is in couchrest tests)
-  def destroy_node(node)
+  def destroy_node(model_metadata)
     #att_doc = node.my_GlueEnv.attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
-    attachClass = node.my_GlueEnv.moab_data[:attachClass]
-    att_doc = attachClass.get(attachClass.uniq_att_doc_id(node._model_metadata[:_id]))
+    attachClass = @moab_data[:attachClass]
+    att_doc_id = attachClass.uniq_att_doc_id(model_metadata[@model_key])
+    att_doc = attachClass.get(att_doc_id)
     #raise "Destroying Attachment #{att_doc.inspect} from #{node._model_metadata[:_id].inspect}"
     att_doc.destroy if att_doc
-    begin
-      db_destroy(node)
-    rescue ArgumentError => e
-      puts "Rescued Error: #{e} while trying to destroy #{node.my_category} node"
-      node = node.class.get(node._model_metadata['_id'])
-      db_destroy(node)
-    end
+    db_destroy(model_metadata)
   end
   
 
-  def db_destroy(node)
-    @@log.debug { "ID: #{node._model_metadata[@model_key]}" } if @@log.debug
-    @db.delete_doc('_id' => node._model_metadata[@model_key],
-    '_rev' => node._model_metadata[@version_key])
+  def db_destroy(model_metadata)
+    @@log.debug { "ID: #{model_metadata[@model_key]}" } if @@log.debug
+    begin
+      @db.delete_doc('_id' => model_metadata[@model_key],
+                            '_rev' => model_metadata[@version_key])
+    rescue ArgumentError => e
+      puts "Rescued Error: #{e} while trying to destroy #{model_metadata[@model_key]} node"
+      node = node.class.get(model_metadata[@model_key]) #(model_metadata['_id'])
+      db_destroy(model_metadata)
+    end
   end
  
 

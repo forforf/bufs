@@ -31,7 +31,7 @@ describe SdbS3Env::GlueEnv, "Initialization" do
 end
 
 
-describe SdbS3Env::GlueEnv, "Persistent Layer Operations" do
+describe SdbS3Env::GlueEnv, "Persistent Layer Basic Operations" do
   
   before(:each) do
     env = {:host => nil, :path => 'test_domain', :user_id => 'init_test_user'}
@@ -45,7 +45,7 @@ describe SdbS3Env::GlueEnv, "Persistent Layer Operations" do
   after(:each) do
     domain = @sdb_glue_obj.model_save_params[:domain]
     sdb = @sdb_glue_obj.model_save_params[:sdb]
-    sdb.delete_domain(domain)
+    #sdb.delete_domain(domain)
   end
   
   it "should persist data and be able to retrieve it" do
@@ -54,10 +54,20 @@ describe SdbS3Env::GlueEnv, "Persistent Layer Operations" do
     empty_data = @sdb_glue_obj.get(data1[:id]) #hasn't been saved yet
     empty_data.should == {}
     @sdb_glue_obj.save(data1)
+    sleep 5
     #Don't use native get_attributes, use obj's get,  it will block until save is finished
-    persisted_data = @sdb_glue_obj.get(data1[:id]) 
+    #persisted_data = @sdb_glue_obj.get(data1[:id]) 
+    
     persisted_data.should_not == nil
-    persisted_data.should == data1
+    data1.should == persisted_data
+  end
+end
+  
+describe SdbS3Env::GlueEnv, "Persistent Layer Collection Operations" do
+  
+  
+  it "should be able to query all" do
+  
   end
 end
 

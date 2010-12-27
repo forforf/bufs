@@ -35,6 +35,7 @@ require Bufs.helpers 'log_helper'
 
 #TODO: Have Persistent Layer GlueEnv inherit from this GlueEnv
 # Or better see if it can follow the FilesMgr interface
+#move into its own file
 class GlueEnv
   
   attr_accessor :glue_interface,
@@ -77,8 +78,8 @@ class GlueEnv
     @glue_interface.destroy_bulk(list_of_native_records)
   end
   
-  def destroy_node(node)
-    @glue_interface.destroy_node(node)
+  def destroy_node(model_metadata)
+    @glue_interface.destroy_node(model_metadata)
   end
   
   def generate_model_key(namespace, node_key)
@@ -444,7 +445,7 @@ class BufsBaseNode
 
   #Deletes the object
   def __destroy_node
-    @my_GlueEnv.destroy_node(self)
+    @my_GlueEnv.destroy_node(self._model_metadata)
   end
 
   def self.__create_from_other_node(other_node)

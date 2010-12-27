@@ -205,7 +205,7 @@ attr_accessor :user_id,
     #maybe put in some validations to ensure its from the proper collection namespace?
     
     #FIXME: Hack to make it work
-    id_path = id.gsub("::","/")
+    id_path = model_path(id) #id.gsub("::","/")
     rtn = if File.exists?(id_path)
       data_file_path = File.join(id_path, @moab_datastore_name)
       json_data = File.open(data_file_path, 'r'){|f| f.read}
@@ -235,12 +235,14 @@ attr_accessor :user_id,
       return model_data
   end
 
-  def destroy_node(node)
+  def destroy_node(model_metadata)
     root_dir = @user_datastore_location
-    node_dir_name = node._user_data[@node_key]
-    node_dir = File.join(root_dir, node_dir_name)
+    #FIXME: Ugly hack to deal with :: in model key (but less ugly than before)
+    #node_dir_name = model_path(model_metadata[@model_key])#node._user_data[@node_key
+    #node_dir = File.join(root_dir, node_dir_name)
+    node_dir = model_path(model_metadata[@model_key])
     FileUtils.rm_rf(node_dir)
-    node = nil
+    #node = nil
   end
   
     #namespace is used to distinguish between unique
@@ -251,6 +253,11 @@ attr_accessor :user_id,
     #TODO: Make sure namespace is portable across model migrations
     "#{namespace}::#{node_key}"
   end
+  
+  def model_path(model_key_value)
+    model_key_value.gsub("::","/")
+  end
+    
 
   def raw_all
     entries = query_all

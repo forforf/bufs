@@ -169,7 +169,6 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     docs_params = {}
     docs_to_save = {}
     @user_classes.each do |user_class|
-#    @user_classes.each do |user_class|
       orig_size[user_class] = user_class.all.size
       docs_params[user_class] = get_default_params.merge({:my_category => 'save_test'})
       docs_to_save[user_class] = make_doc_no_attachment(user_class, docs_params[user_class].dup)
@@ -185,6 +184,7 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     @user_classes.each do |user_class|
       docs_params[user_class].keys.each do |param|
         doc_id = docs_to_save[user_class]._model_metadata[:_id]
+        #no longer just db, any persistent layer
         doc_from_db = user_class.get(doc_id)
         db_param = doc_from_db.__send__(param)
         docs_to_save[user_class]._user_data[param].should == db_param
@@ -422,6 +422,53 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
     end
   end
 
+  it "should be able to delete basic nodes" do
+    #set initial conditions
+    orig_size = {}
+    docs_params = {}
+    docs_to_save = {}
+    docs_to_delete = {}
+    @user_classes.each do |user_class|
+      orig_size[user_class] = user_class.all.size
+      docs_params[user_class] = get_default_params.merge({:my_category => 'save_test'})
+      docs_to_save[user_class] = make_doc_no_attachment(user_class, docs_params[user_class].dup)
+      docs_to_save[user_class].__save
+    end
+    @user_classes.each do |user_class|
+      orig_size[user_class] = user_class.all.size
+      docs_params[user_class] = get_default_params.merge({:my_category => 'delete_test'})
+      docs_to_delete[user_class] = make_doc_no_attachment(user_class, docs_params[user_class].dup)
+      docs_to_delete[user_class].__save
+    end
+    #verify initial conditions
+    @user_classes.each do |user_class|
+      docs = user_class.all  #docs from persistent layer
+      docs.size.should == 2
+      my_cats = ['save_test', 'delete_test']
+      #verifies all docs exist
+      docs.each do |doc|
+        my_cats.include?(doc.my_category).should == true
+        my_cats.delete(doc.my_category)
+      end#each doc
+    end#each user_class
+  
+    #test
+    @user_classes.each do |user_class|
+      docs_to_delete[user_class].__destroy_node
+    end
+    
+    #verify
+    @user_classes.each do |user_class|
+      docs = user_class.all  #docs from persistent layer
+      docs.size.should == 1
+      
+      #verifies all docs exist
+      docs.each do |doc|
+        doc.my_category.should == 'save_test'
+        doc.my_category.should_not == 'delete_test'
+      end#each doc
+    end#each user_class    
+  end#it          
 end
 
 describe BufsNodeFactory, "Document Operations with Attachments" do
