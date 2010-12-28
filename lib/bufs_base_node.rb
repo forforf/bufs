@@ -58,7 +58,7 @@ class GlueEnv
   def method_missing(name)
     raise NameError,"Method #{name} was not found in #{self.class}. Has it been"\
                     " built into the persistent model interface yet?"
-                  end
+  end
                   
   def initialize(glue_interface)
     #glue interface is the GlueEnv object for the persistence layer

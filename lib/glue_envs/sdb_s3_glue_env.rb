@@ -5,7 +5,8 @@ require Bufs.helpers 'hash_helpers'
 require Bufs.helpers 'log_helper'
 
 #require 'right_aws'
-require 'aws_sdb'  #this is a local gem, not published yet
+require 'aws_sdb'  #published as forforf-aws-sdb
+#require 'aws/s3'
 require 'json'
 
 module SdbS3Env
@@ -16,7 +17,7 @@ class GlueEnv
    #used to identify metadata for models (should be consistent across models)
   ModelKey = :_id 
   VersionKey = :_rev #to have timestamp
-  NamespaceKey = :files_namespace
+  NamespaceKey = :sdbs3_namespace
   
   MoabDataStoreDir = ".model"
   MoabDatastoreName = ".node_data.json"
@@ -109,25 +110,33 @@ attr_accessor :user_id,
 
   end
 
-  def destroy_node(node)
+  def destroy_node(model_metadata)
     sdb = @model_save_params[:sdb]
     domain = @model_save_params[:domain]
-    node_key = @model_save_params[:node_key]
-    item_name = node.__send__node_key
-    p item_name
-    
+    #node_key = @model_save_params[:node_key]
+    item_name = model_metadata[@model_key]
+    sdb.delete_attributes(domain, item_name)
   end
   
     #namespace is used to distinguish between unique
     #data sets (i.e., users) within the model
   def generate_model_key(namespace, node_key)
-
+    "#{namespace}::#{node_key}"
   end
 
   def raw_all
+    query_all
   end
 
   def destroy_bulk(list_of_native_records)
+    sdb = @model_save_params[:sdb]
+    domain = @model_save_params[:domain]
+    node_key = @model_save_params[:node_key]
+    list_of_native_records.each do |rcd|
+      item_name = rcd[node_key]
+      #TODO: use the batch delete request
+      sdb.delete_attributes(domain, item_name)
+    end
   end
   
   private
@@ -176,60 +185,6 @@ attr_accessor :user_id,
     JSON.parse("[#{str}]")[0]
     #JSON.parse(str)
   end
-=begin
-  def block_when_busy(id)
-        #check to see if the record is in the process of being saved, and blocks until it finishes
-    if @record_locker[id] == :thread_starting
-      @@log.info { "Blocked while waiting for thread finishes saving data (init)" } if @@log.info?
-      until @record_locker[id] != :thread_starting do
-        sleep 0.01
-      end
-      if @record_locker[id].class == Thread
-        @@log.info { "Blocked while waiting for thread to finish saving data (running)[1]"} if @@log.info?
-        @record_locker[id].join
-        @record_locker.delete(id)
-      else
-        raise "record locker went into unknown state: #{@record_locker[id].inspect}"
-      end
-    elsif @record_locker[id].class == Thread
-      @@log.info { "Blocked while waiting for thread to finish saving data (running)[2]"} if @@log.info?
-      @record_locker[id].join
-      @record_locker.delete(id)
-    elsif @record_locker[id] == nil
-      #do nothing
-    else #something unexpected happened
-      raise "record locker went into unkwown state: #{@record_locker[id].inspect}"
-    end
-  end
   
-  def block_until_all_free
-    #get threads that are initializing
-    initializing_threads = {}
-    running_threads = {}
-    @record_locker.each do |id, thread|
-      initializing_threads = @record_locker[id] if thread == :thread_starting
-      running_threads = @record_locker[id] if thread.class == Thread
-    end
-    
-    initializing_threads.each do |id, thread|
-      until @record_locker[id] != :thread_starting do
-        sleep 0.01
-      end
-      if @record_locker[id].class == Thread
-        @@log.info { "Blocked while waiting for thread to finish saving data (running)[3]"} if @@log.info?
-        @record_locker[id].join
-        @record_locker.delete(id)
-      else
-        raise "record locker went into unknown state: #{@record_locker[id].inspect}"
-      end
-    end
-    
-    running_threads.each do |id, thread|
-      @@log.info { "Blocked while waiting for thread to finish saving data (running)[3]"} if @@log.info?
-      thread.join
-      @record_locker.delete(id)
-    end
-  end #def
-=end
 end#class
 end#module

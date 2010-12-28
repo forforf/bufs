@@ -59,6 +59,14 @@ describe SdbS3Env::GlueEnv, "Persistent Layer Basic Operations" do
     persisted_data.should_not == nil
     persisted_data.should == data1
   end
+  
+  it "should be able to delete data" do
+    data1 = {:id => "test_id1", :data => "test data1"}
+    data2 = {:id => "test_id2", :data => "test data2"}
+    @sdb_glue_obj.save(data1)
+    @sdb_glue_obj.save(data2)
+    
+  end
 end
   
 describe SdbS3Env::GlueEnv, "Persistent Layer Collection Operations" do
@@ -96,5 +104,79 @@ describe SdbS3Env::GlueEnv, "Persistent Layer Collection Operations" do
       end#case
     end#each
   end
+  
+  it "should be able to delete node data" do
+    data1 = {:id => "test_id1", :data => "keep me"}
+    data2 = {:id => "test_id2", :data => "delete me"}
+    @sdb_glue_obj.save(data1)
+    @sdb_glue_obj.save(data2)
+    
+    results = @sdb_glue_obj.query_all
+    results.each do |raw_data|
+      case raw_data[:id]
+        when "test_id1"
+          raw_data[:data].should == "keep me"
+        when "test_id2"
+          raw_data[:data].should == "delete me"
+        else
+          raise "Unknown dataset"
+      end#case
+    end#each
+    
+    model_metadata = {:_id => "test_id2"}
+    @sdb_glue_obj.destroy_node(model_metadata)
+    
+    results = @sdb_glue_obj.query_all
+    results.each do |raw_data|
+      case raw_data[:id]
+        when "test_id1"
+          raw_data[:data].should == "keep me"
+        when "test_id2"
+          raise "Oops should have been deleted"
+        else
+          raise "Unknown dataset"
+      end#case
+    end#each    
+  end
+  
+  it "should be able to delete in bulk" do  
+    data1 = {:id => "test_id1", :data => "delete me"}
+    data2 = {:id => "test_id2", :data => "keep me"}
+    data3 = {:id => "test_id3", :data => "delete me too"}
+    @sdb_glue_obj.save(data1)
+    @sdb_glue_obj.save(data2)
+    @sdb_glue_obj.save(data3)
+    
+    results = @sdb_glue_obj.query_all
+    results.each do |raw_data|
+      case raw_data[:id]
+        when "test_id1"
+          raw_data[:data].should == "delete me"
+        when "test_id2"
+          raw_data[:data].should == "keep me"
+        when "test_id3"
+          raw_data[:data].should == "delete me too"
+        else
+          raise "Unknown dataset"
+      end#case
+    end#each
+    
+    raw_rcds_to_delete = [data1, data3]
+    @sdb_glue_obj.destroy_bulk(raw_rcds_to_delete)
+    
+    results = @sdb_glue_obj.query_all
+    results.each do |raw_data|
+      case raw_data[:id]
+        when "test_id1"
+          raise "Oops should have been deleted"
+        when "test_id2"
+          raw_data[:data].should == "keep me"
+        when "test_id3"
+          raise "Oops should have been deleted"
+        else
+          raise "Unknown dataset"
+      end#case
+    end#each    
+  end#it
 end
 

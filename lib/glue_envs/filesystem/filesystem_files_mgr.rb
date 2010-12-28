@@ -132,7 +132,8 @@ module FilesystemInterface
       end
       att_md
     end
-
+    
+    #Not used and I don't think it will work anyway
     def list_files(node)
       return nil unless node.attachment_doc_id
       bia_class = @model_actor[:attachment_actor_class]
