@@ -18,7 +18,8 @@ module DefaultOpSets
   #op_set => the set of all operations that belong with a certain context
   #             the set of operations that can work with lists for example
   #op_behav => types of context, for example static (unchanging), replacing, appending, merging, etc
-  #fields => the key portion of a key-value record
+  #fields => the key portion of a key-value persisted record
+  #field value => the value portion of key-value persisted record
   #key field => the primary identifier for a key-value record (akin to a primary key)
   #field_op_set => the assignment of context to a field, and associated op_behav's belonging
   #              to that context
