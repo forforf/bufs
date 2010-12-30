@@ -25,14 +25,17 @@ module MakeUserClasses
     @user2_id = "CouchUser002"
     @user3_id = "FileSysUser003"
     @user4_id = "FileSysUser004"
+    @user5_id = "SDBS3User005"
     node_class_id1 = "BufsInfoNode#{@user1_id}"
     node_class_id2 = "BufsInfoNode#{@user2_id}"
     node_class_id3 = "BufsFile#{@user3_id}"
     node_class_id4 = "BufsFile#{@user4_id}"
-    node_env1 = NodeHelper.env_builder("couchrest", node_class_id1, @user1_id, CouchDB.uri, CouchDB.host)
-    node_env2 = NodeHelper.env_builder("couchrest", node_class_id2, @user2_id, CouchDB.uri, CouchDB.host)
-    node_env3 = NodeHelper.env_builder("filesystem", node_class_id3, @user3_id, FileSystem1)
-    node_env4 = NodeHelper.env_builder("filesystem", node_class_id4, @user4_id, FileSystem2)
+    node_class_id5 = "BufsSdbS3#{@user5_id}"
+    node_env1 = NodeHelper.env_builder("bufs_couchrest", node_class_id1, @user1_id, CouchDB.uri, CouchDB.host)
+    node_env2 = NodeHelper.env_builder("bufs_couchrest", node_class_id2, @user2_id, CouchDB.uri, CouchDB.host)
+    node_env3 = NodeHelper.env_builder("bufs_filesystem", node_class_id3, @user3_id, FileSystem1)
+    node_env4 = NodeHelper.env_builder("bufs_filesystem", node_class_id4, @user4_id, FileSystem2)
+    node_env5 = NodeHelper.env_builder("sdb_s3", node_class_id5, @user5_id, "MyDomain")
     #node_env2 = CouchRestNodeHelpers.env_builder(node_class_id2, CouchDB2, @user2_id)
     #node_env3 = FileSystemNodeHelpers.env_builder(node_class_id3, FileSystem1, @user3_id)
     #node_env4 = FileSystemNodeHelpers.env_builder(node_class_id4, FileSystem2, @user4_id)
@@ -40,13 +43,14 @@ module MakeUserClasses
     User2Class =  BufsNodeFactory.make(node_env2)
     User3Class =  BufsNodeFactory.make(node_env3)
     User4Class =  BufsNodeFactory.make(node_env4)
+    User5Class =  BufsNodeFactory.make(node_env5)
 end
 
 describe BufsNodeFactory, "Making the Class" do
   include MakeUserClasses
 
   before(:each) do
-    @user_classes = [User1Class, User2Class, User3Class, User4Class]
+    @user_classes = [User1Class, User2Class, User3Class, User4Class, User5Class]
   end
 
   after(:each) do
@@ -468,7 +472,9 @@ describe BufsNodeFactory, "CouchRest Model: Basic database operations" do
         doc.my_category.should_not == 'delete_test'
       end#each doc
     end#each user_class    
-  end#it          
+  end#it
+
+  #it should distinguish between user model data and the persistence layer data
 end
 
 describe BufsNodeFactory, "Document Operations with Attachments" do
