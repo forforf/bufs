@@ -1,4 +1,4 @@
-#copy of Rails camelize
+#copy of Rails camelize and underscore (almost)
 
 module Camel
   def self.ize(lower_case_and_underscored_word, first_letter_in_uppercase = true)
@@ -9,9 +9,9 @@ module Camel
     end
   end
   
-  def underscore(camel_cased_word)
+  def self.score(camel_cased_word)
      word = camel_cased_word.to_s.dup
-     word.gsub!(/::/, '/')
+     word.gsub!(/::/, '_')  #except I changed '/' to '_'
      word.gsub!(/([A-Z]+)([A-Z][a-z])/,'\1_\2')
      word.gsub!(/([a-z\d])([A-Z])/,'\1_\2')
      word.tr!("-", "_")
