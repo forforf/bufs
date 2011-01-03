@@ -341,7 +341,7 @@ class GlueEnv
         data_with_rev = model_data.merge({'_rev' => rev})
         res = db.save_doc(data_with_rev)
       else
-	raise "Request Failed -- Response: #{res.inspect} Error:#{e}"\
+	      raise "Request Failed -- Response: #{res.inspect} Error:#{e}"\
 	      "\nAdditonal Data: model params: #{model_save_params.inspect}"\
 	      "\n                model data: #{model_data.inspect}"\
 	      "\n                all data: #{new_data.inspect}"

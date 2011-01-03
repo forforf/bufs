@@ -159,6 +159,16 @@ class GlueEnv
     return rtn
   end
   
+  def destroy_bulk(records)
+    record_key_data = records.map{|r| r[@model_key].to_json}
+    #record_rev = ?
+    record_key_data_sql = record_key_data.join("', '")
+    sql = "DELETE FROM `#{@user_datastore_location}` 
+        WHERE `#{@model_key}` IN ('#{record_key_data_sql}')"
+    puts "DELETE:  #{sql}"
+    @dbh.do(sql)
+  end
+  
   def use_table!(fields, keys, table_name)
     #return [fields, keys, table_name]
     table_name = find_table!(fields, keys, table_name)

@@ -108,7 +108,7 @@ module SdbS3Interface
         new_md.merge(obj_md)  #where does the original metadata go?
         #p new_md.keys
         files_md[object.key] = new_md
-        puts "Obj METADATA: #{new_md.inspect}"
+        #puts "Obj METADATA: #{new_md.inspect}"
       end
       files_md
     end#def

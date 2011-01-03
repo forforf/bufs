@@ -227,11 +227,11 @@ attr_accessor :user_id,
       model_data = HashKeys.sym_to_str(new_data)
       FileUtils.mkdir_p(node_path) unless File.exist?(node_path)
       rev = Time.now.hash #<- I would use File.mtime, but how to get the mod time before saving?
-      model_data['_rev'] = rev
+      model_data[@version_key] = rev
       f = File.open(save_path, 'w')
       f.write(model_data.to_json)
       f.close
-      model_data['rev'] = model_data['_rev'] #TODO <-Investigate to see if it could be consistent
+      model_data['rev'] = model_data[@version_key] #TODO <-Investigate to see if it could be consistent
       return model_data
   end
 

@@ -57,16 +57,18 @@ describe SdbS3Env::GlueEnv, "Persistent Layer Basic Operations" do
     #Don't use native get_attributes, use obj's get,  it will block until save is finished
     persisted_data = @sdb_glue_obj.get(data1[:id]) 
     persisted_data.should_not == nil
-    persisted_data.should == data1
+    persisted_data[:id].should == data1[:id]
+    persisted_data[:data].should == data1[:data]
   end
   
-  it "should be able to delete data" do
-    data1 = {:id => "test_id1", :data => "test data1"}
-    data2 = {:id => "test_id2", :data => "test data2"}
-    @sdb_glue_obj.save(data1)
-    @sdb_glue_obj.save(data2)
-    
-  end
+  #it "should be able to delete data" do
+  #  data1 = {:id => "test_id1", :data => "test data1"}
+  #  data2 = {:id => "test_id2", :data => "test data2"}
+  #  @sdb_glue_obj.save(data1)
+  #  @sdb_glue_obj.save(data2)
+  #  
+  #  
+  #end
 end
   
 describe SdbS3Env::GlueEnv, "Persistent Layer Collection Operations" do

@@ -188,14 +188,14 @@ class BufsBaseNode
     #initial_views_data = data_model_bindings[:data_ops_set]
     
     #dynamically determine what's needed
-    glue_file_name = "bufs_#{model_name}_glue_env"
+    glue_file_name = "#{model_name}_glue_env"
     #moab_file_name = "moab_#{model_name}_env"
     
     #dynamic require (maybe just keep this static?)
     require Bufs.glue glue_file_name
     #require Bufs.moabs moab_file_name
     
-    glue_lc_name = "bufs_#{model_name}_env"
+    glue_lc_name = "#{model_name}_env"
     glue_const_name = Camel.ize(glue_lc_name)
     glueModule = Object.const_get(glue_const_name)
     glueClass = glueModule::GlueEnv

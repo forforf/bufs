@@ -66,19 +66,25 @@ end
 
   couch_class_id = :CouchClass
   file_class_id = :FileClass
+  sdbs3_class_id = :SdbS3Class
   user_id = "Me"
   
   cr_path = couchrest_instance.uri
   cr_host = couchrest_instance.host
   
   fs_path = filestore_loc
+  
+  sdbs3_path = "MyDomain"
   #filesystem doesn't require host
   #building the couchrest environment
-  couch_env = NodeHelper.env_builder("couchrest", couch_class_id, user_id, cr_path, cr_host)
+  couch_env = NodeHelper.env_builder("bufs_couchrest", couch_class_id, user_id, cr_path, cr_host)
   
   #building the filesystem environment
-  filesys_env = NodeHelper.env_builder("filesystem", file_class_id, user_id, fs_path)
+  filesys_env = NodeHelper.env_builder("bufs_filesystem", file_class_id, user_id, fs_path)
   #p couch_env
+  
+  #building an environment for AWS (Simple DB for data, S3 for attachments)
+  sdbs3_env = NodeHelper.env_builder("sdb_s3", sdbs3_class_id, user_id, sdbs3_path)
   
   #Testing with Class for NodeElementOperations
   #node_ops = NewNodeElementOperations.new.data_ops
@@ -87,18 +93,22 @@ end
   
   ExampleCouchClass = BufsNodeFactory.make(couch_env)
   ExampleFileClass = BufsNodeFactory.make(filesys_env)
+  ExampleSdbS3Class = BufsNodeFactory.make(sdbs3_env)
   a_couch_node = ExampleCouchClass.new({:id => "My_ID1", :data => "Hello World from couchrest"})
   
   
   a_file_node = ExampleFileClass.new({:id => "My_ID2", :data =>"Hello World from filesystem" })
   
- 
+  a_sdbs3_node = ExampleSdbS3Class.new({:id => "My_ID2", :data =>"Hello World from AWS Simple DB (with S3 for files)" })
   puts "Nodes in memory"
   p a_couch_node._user_data
   p a_file_node._user_data
+  p a_sdbs3_node._user_data
   
   a_couch_node.__save 
   a_file_node.__save
+  a_sdbs3_node.__save
+  
   puts "Node in CouchDB"
   #p hello_world_node
   p couchrest_instance.get(a_couch_node._model_metadata[:_id])
@@ -110,6 +120,7 @@ end
   puts "ls -al #{File.join(a_file_node._model_metadata[:files_namespace], a_file_node._user_data[:id])}/"
   puts "We can also add a field dynamically, for example a \"tags\" field"
   puts "Node after dynamically adding new data element"
+  puts 
   
   #after this hello_world node is the same as a couch node
   hello_world_node = a_couch_node
@@ -137,7 +148,8 @@ end
   #p hello_world_node.tags_blue "taggity tag"
   #p hello_world_node.tagssss
   
-  puts "We can't add  \"random\" to the random_field field until we define the operation"
+  #"We can't add  \"random\" to the random_field field until we define the operation"
+  #Is this fixed yet?
   random_op = {:random_field => :replace_ops}
   
   #p hello_world_node.class.data_struc

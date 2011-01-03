@@ -19,10 +19,10 @@ class GlueEnv
   VersionKey = :_rev #to have timestamp
   NamespaceKey = :sdbs3_namespace
   
-  MoabDataStoreDir = ".model"
-  MoabDatastoreName = ".node_data.json"
+  #MoabDataStoreDir = ".model"
+  #MoabDatastoreName = ".node_data.json"
 
-#TODO: Rather than using File class directly, should a special class be used?
+#TODO: Rather than using File class directly, should a special class be used? <- still applicable?
 attr_accessor :user_id,
            :user_datastore_location,
 			     :metadata_keys,
@@ -73,7 +73,7 @@ attr_accessor :user_id,
     @views = "temp"
     @moab_data = {}
     #@views_mgr = ViewsMgr.new({:data_file => @data_file_name})    
-    @record_locker = {}  #tracks records that are in the process of being saved
+    #@record_locker = {}  #tracks records that are in the process of being saved
   end
 
   def query_all  #TODO move to ViewsMgr
@@ -105,9 +105,12 @@ attr_accessor :user_id,
     #that it's a parameter used in saving to the persistence model
     #I should try to be consistent on this
     node_key = @model_save_params[:node_key]
-    model_data = to_sdb(HashKeys.sym_to_str(new_data))
+    rev_data = new_data.dup
+    rev_data[@version_key] = Time.now.hash
+    raw_model_data = HashKeys.sym_to_str(rev_data)
+    model_data = to_sdb(raw_model_data)
     sdb.put_attributes(domain, new_data[node_key], model_data)
-
+    return raw_model_data
   end
 
   def destroy_node(model_metadata)
