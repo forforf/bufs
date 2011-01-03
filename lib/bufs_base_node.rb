@@ -241,7 +241,8 @@ class BufsBaseNode
     removed_data = base_data.delete_if {|k,v| remove_keys.include?(k)}
     added_data = add_keys_values.merge(removed_data) #so that add doesn't overwrite existing keys
   end
-
+ 
+   #Not implemented on all persistence layers yet (just couchrest and filesystem)
   def self.call_new_view(view_name, match_key)
     results = if @myGlueEnv.respond_to? :call_view
       @myGlueEnv.call_view(view_name, 
@@ -253,6 +254,7 @@ class BufsBaseNode
     results
   end
   
+  #Not implemented on all persistence layers yet (just couchrest and filesystem)
   def self.call_view(param, match_keys, data_structure_changes = {})
     view_method_name = "by_#{param}".to_sym #using CouchDB style for now
     records = if @myGlueEnv.views.respond_to? view_method_name

@@ -63,7 +63,7 @@ describe MysqlEnv::GlueEnv, "Persistent Layer Basic Operations" do
     #Don't use native get_attributes, use obj's get,  it will block until save is finished
     persisted_data = @mysql_glue_obj.get(data1[:my_id]) 
     persisted_data.should_not == nil
-    p persisted_data
+    #p persisted_data
     persisted_data[:my_id].should == data1[:my_id]
     persisted_data[:data].should == data1[:data]
   end
@@ -116,11 +116,58 @@ describe MysqlEnv::GlueEnv, "Persistent Layer Collection Operations" do
         when "test_id1"
           raw_data[:data].should == "test data1"
         when "test_id2"
-          raw_data[:data].should == "test data2"
+          raw_data[:data].should == "test data2"  
         else
           raise "Unknown dataset"
       end#case
     end#each
+  end
+  
+  it "should be able to find matching data" do
+    data1 = {:my_id => "test_id1", :data => "test data1", :tags => ['a', 'b', 'c']}
+    data2 = {:my_id => "test_id2", :data => "test data2", :tags => ['c', 'd', 'e']}
+    data3 = {:my_id => "test_id3", :data => "test data2", :tags => ['c', 'b', 'z']}
+    data_list = [data1, data2, data3]
+    data_list.each {|data| @mysql_glue_obj.save(data)}
+    
+    result1 = @mysql_glue_obj.find_nodes_where(:my_id, :equals, "test_id1")
+    result1.size.should == 1
+    result1.first[:my_id].should == "test_id1"
+    
+    result2 = @mysql_glue_obj.find_nodes_where(:my_id, :equals, "oops")
+    result2.should be_empty
+    
+    result3 = @mysql_glue_obj.find_nodes_where(:data, :equals, "test data2")
+    result3.size.should == 2
+    ["test_id2", "test_id3"].should include result3.first[:my_id]
+    ["test_id2", "test_id3"].should include result3.last[:my_id]
+    
+    result4 = @mysql_glue_obj.find_nodes_where(:tags, :equals, ['c', 'd', 'e'])
+    result4.size.should == 1
+    result4.first[:my_id].should == "test_id2"    
+  end
+
+  it "should be able to find containting data" do
+    data1 = {:my_id => "test_id1", :data => "test data1", :tags => ['a', 'b', 'c']}
+    data2 = {:my_id => "test_id2", :data => "test data2", :tags => ['c', 'd', 'e']}
+    data3 = {:my_id => "test_id3", :data => "test data2", :tags => ['c', 'b', 'z']}
+    data_list = [data1, data2, data3]
+    data_list.each {|data| @mysql_glue_obj.save(data)}
+    
+    result1 = @mysql_glue_obj.find_nodes_where(:my_id, :contains, "test_id2")
+    result1.size.should == 1
+    result1.first[:my_id].should == "test_id2"
+    
+    result2 = @mysql_glue_obj.find_nodes_where(:tags, :contains, "c")
+    result2.size.should == 3
+    
+    result3 = @mysql_glue_obj.find_nodes_where(:tags, :contains, "b")
+    result3.size.should == 2
+    ["test_id1", "test_id3"].should include result3.first[:my_id]
+    ["test_id1", "test_id3"].should include result3.last[:my_id]
+    
+    result4 = @mysql_glue_obj.find_nodes_where(:tags, :contains, "oops")
+    result4.should be_empty
   end
 
   it "should be able to delete in bulk" do  
@@ -149,7 +196,7 @@ describe MysqlEnv::GlueEnv, "Persistent Layer Collection Operations" do
     @mysql_glue_obj.destroy_bulk(raw_rcds_to_delete)
     
     results = @mysql_glue_obj.query_all
-    puts "Destroy Bulk results: #{results.inspect}"
+    #puts "Destroy Bulk results: #{results.inspect}"
     results.each do |raw_data|
       case raw_data[:my_id]
         when "test_id1"

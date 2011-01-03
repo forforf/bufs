@@ -54,6 +54,11 @@ describe BufsNodeFactory, "Making the Class" do
   include MakeUserClasses
 
   before(:each) do
+    #couchrest_nodes = [User1Class, User2Class]
+    #filesystem_nodes = [User3Class, User4Class]
+    #sdb_s3_nodes = [User5Class]
+    #mysql_nodes = [User6Class]
+    #all = couchrest_nodes + filesystem_nodes + sdb_s3_nodes + mysql_nodes
     @user_classes = [User1Class, User2Class, User3Class, User4Class, User5Class, User6Class]
   end
 
@@ -993,26 +998,51 @@ describe BufsNodeFactory, "Portable Views" do
     end
   end
 
-  it "should perform basic collection operations properly" do
+  it "should be able to query all records in the persitence layer" do
     user_docs = {}
     @user_classes.each do |user_class|
-      user_docs[user_class] = user_class.new({:my_category => "#{user_class.name}_data2"})
+      node_list = [user_class.new({:my_category => "#{user_class.name}_data1"}),
+                       user_class.new({:my_category => "#{user_class.name}_data2"}),
+                       user_class.new({:my_category => "#{user_class.name}_data3"})]
+      node_list.each {|n| n.__save}
+      user_docs[user_class] = node_list
+      #user_docs[user_class] = user_class.new({:my_category => "#{user_class.name}_data2"})
+      #user_docs[user_class].__save
     end
-
-    #user1_doc = @user1_class.new({:my_category => "user1_data"})
-    #user2_doc = @user2_class.new({:my_category => "user2_data"})
-    user_docs.each do |user_class, node|
-      node.__save
-    end
-    #user1_doc.__save
-    #user2_doc.__save
-    #@user1_class.all.first.my_category.should == "user1_data"  
-    #@user2_class.all.first.my_category.should == "user2_data"
-
+   
+     #tests the "all" class method to return all fields
     @user_classes.each do |user_class|
-      user_class.all.first.my_category.should == "#{user_class.name}_data2"
+      user_nodes = user_class.all
+      user_nodes.size.should == 3
+      my_categories = user_nodes.map{|n| n.my_category}
+      my_categories.should include "#{user_class.name}_data1"
+      my_categories.should include "#{user_class.name}_data2"
+      #user_class.all.first.my_category.should == "blah" #"#{user_class.name}_data1"
     end
   end
+  
+ 
+=begin 
+  it "should be able to select certain data" do
+    user_docs = {}
+    @user_classes.each do |user_class|
+      node_list = [user_class.new({:my_category => "#{user_class.name}_cat1", :label =>"#{user_class.name}_label"}),
+                       user_class.new({:my_category => "#{user_class.name}_cat2", :label =>"#{user_class.name}_label"}),
+                       user_class.new({:my_category => "#{user_class.name}_cat3", :other => "some other"})]
+      node_list.each {|n| n.__save}
+      user_docs[user_class] = node_list
+    end
+    
+     @user_classes.each do |user_class|
+      user_nodes = user_class.call_view
+      user_nodes.size.should == 2
+      my_categories = user_nodes.map{|n| n.my_category}
+      my_categories.should include "#{user_class.name}_data1"
+      my_categories.should include "#{user_class.name}_data2"
+      #user_class.all.first.my_category.should == "blah" #"#{user_class.name}_data1"
+    end
+  end
+=end
 end
 
 describe "Cleanup" do

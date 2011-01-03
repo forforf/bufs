@@ -87,11 +87,6 @@ class GlueEnv
     @_files_mgr_class = MysqlInterface::FilesMgr
     @_file_mgr_table = 'blah'
     @file_mgr_table = create_file_mgr_table
-    p @file_mgr_table
-    p self.file_mgr_table
-    
-    puts "----"
-
     #@views = "temp"
       
   end#def
@@ -106,7 +101,6 @@ class GlueEnv
     
     #Need to update a bit when moved to tinkit (formerly bufs) to account for revs
     sql = "REPLACE INTO `#{table_name}` (#{esc_col_names}) VALUEs (#{json_values})"
-    puts "SAVE SQL: #{sql}"
     @dbh.do(sql)
   end
     
@@ -122,7 +116,6 @@ class GlueEnv
     end
     #rtn
     sth.finish
-    puts "GOT: #{rtn.inspect}"
     rtn_raw = rtn.first || {} #remember in production to sort on internal primary id
     rtnj = {}
     rtn_raw.delete(PRIMARY_KEY)
@@ -130,7 +123,6 @@ class GlueEnv
           rtnj[k] = jparse(v)
     end
     rtn_h = HashKeys.str_to_sym(rtnj)
-    puts "RTN: #{rtn_h.inspect}"
     return rtn_h
   end
   
@@ -139,7 +131,6 @@ class GlueEnv
     node_rev = model_metadata[@version_key]
     sql = "DELETE FROM `#{@user_datastore_location}` 
          WHERE `#{@model_key}` = '#{node_id.to_json}'"
-    puts "DELETE:  #{sql}"
     @dbh.do(sql)
   end
   
@@ -170,13 +161,81 @@ class GlueEnv
     return rtn
   end
   
+  #current relatins supported:
+  # - :equals (data in the key field matches this_value)
+  # - :contains (this_value is contained in the key field data (same as equals for non-enumerable types )
+  def find_nodes_where(key, relation, this_value)
+    res = case relation
+      when :equals
+        find_equals(key, this_value)
+      when :contains
+        find_contains(key, this_value)
+    end #case
+    return res    
+  end
+  
+  def find_equals(key, this_value)    
+    sql = "SELECT * FROM `#{@user_datastore_location}` WHERE `#{key}` = '#{this_value.to_json}'"
+    #sql = "SELECT * FROM `#{@user_datastore_location}` WHERE ? = ?"
+    sth = @dbh.prepare(sql)
+    rtn = []
+    final_rtn = []
+    sth.execute
+    while row=sth.fetch do
+      rtn << row.to_h
+    end
+    sth.finish
+    rtn_raw_list = rtn
+    
+    rtn_raw_list.each{|r| r.delete(PRIMARY_KEY)}
+    rtn_raw_list.each do |rtn_raw|
+      rtnj = {}
+      rtn_raw.each {|k,v| rtnj[k] = jparse(v) }
+      final_rtn <<= HashKeys.str_to_sym(rtnj)
+    end
+    
+    return final_rtn   
+  end
+  
+  def find_contains(key, this_value)
+    #TODO: Make into map/reduce to be more efficient
+    sql = "SELECT * FROM `#{@user_datastore_location}`"
+    sth = @dbh.prepare(sql)
+    rtn_raw_list  = []
+    final_rtn = []
+    sth.execute
+    while row=sth.fetch do
+      rowh = row.to_h
+      rowh.delete(PRIMARY_KEY)
+      rtn_raw_list << rowh if find_contains_type_helper(rowh[key.to_s], this_value)
+    end
+    sth.finish
+    rtn_raw_list.each do |rtn_raw|
+      rtnj = {}
+      rtn_raw.each {|k,v| rtnj[k] = jparse(v) }
+      final_rtn <<= HashKeys.str_to_sym(rtnj)
+    end
+    #return full data for select results
+    return final_rtn
+  end
+  
+  def find_contains_type_helper(stored_dataj, this_value)
+    resp = nil
+    stored_data = jparse(stored_dataj)
+    if stored_data.respond_to?(:"include?")
+      resp = (stored_data.include?(this_value))
+    else
+      resp = (stored_data == this_value)
+    end
+    return resp
+  end
+  
   def destroy_bulk(records)
     record_key_data = records.map{|r| r[@model_key].to_json}
     #record_rev = ?
     record_key_data_sql = record_key_data.join("', '")
     sql = "DELETE FROM `#{@user_datastore_location}` 
         WHERE `#{@model_key}` IN ('#{record_key_data_sql}')"
-    puts "DELETE:  #{sql}"
     @dbh.do(sql)
   end
   
@@ -187,9 +246,7 @@ class GlueEnv
     column_names = get_existing_columns(table_name)
     fields_str = fields.map{|f| f.to_s}
     unless fields_str.sort == column_names.sort
-      puts "Warning Fields Dont Match, Adding unmatched fields to table"
-      p fields_str.sort
-      p column_names.sort
+      #puts "Warning Fields Dont Match, Adding unmatched fields to table"
       #table has changed, reconcile them
       table_name = reconcile_table(table_name, column_names, fields_str)
     end
@@ -221,7 +278,6 @@ class GlueEnv
            PRIMARY KEY ( `#{PRIMARY_KEY}` ),
            #{mk_str} )"
     @dbh.do(sql)
-    puts "Created Table sql: #{sql}"
     rtn_val = table_name if @dbh.tables.include? table_name
   end
   
@@ -245,18 +301,11 @@ class GlueEnv
     current_cols = get_existing_columns(table_name).map{|col| col.to_sym}
     orig_cols = orig_cols.map{|col| col.to_sym}
     new_cols = new_cols.map{|col| col.to_sym}
-    #puts "current: #{current_cols.inspect}"
     add_cols = new_cols
     add_cols = new_cols - current_cols - [PRIMARY_KEY]
     add_cols.delete_if{|col| col =~ /^XXXX_/ }
     remove_cols = current_cols - new_cols - [PRIMARY_KEY]
     remove_cols.delete_if{|col| col !=~ /^XXXX_/ }
-
-    puts "orig cols: #{orig_cols.inspect}"
-    puts "new cols: #{new_cols.inspect}"
-    puts "Remove: #{remove_cols.inspect}"
-    puts "Add: #{add_cols.inspect}"
-       #STOP_HERE
     if opts[:allow_remove] 
       remove_columns(table_name, remove_cols) unless remove_cols.empty?
     end
@@ -271,7 +320,6 @@ class GlueEnv
     end
     add_sql= add_list.join(", ")
     sql = "ALTER TABLE `#{table_name}` #{add_sql}"
-    p sql
     sth = @dbh.prepare(sql)
     sth.execute
     sth.finish
@@ -284,7 +332,6 @@ class GlueEnv
       #existing_cols.each do |ex_col|
       expired_col_regexp = /^XXXX_XXXX_/
         if curr_col_name.match expired_col_regexp
-          puts "#{curr_col_name} matched #{expired_col_regexp}"
           #iterating in ruby makes cleaner ruby code, but not as efficient
           sql = "ALTER TABLE #{table_name} DROP #{curr_col_name}"
           sth = @dbh.prepare(sql)
@@ -301,7 +348,6 @@ class GlueEnv
     existing_cols = get_existing_columns(table_name)
     remove_sql= remove_list.join(", ")
     sql = "ALTER TABLE `#{table_name}` #{remove_sql}"
-    p sql
     sth = @dbh.prepare(sql)
     sth.execute
     sth.finish
