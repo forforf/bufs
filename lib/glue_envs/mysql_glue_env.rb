@@ -161,7 +161,7 @@ class GlueEnv
     return rtn
   end
   
-  #current relatins supported:
+  #current relations supported:
   # - :equals (data in the key field matches this_value)
   # - :contains (this_value is contained in the key field data (same as equals for non-enumerable types )
   def find_nodes_where(key, relation, this_value)

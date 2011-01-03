@@ -90,6 +90,63 @@ attr_accessor :user_id,
     data.values
   end
 
+  #current relations supported:
+  # - :equals (data in the key field matches this_value)
+  # - :contains (this_value is contained in the key field data (same as equals for non-enumerable types )
+  def find_nodes_where(key, relation, this_value)
+    res = case relation
+      when :equals
+        find_equals(key, this_value)
+      when :contains
+        find_contains(key, this_value)
+    end #case
+    return res    
+  end
+  
+  def find_equals(key, this_value) 
+    sdb = @model_save_params[:sdb]
+    domain = @model_save_params[:domain]
+    query = "SELECT * FROM `#{domain}`"
+    #SDB Queries drive me nuts so we're doing it in ruby
+    raw_data = sdb.select(query).first
+    data = {}
+    raw_data.each do |k,v|
+      row_values = from_sdb(v)
+      test_val = row_values[key]
+      data[k] = row_values if test_val == this_value
+    end
+    #puts "FE: #{data.inspect}"
+    data.values   
+  end
+  
+  def find_contains(key, this_value) 
+    sdb = @model_save_params[:sdb]
+    domain = @model_save_params[:domain]
+    query = "SELECT * FROM `#{domain}`"
+    #SDB Queries drive me nuts so we're doing it in ruby
+    raw_data = sdb.select(query).first
+    data = {}
+    raw_data.each do |k,v|
+      row_values = from_sdb(v)
+      test_val = row_values[key]
+      data[k] = row_values if find_contains_type_helper(test_val, this_value)
+    end
+    #puts "FE: #{data.inspect}"
+    data.values   
+  end  
+
+  def find_contains_type_helper(stored_data, this_value)
+    #p stored_dataj
+    resp = nil
+    #stored_data = jparse(stored_dataj)
+    if stored_data.respond_to?(:"include?")
+      resp = (stored_data.include?(this_value))
+    else
+      resp = (stored_data == this_value)
+    end
+    return resp
+  end
+
   def get(id)
     sdb = @model_save_params[:sdb]
     domain = @model_save_params[:domain]

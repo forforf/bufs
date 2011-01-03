@@ -106,6 +106,53 @@ describe SdbS3Env::GlueEnv, "Persistent Layer Collection Operations" do
       end#case
     end#each
   end
+
+  it "should be able to find matching data" do
+    data1 = {:id => "test_id1", :data => "test data1", :tags => ['a', 'b', 'c']}
+    data2 = {:id => "test_id2", :data => "test data2", :tags => ['c', 'd', 'e']}
+    data3 = {:id => "test_id3", :data => "test data2", :tags => ['c', 'b', 'z']}
+    data_list = [data1, data2, data3]
+    data_list.each {|data| @sdb_glue_obj.save(data)}
+    
+    result1 = @sdb_glue_obj.find_nodes_where(:id, :equals, "test_id1")
+    result1.size.should == 1
+    result1.first[:id].should == "test_id1"
+    
+    result2 = @sdb_glue_obj.find_nodes_where(:id, :equals, "oops")
+    result2.should be_empty
+    
+    result3 = @sdb_glue_obj.find_nodes_where(:data, :equals, "test data2")
+    result3.size.should == 2
+    ["test_id2", "test_id3"].should include result3.first[:id]
+    ["test_id2", "test_id3"].should include result3.last[:id]
+    
+    result4 = @sdb_glue_obj.find_nodes_where(:tags, :equals, ['c', 'd', 'e'])
+    result4.size.should == 1
+    result4.first[:id].should == "test_id2"    
+  end
+
+  it "should be able to find containting data" do
+    data1 = {:id => "test_id1", :data => "test data1", :tags => ['a', 'b', 'c']}
+    data2 = {:id => "test_id2", :data => "test data2", :tags => ['c', 'd', 'e']}
+    data3 = {:id => "test_id3", :data => "test data2", :tags => ['c', 'b', 'z']}
+    data_list = [data1, data2, data3]
+    data_list.each {|data| @sdb_glue_obj.save(data)}
+    
+    result1 = @sdb_glue_obj.find_nodes_where(:id, :contains, "test_id2")
+    result1.size.should == 1
+    result1.first[:id].should == "test_id2"
+    
+    result2 = @sdb_glue_obj.find_nodes_where(:tags, :contains, "c")
+    result2.size.should == 3
+    
+    result3 = @sdb_glue_obj.find_nodes_where(:tags, :contains, "b")
+    result3.size.should == 2
+    ["test_id1", "test_id3"].should include result3.first[:id]
+    ["test_id1", "test_id3"].should include result3.last[:id]
+    
+    result4 = @sdb_glue_obj.find_nodes_where(:tags, :contains, "oops")
+    result4.should be_empty
+  end
   
   it "should be able to delete node data" do
     data1 = {:id => "test_id1", :data => "keep me"}
