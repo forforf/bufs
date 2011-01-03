@@ -7,7 +7,7 @@ require Bufs.helpers 'log_helper'
 require 'json'
 require 'dbi'
 
-module MySqlEnv
+module MysqlEnv
     class << self; attr_accessor :dbh; end
     @@home_dir = ENV["HOME"]
     @@my_pw = File.open("#{@@home_dir}/.locker/tinkit_mysql"){|f| f.read}.strip
@@ -28,7 +28,7 @@ class GlueEnv
     VersionKey = :_rev #derived from timestamp
     NamespaceKey = :mysql_namespace
     
-    #MySql Primary Key ID
+    #Mysql Primary Key ID
     #TODO, Don't set directly to constant, use accessor 
     PRIMARY_KEY ='__mysql_pk'    
     attr_accessor :user_id,
@@ -45,16 +45,17 @@ class GlueEnv
 			     :model_save_params,
            :moab_data,
            #accessors specific to this persitence model
-           :dbh  #database handler #spec uses
+           :dbh,  #database handler #spec uses
            :file_mgr_table #identifies the table the FileMgr Class should use
+
            
 
        
 
   def initialize(persist_env, data_model_bindings)
     #host = "https://sdb.amazonaws.com/"  (not provided by user)
-    @dbh = MySqlEnv.dbh
-
+    @dbh = MysqlEnv.dbh
+    @_file_mgr_table = 'blahblah'
     mysql_env = persist_env[:env]
     #TODO: validations on format
 
@@ -83,8 +84,14 @@ class GlueEnv
     @user_datastore_location = use_table!(initial_table_fields, node_identifying_keys, domain_table_name)
 
     @model_save_params = {:dbh => dbh, :table => user_datastore_location, :node_key => @node_key}
-    @_files_mgr_class = MySqlInterface::FilesMgr
+    @_files_mgr_class = MysqlInterface::FilesMgr
+    @_file_mgr_table = 'blah'
     @file_mgr_table = create_file_mgr_table
+    p @file_mgr_table
+    p self.file_mgr_table
+    
+    puts "----"
+
     #@views = "temp"
       
   end#def
@@ -134,6 +141,10 @@ class GlueEnv
          WHERE `#{@model_key}` = '#{node_id.to_json}'"
     puts "DELETE:  #{sql}"
     @dbh.do(sql)
+  end
+  
+  def generate_model_key(namespace, node_key)
+    "#{namespace}::#{node_key}"
   end
   
   def query_all

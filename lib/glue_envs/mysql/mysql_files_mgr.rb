@@ -3,7 +3,7 @@ require 'json'
 
 require Bufs.helpers 'mime_types_new'
 
-module MySqlInterface
+module MysqlInterface
   class FilesMgr
 
     class << self; attr_accessor :dbh; end
@@ -21,12 +21,16 @@ module MySqlInterface
   RawContent = 'raw_content'
   FileTableKeys = [MySqlPrimaryKey, NodeName, Basename, ContentType, ModifiedAt, RawContent]
   
+  TablePostFix = "_files" #TODO: See if you can get away from that
+      #options: include in model_save_params, or let base node pass on methods to
+      #underlying glue env (probably this)
   
   attr_accessor :file_table_name
   
   def initialize(glue_env, node_key_value)
     @dbh = self.class.dbh
-    @file_table_name = glue_env.file_table_name
+     
+    @file_table_name = "#{@user_datastore_location}#{TablePostFix}"
   end
   
   def add_files(node, file_datas)

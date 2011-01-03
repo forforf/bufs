@@ -5,7 +5,7 @@ require Bufs.glue 'mysql_glue_env'
 
 
 
-describe MySqlEnv::GlueEnv, "Initialization" do
+describe MysqlEnv::GlueEnv, "Initialization" do
   
   before(:each) do
     #host is the database
@@ -17,7 +17,7 @@ describe MySqlEnv::GlueEnv, "Initialization" do
   end
   
   it "should initialize properly" do
-    mysql_glue_obj = MySqlEnv::GlueEnv.new(@persist_env, @data_model_bindings)
+    mysql_glue_obj = MysqlEnv::GlueEnv.new(@persist_env, @data_model_bindings)
     mysql_glue_obj.dbh.connected?.should == true
     
     mysql_glue_obj.user_id.should == @persist_env[:env][:user_id]
@@ -35,7 +35,7 @@ describe MySqlEnv::GlueEnv, "Initialization" do
   end  
 end
 
-describe MySqlEnv::GlueEnv, "Persistent Layer Basic Operations" do
+describe MysqlEnv::GlueEnv, "Persistent Layer Basic Operations" do
   
   before(:each) do
     env = {:host => nil, :path => 'test_domain', :user_id => 'init_test_user'}
@@ -43,7 +43,7 @@ describe MySqlEnv::GlueEnv, "Persistent Layer Basic Operations" do
     key_fields = {:required_keys => [:my_id],
                          :primary_key => :my_id }
     @data_model_bindings = {:key_fields => key_fields, :views => nil}
-    @mysql_glue_obj = MySqlEnv::GlueEnv.new(@persist_env, @data_model_bindings)
+    @mysql_glue_obj = MysqlEnv::GlueEnv.new(@persist_env, @data_model_bindings)
   end
   
   after(:each) do
@@ -85,7 +85,7 @@ describe MySqlEnv::GlueEnv, "Persistent Layer Basic Operations" do
   end
 end
   
-describe MySqlEnv::GlueEnv, "Persistent Layer Collection Operations" do
+describe MysqlEnv::GlueEnv, "Persistent Layer Collection Operations" do
 
   before(:each) do
     env = {:host => nil, :path => 'test_domain', :user_id => 'init_test_user'}
@@ -93,7 +93,7 @@ describe MySqlEnv::GlueEnv, "Persistent Layer Collection Operations" do
     key_fields = {:required_keys => [:my_id],
                          :primary_key => :my_id }
     @data_model_bindings = {:key_fields => key_fields, :views => nil}
-    @mysql_glue_obj = MySqlEnv::GlueEnv.new(@persist_env, @data_model_bindings)
+    @mysql_glue_obj = MysqlEnv::GlueEnv.new(@persist_env, @data_model_bindings)
   end
   
   after(:each) do

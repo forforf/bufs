@@ -2,7 +2,7 @@
 require File.join(File.expand_path(File.dirname(__FILE__)), '../lib/helpers/require_helper')
 require Bufs.glue 'mysql/mysql_files_mgr'
 
-include MySqlInterface
+include MysqlInterface
 GlueEnvMock = Struct.new(:model_key, :file_table_name)
 
 

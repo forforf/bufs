@@ -56,8 +56,10 @@ class GlueEnv
   
   
   def method_missing(name)
+    #resp = @glue_interface.__send__(name)
     raise NameError,"Method #{name} was not found in #{self.class}. Has it been"\
                     " built into the persistent model interface yet?"
+    #resp
   end
                   
   def initialize(glue_interface)
