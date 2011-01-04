@@ -172,7 +172,7 @@ describe SdbS3Env::GlueEnv, "Persistent Layer Collection Operations" do
       end#case
     end#each
     
-    model_metadata = {:_id => "test_id2"}
+    model_metadata = {:id => "test_id2"}
     @sdb_glue_obj.destroy_node(model_metadata)
     
     results = @sdb_glue_obj.query_all

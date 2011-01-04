@@ -15,7 +15,8 @@ class GlueEnv
   
   @@log = BufsLog.set(self.name, :info)
    #used to identify metadata for models (should be consistent across models)
-  ModelKey = :_id 
+  #PersistLayerKey not needed, node key can be used as persistent layer key
+  #see mysql_glue_env to decouple persistent layer key from node key
   VersionKey = :_rev #to have timestamp
   NamespaceKey = :sdbs3_namespace
   
@@ -59,7 +60,7 @@ attr_accessor :user_id,
 
     #@moab_datastore_name = MoabDatastoreName
     @version_key = VersionKey  
-    @model_key = ModelKey
+    @model_key = @node_key #ModelKey
     @namespace_key = NamespaceKey
     @metadata_keys = [@version_key, @model_key, @namespace_key] 
     aak = ENV["AMAZON_ACCESS_KEY_ID"]

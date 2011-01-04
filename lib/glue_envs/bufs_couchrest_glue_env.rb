@@ -157,9 +157,10 @@ class GlueEnv
   include CouchrestViews
   
   #used to identify metadata for models (should be consistent across models)
-  ModelKey = :_id
+  ModelKey = :_id 
   VersionKey = :_rev
   NamespaceKey = :bufs_namespace
+  #PersistLayerKey = :_id  #required by CouchDb to be unique in DB
   CouchMetadataKeys = [:_pos, :_deleted_conflicts] #possibly more, these keys are ignored
   QueryAllStr = "by_all_bufs".to_sym
   AttachClassBaseName = "MoabAttachmentHandler"
@@ -218,7 +219,7 @@ class GlueEnv
     #@user_datastore_location = CouchRestEnv.set_user_datastore_location(@db, @user_id)
     @user_datastore_location = set_namespace(db_name_path, @user_id)
     @design_doc = set_couch_design(@db, @user_id)#, @collection_namespace)
-    
+    @node_key = key_fields[:primary_key]     
     #
     @define_query_all = QueryAllStr #CouchRestEnv.query_for_all_collection_records
     
@@ -227,8 +228,9 @@ class GlueEnv
     @model_key = ModelKey #CouchRestEnv::ModelKey
     @version_key = VersionKey #CouchRestEnv::VersionKey
     @namespace_key = NamespaceKey #CouchRestEnv::NamespaceKey
+    #TODO: Need to investigate whether to keep model_key = node_key in metadata
     @metadata_keys = [@model_key, @version_key, @namespace_key] + CouchMetadataKeys #CouchRestEnv.set_db_metadata_keys #(@collection_namespace)
-    @node_key = key_fields[:primary_key] 
+ 
     @views = CouchRestViews
     @views.set_view_all(@db, @design_doc, @user_datastore_location)
     

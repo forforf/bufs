@@ -24,13 +24,17 @@ class GlueEnv
     # version key - not sure if it will be used
     #namespace key - name to identify this is the mysql interface?
     #used to identify metadata for models (should be consistent across models)
-    ModelKey = :my_id
+    #ModelKey = :my_id
     VersionKey = :_rev #derived from timestamp
     NamespaceKey = :mysql_namespace
-    
     #Mysql Primary Key ID
+    #so we can use auto-incrementing int primary keys
+    #with worrying about forcing user data to conform
+    PersistLayerKey ='__mysql_pk' 
+    
+    
     #TODO, Don't set directly to constant, use accessor 
-    PRIMARY_KEY ='__mysql_pk'    
+        
     attr_accessor :user_id,
            :user_datastore_location,
 			     :metadata_keys,
@@ -71,7 +75,7 @@ class GlueEnv
     @node_key = key_fields[:primary_key] #DataStructureModels::Bufs::NodeKey
     
     @version_key = VersionKey  
-    @model_key = ModelKey
+    @model_key = @node_key #ModelKey
     @namespace_key = NamespaceKey
     @metadata_keys = [@version_key, @model_key, @namespace_key] 
     
@@ -118,7 +122,7 @@ class GlueEnv
     sth.finish
     rtn_raw = rtn.first || {} #remember in production to sort on internal primary id
     rtnj = {}
-    rtn_raw.delete(PRIMARY_KEY)
+    rtn_raw.delete(PersistLayerKey)
     rtn_raw.each do |k,v|
           rtnj[k] = jparse(v)
     end
@@ -152,7 +156,7 @@ class GlueEnv
     sth.finish
     rtnj = {}
     rtn_raw_rows.each do |rtn_raw|
-      rtn_raw.delete(PRIMARY_KEY)
+      rtn_raw.delete(PersistLayerKey)
       rtn_raw.each do |k,v|
           rtnj[k] = jparse(v)
       end
@@ -188,7 +192,7 @@ class GlueEnv
     sth.finish
     rtn_raw_list = rtn
     
-    rtn_raw_list.each{|r| r.delete(PRIMARY_KEY)}
+    rtn_raw_list.each{|r| r.delete(PersistLayerKey)}
     rtn_raw_list.each do |rtn_raw|
       rtnj = {}
       rtn_raw.each {|k,v| rtnj[k] = jparse(v) }
@@ -207,7 +211,7 @@ class GlueEnv
     sth.execute
     while row=sth.fetch do
       rowh = row.to_h
-      rowh.delete(PRIMARY_KEY)
+      rowh.delete(PersistLayerKey)
       rtn_raw_list << rowh if find_contains_type_helper(rowh[key.to_s], this_value)
     end
     sth.finish
@@ -274,9 +278,9 @@ class GlueEnv
     #change this for tinkit
     mk_str = "UNIQUE KEY `_uniq_idx`(`#{keys.join("`, `")}`)"
     sql = "CREATE TABLE `#{table_name}` (
-           `#{PRIMARY_KEY}` INT NOT NULL AUTO_INCREMENT,
+           `#{PersistLayerKey}` INT NOT NULL AUTO_INCREMENT,
            #{field_str}
-           PRIMARY KEY ( `#{PRIMARY_KEY}` ),
+           PRIMARY KEY ( `#{PersistLayerKey}` ),
            #{mk_str} )"
     @dbh.do(sql)
     rtn_val = table_name if @dbh.tables.include? table_name
@@ -303,9 +307,9 @@ class GlueEnv
     orig_cols = orig_cols.map{|col| col.to_sym}
     new_cols = new_cols.map{|col| col.to_sym}
     add_cols = new_cols
-    add_cols = new_cols - current_cols - [PRIMARY_KEY]
+    add_cols = new_cols - current_cols - [PersistLayerKey]
     add_cols.delete_if{|col| col =~ /^XXXX_/ }
-    remove_cols = current_cols - new_cols - [PRIMARY_KEY]
+    remove_cols = current_cols - new_cols - [PersistLayerKey]
     remove_cols.delete_if{|col| col !=~ /^XXXX_/ }
     if opts[:allow_remove] 
       remove_columns(table_name, remove_cols) unless remove_cols.empty?
@@ -355,20 +359,20 @@ class GlueEnv
   end
 
   def create_file_mgr_table
-    primary_key = '__pkid-file'
+    file_mgr_key = '__pkid-file'
     file_table_name_postfix = "files"
     #Create the table to store files when class is loaded
     #Add modified_at to the UNIQUE KEY to keep versions
     
     file_table_name = "#{@user_datastore_location.to_s}_#{file_table_name_postfix}"
     sql = "CREATE TABLE IF NOT EXISTS `#{file_table_name}` (
-          `#{primary_key}` INT NOT NULL AUTO_INCREMENT,
+          `#{file_mgr_key}` INT NOT NULL AUTO_INCREMENT,
           node_name VARCHAR(255),
           basename VARCHAR(255) NOT NULL,
           content_type VARCHAR(255),
           modified_at VARCHAR(255),
           raw_content LONGBLOB,
-          PRIMARY KEY (`#{primary_key}`),
+          PRIMARY KEY (`#{file_mgr_key}`),
           UNIQUE KEY (node_name, basename) )"
 
     @dbh.do(sql) 

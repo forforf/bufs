@@ -1,6 +1,7 @@
 #Bufs directory organization defined in lib/helpers/require_helper.rb
 require Bufs.midas 'bufs_data_structure'
 require Bufs.glue 'filesystem/filesystem_files_mgr'
+require Bufs.helpers 'hash_helpers'
 
 #class ViewsMgr
 module BufsFileSystemViews
@@ -131,8 +132,8 @@ class GlueEnv
   
   include FilesystemViews
   
-  #used to identify metadata for models (should be consistent across models)
-  ModelKey = :_id 
+  #PersistLayerKey not needed, node key can be used as persistent layer key
+  #see mysql_glue_env to decouple persistent layer key from node key
   VersionKey = :_rev #to have timestamp
   NamespaceKey = :files_namespace
   
@@ -177,7 +178,7 @@ attr_accessor :user_id,
 
     @moab_datastore_name = MoabDatastoreName
     @version_key = VersionKey  #
-    @model_key = ModelKey
+    @model_key = @node_key #ModelKey
     @namespace_key = NamespaceKey
     @metadata_keys = [@version_key, @model_key, @namespace_key] 
     @user_datastore_location = File.join(fs_path, @user_id, MoabDataStoreDir)    
@@ -197,6 +198,8 @@ attr_accessor :user_id,
     all_nodes = []
     my_dir = @user_datastore_location + '/' #TODO: Can this be removed?
     all_entries = Dir.working_entries(my_dir)
+    results = {}
+    all_entries.each do
     return all_entries || []
   end
 
@@ -204,8 +207,7 @@ attr_accessor :user_id,
     #TODO my_cat and id are identical, this is probably not a good thing
     #maybe put in some validations to ensure its from the proper collection namespace?
     
-    #FIXME: Hack to make it work
-    id_path = model_path(id) #id.gsub("::","/")
+    id_path = File.join(@user_datastore_location, id)
     rtn = if File.exists?(id_path)
       data_file_path = File.join(id_path, @moab_datastore_name)
       json_data = File.open(data_file_path, 'r'){|f| f.read}
@@ -237,10 +239,9 @@ attr_accessor :user_id,
 
   def destroy_node(model_metadata)
     root_dir = @user_datastore_location
-    #FIXME: Ugly hack to deal with :: in model key (but less ugly than before)
-    #node_dir_name = model_path(model_metadata[@model_key])#node._user_data[@node_key
-    #node_dir = File.join(root_dir, node_dir_name)
-    node_dir = model_path(model_metadata[@model_key])
+    node_id = model_path(model_metadata[@model_key])
+    node_dir = File.join(root_dir, node_id)
+    
     FileUtils.rm_rf(node_dir)
     #node = nil
   end
