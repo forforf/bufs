@@ -123,6 +123,7 @@ class GlueEnv
           rtnj[k] = jparse(v)
     end
     rtn_h = HashKeys.str_to_sym(rtnj)
+    rtn_h = nil if rtn_h.empty?
     return rtn_h
   end
   

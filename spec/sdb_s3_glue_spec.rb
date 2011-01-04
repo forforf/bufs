@@ -52,7 +52,7 @@ describe SdbS3Env::GlueEnv, "Persistent Layer Basic Operations" do
     #:id was defined as the primary key
     data1 = {:id => "test_id1", :data => "test data"}
     empty_data = @sdb_glue_obj.get(data1[:id]) #hasn't been saved yet
-    empty_data.should == {}
+    empty_data.should == nil
     @sdb_glue_obj.save(data1)
     #Don't use native get_attributes, use obj's get,  it will block until save is finished
     persisted_data = @sdb_glue_obj.get(data1[:id]) 

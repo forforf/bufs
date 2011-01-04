@@ -153,6 +153,8 @@ attr_accessor :user_id,
     raw_data = sdb.get_attributes(domain, id)
     #puts "Raw Data: #{raw_data.inspect}"
     data = from_sdb(raw_data)
+    data = nil if data.empty?
+    return data
   end
 
   def save(new_data)

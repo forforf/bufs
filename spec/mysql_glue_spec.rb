@@ -9,8 +9,8 @@ describe MysqlEnv::GlueEnv, "Initialization" do
   
   before(:each) do
     #host is the database
-    env = {:host => nil, :path => 'test_domain', :user_id => 'init_test_user'}
-    @persist_env = {:env => env}
+    persist_env = {:host => nil, :path => 'test_domain', :user_id => 'init_test_user'}
+    @persist_env = {:env => persist_env}
     key_fields = {:required_keys => [:my_id],
                          :primary_key => :my_id }
     @data_model_bindings = {:key_fields => key_fields, :views => nil}
@@ -58,7 +58,7 @@ describe MysqlEnv::GlueEnv, "Persistent Layer Basic Operations" do
     #:id was defined as the primary key
     data1 = {:my_id => "test_id1", :data => "test data"}
     empty_data = @mysql_glue_obj.get(data1[:my_id]) #hasn't been saved yet
-    empty_data.should == {}
+    empty_data.should == nil
     @mysql_glue_obj.save(data1)
     #Don't use native get_attributes, use obj's get,  it will block until save is finished
     persisted_data = @mysql_glue_obj.get(data1[:my_id]) 
@@ -81,7 +81,7 @@ describe MysqlEnv::GlueEnv, "Persistent Layer Basic Operations" do
     persisted_data1 = @mysql_glue_obj.get(data1[:my_id])
     persisted_data2 = @mysql_glue_obj.get(data2[:my_id])
     persisted_data1[:data].should == "test data1"
-    persisted_data2.should == {}    
+    persisted_data2.should == nil    
   end
 end
   
