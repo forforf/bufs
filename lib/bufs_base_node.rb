@@ -185,7 +185,8 @@ class BufsBaseNode
   #Setting up the Class Environment - The class environment holds all
   # model-specific implementation details (not used when created by factory?)
   def self.set_environment(persist_env, data_model_bindings)
-    model_name = persist_env[:name]
+    cluster_name = persist_env[:name]
+    model_name = cluster_name
     model_env = persist_env[:env]
     #key_fields = data_model_bindings[:key_fields]
     #initial_views_data = data_model_bindings[:data_ops_set]
@@ -207,7 +208,7 @@ class BufsBaseNode
     #@myGlueEnv = glueClass.new(persist_env, data_model_bindings)
     #/orig
     #new
-    persistent_model_glue_obj = glueClass.new(persist_env, data_model_bindings)
+    persistent_model_glue_obj = glueClass.new(class_name, persist_env, data_model_bindings)
     @myGlueEnv = GlueEnv.new(persistent_model_glue_obj)
 
     @metadata_keys = @myGlueEnv.metadata_keys 

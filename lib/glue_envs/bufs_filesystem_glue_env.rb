@@ -161,12 +161,14 @@ attr_accessor :user_id,
             
             
   def initialize(persist_env, data_model_bindings)
+    #TODO: determine if class_name is needed to segment cluster data within user data
     
     #via environmental settings
     filesystem_env = persist_env[:env]
     #key_fields = persist_env[:key_fields]
     fs_path = filesystem_env[:path]
     @user_id = filesystem_env[:user_id]
+    @cluster_name = persist_env[:name]
     
     #data_model_bindings from NodeElementOperations
     key_fields = data_model_bindings[:key_fields] 

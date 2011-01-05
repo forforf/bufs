@@ -7,7 +7,7 @@ describe SdbS3Env::GlueEnv, "Initialization" do
   
   before(:each) do
     env = {:host => nil, :path => 'test_domain', :user_id => 'init_test_user'}
-    @persist_env = {:env => env}
+    @persist_env = {:name => 'sdb_s3_glue_test', :env => env}
     key_fields = {:required_keys => [:id],
                          :primary_key => :id }
     @data_model_bindings = {:key_fields => key_fields, :views => nil}

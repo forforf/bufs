@@ -57,6 +57,7 @@ class GlueEnv
        
 
   def initialize(persist_env, data_model_bindings)
+    #TODO: Determine if class_name is needed to segment cluster data within user data
     #host = "https://sdb.amazonaws.com/"  (not provided by user)
     @dbh = MysqlEnv.dbh
     @_file_mgr_table = 'blahblah'
@@ -64,6 +65,7 @@ class GlueEnv
     #TODO: validations on format
 
     @user_id = mysql_env[:user_id]
+    @cluster_name = persist_env[:name]
     #use namespace generator?
     domain_table_name = "#{mysql_env[:path]}__#{@user_id}"
     #data_model_bindings from NodeElementOperations

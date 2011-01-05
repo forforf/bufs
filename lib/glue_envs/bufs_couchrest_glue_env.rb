@@ -2,6 +2,7 @@
 require Bufs.midas 'bufs_data_structure'
 require Bufs.glue '/couchrest/couchrest_files_mgr'
 require Bufs.helpers 'log_helper'
+require Bufs.helpers 'hash_helpers'
 
 module CouchRestViews
   #FIXME MAJOR BUG
@@ -13,8 +14,8 @@ module CouchRestViews
   
   #Constants (pulling out magic text embedded in program)
   #Changing these will break compatibility with earlier records
-  BufsAllViewsName = "all_bufs"   #view name stored in the couch db design doc
-  BufsNamespace = "bufs_namespace"  #couch db record that the bufs node class name is stored
+  ClassViewAllName = "all"   #view name stored in the couch db design doc
+  ClassNamespaceKey = "all_this_class"  #couch db record that the bufs node class name is stored
 
 
   def self.set_view(db, design_doc, view_name, opts={})
@@ -54,11 +55,12 @@ module CouchRestViews
   end
 
 
-  def self.set_view_all(db, design_doc, db_namespace)
-    view_name = BufsAllViewsName
-    namespace_id = BufsNamespace
+  def self.set_view_all(db, design_doc, model_name, datastore_location)
+    view_name = "#{ClassViewAllName}_#{model_name}"
+    namespace_id = ClassNamespaceKey
+    record_namespace = "#{datastore_location}_#{model_name}"
     map_str = "function(doc) {
-		  if (doc['#{namespace_id}'] == '#{db_namespace}') {
+		  if (doc['#{namespace_id}'] == '#{record_namespace}') {
 		     emit(doc['_id'], doc);
 		  }
 	       }"
@@ -70,7 +72,7 @@ module CouchRestViews
 #=begin
   def self.set_my_cat_view(db, design_doc, user_datastore_location)
     map_str = "function(doc) {
-                   if (doc.#{BufsNamespace} =='#{user_datastore_location}' && doc.my_category ){
+                   if (doc.#{ClassNamespaceKey} =='#{user_datastore_location}' && doc.my_category ){
                      emit(doc.my_category, doc);
                   }
                }"
@@ -152,15 +154,16 @@ module BufsCouchrestEnv
 class GlueEnv
   #Set Logger
   @@log = BufsLog.set(self.name, :warn)
-  
+
   include CouchRest::Mixins::Views::ClassMethods
   include CouchrestViews
   
   #used to identify metadata for models (should be consistent across models)
-  ModelKey = :_id 
+  #ModelKey = :_id 
   VersionKey = :_rev
-  NamespaceKey = :bufs_namespace
-  #PersistLayerKey = :_id  #required by CouchDb to be unique in DB
+  #NamespaceKey = :bufs_namespace
+  PersistLayerKey = :_id  #required by CouchDb to be unique in DB
+  
   CouchMetadataKeys = [:_pos, :_deleted_conflicts] #possibly more, these keys are ignored
   QueryAllStr = "by_all_bufs".to_sym
   AttachClassBaseName = "MoabAttachmentHandler"
@@ -192,10 +195,11 @@ class GlueEnv
     couch_db_host = couchrest_env[:host]
     db_name_path = couchrest_env[:path]
     @user_id = couchrest_env[:user_id]
+    @model_name = persist_env[:name]
     
     #data_model_bindings from NodeElementOperations
     key_fields = data_model_bindings[:key_fields] 
-    initial_views_data = data_model_bindings[:views]
+    initial_views_data = data_model_bindings[:views] || []
     
     #FIXME: Major BUG!! when setting multiple environments in that this may cross-contaminate across users
     #if those users share the same db.  Testing up to date has been users on different dbs, so not an issue to date
@@ -215,7 +219,7 @@ class GlueEnv
     @db = CouchRest.database!(couch_db_location)
     @model_save_params = {:db => @db}
     
-    #@collection_namespace = CouchRestEnv.set_collection_namespace(db_name_path, @user_id)
+    #@collection_namespace = CouchrestEnv.set_collection_namespace(db_name_path, @user_id)
     #@user_datastore_location = CouchRestEnv.set_user_datastore_location(@db, @user_id)
     @user_datastore_location = set_namespace(db_name_path, @user_id)
     @design_doc = set_couch_design(@db, @user_id)#, @collection_namespace)
@@ -225,14 +229,14 @@ class GlueEnv
     
     @required_instance_keys = key_fields[:required_keys] #DataStructureModels::RequiredInstanceKeys
     @required_save_keys = key_fields[:required_keys] #DataStructureModels::Bufs::RequiredSaveKeys
-    @model_key = ModelKey #CouchRestEnv::ModelKey
+    @model_key = @node_key #ModelKey #CouchRestEnv::ModelKey
     @version_key = VersionKey #CouchRestEnv::VersionKey
-    @namespace_key = NamespaceKey #CouchRestEnv::NamespaceKey
+    @namespace_key = @model_name #NamespaceKey #CouchRestEnv::NamespaceKey
     #TODO: Need to investigate whether to keep model_key = node_key in metadata
     @metadata_keys = [@model_key, @version_key, @namespace_key] + CouchMetadataKeys #CouchRestEnv.set_db_metadata_keys #(@collection_namespace)
  
     @views = CouchRestViews
-    @views.set_view_all(@db, @design_doc, @user_datastore_location)
+    @views.set_view_all(@db, @design_doc, @model_name, @user_datastore_location)
     
     @views.set_my_cat_view(@db, @design_doc, @user_datastore_location)
     
@@ -318,17 +322,72 @@ class GlueEnv
   
   def query_all  #TODO move to ViewsMgr and change the confusing accessor/method clash
     #breaks everything -> self.set_view(@db, @design_doc, @collection_namespace)
-    raw_res = @design_doc.view @define_query_all
+    view_name = "by_#{CouchRestViews::ClassViewAllName}_#{@model_name}"
+    #raise view_name
+    raw_res = @design_doc.view view_name #@define_query_all
     raw_data = raw_res["rows"]
-    raw_data.map {|d| d['value']}
+    data = raw_data.map {|rec| HashKeys.str_to_sym( rec['value'] ) }
   end
- 
-  def save(new_data)
+
+  #current relations supported:
+  # - :equals (data in the key field matches this_value)
+  # - :contains (this_value is contained in the key field data (same as equals for non-enumerable types )
+  def find_nodes_where(key, relation, this_value)
+    res = case relation
+      when :equals
+        find_equals(key, this_value)
+      when :contains
+        find_contains(key, this_value)
+    end #case
+    return res    
+  end
+  
+  def find_equals(key, this_value)  
+    results =[]
+    query_all.each do |record|
+      test_val = record[key]
+      results << record  if test_val == this_value
+    end
+    results 
+  end
+  
+  def find_contains(key, this_value)
+    #TODO: Make a view for this rather than doing it in ruby
+    results =[]
+    query_all.each do |record|
+      test_val = record[key]
+      results << record  if find_contains_type_helper(test_val, this_value)
+    end
+    results 
+  end
+  
+  def find_contains_type_helper(stored_data, this_value)
+    resp = nil
+    #stored_data = jparse(stored_dataj)
+    if stored_data.respond_to?(:"include?")
+      resp = (stored_data.include?(this_value))
+    else
+      resp = (stored_data == this_value)
+    end
+    return resp
+  end
+
+
+  def save(user_data)
+    #I thinkthis was why I originally created the namespace concept but reconciliation is now required
+    pk_data = generate_pk_data(user_data[@model_key])
+    record_namespace = "#{@user_datastore_location}_#{@model_name}"
+    #Major TODO: Deconflict module CouchrestView and CouchRestViews
+    namespace_key = CouchRestViews::ClassNamespaceKey
+    pl_metadata = {PersistLayerKey => pk_data,  namespace_key => record_namespace}
+    new_data = user_data.dup.merge(pl_metadata)
     db = @model_save_params[:db]
+    
     raise "No database found to save data" unless db
-    raise "No id found in data: #{new_data.inspect}" unless new_data[:_id]
+    raise "No CouchDB Key (#{PersistLayerKey}) found in data: #{new_data.inspect}" unless new_data[PersistLayerKey]
+    raise "No [#{@model_key}] key found in model data: #{new_data.inspect}" unless new_data[@model_key]
+    
     model_data = HashKeys.sym_to_str(new_data) 
-    raise "No id found in model data: #{model_data.inspect}" unless model_data['_id']
     #db.save_doc(model_data)
     begin
       #TODO: Genericize this
@@ -353,9 +412,18 @@ class GlueEnv
 
   def get(id)
     #maybe put in some validations to ensure its from the proper collection namespace?
+    pk_data = generate_pk_data(id)
+    #Major TODO: Deconflict module CouchrestView and CouchRestViews
+    namespace_key = CouchRestViews::ClassNamespaceKey
+    #options, use native couchdb _id or buidl a view for the model key
+    #currently opting for using _id, but this requires rebuilding the primary key data
+    #which is not an ideal solution
     rtn = begin
-      node = @db.get(id)
+      node = @db.get(pk_data)
       node = HashKeys.str_to_sym(node)
+      node.delete(PersistLayerKey)
+      node.delete(namespace_key)
+      node
     rescue RestClient::ResourceNotFound => e
       nil
     end
@@ -367,22 +435,30 @@ class GlueEnv
     #att_doc = node.my_GlueEnv.attachClass.get(node.attachment_doc_id) if node.respond_to?(:attachment_doc_id)
     attachClass = @moab_data[:attachClass]
     att_doc_id = attachClass.uniq_att_doc_id(model_metadata[@model_key])
-    att_doc = attachClass.get(att_doc_id)
-    #raise "Destroying Attachment #{att_doc.inspect} from #{node._model_metadata[:_id].inspect}"
+    att_doc = attachClass.get(att_doc_id) if att_doc_id
+    #raise "Destroying Attachment #{att_doc.inspect} derived from #{@model_metadata.inspect} "
     att_doc.destroy if att_doc
     db_destroy(model_metadata)
   end
   
-
+  #TODO: update glue models so that it's id and rev that are explicitly needed
+  #which begs the question whether rev is supported or not
   def db_destroy(model_metadata)
-    @@log.debug { "ID: #{model_metadata[@model_key]}" } if @@log.debug
+    @@log.debug { "ID: #{model_metadata[@model_key]}" } if @@log.debug?
+    
+    id_to_delete = generate_pk_data( model_metadata[@model_key] )
+    rev_to_delete = model_metadata[@version_key] || @db.get(id_to_delete)['_rev']  
+    doc_to_delete = {'_id' =>  id_to_delete, '_rev' => rev_to_delete }
+ 
+    @@log.debug { "Attempting to Delete: #{doc_to_delete.inspect}" } if @@log.debug?
     begin
-      @db.delete_doc('_id' => model_metadata[@model_key],
-                            '_rev' => model_metadata[@version_key])
+      @db.delete_doc(doc_to_delete)
     rescue ArgumentError => e
       puts "Rescued Error: #{e} while trying to destroy #{model_metadata[@model_key]} node"
-      node = node.class.get(model_metadata[@model_key]) #(model_metadata['_id'])
-      db_destroy(model_metadata)
+      #Code here was deleting the latest version, but rather than wait for an error, it was proactively checked
+      #so this block may not be needed any more
+      #node = node.class.get(model_metadata[@model_key]) #(model_metadata['_id'])
+      #db_destroy(model_metadata)
     end
   end
  
@@ -392,11 +468,16 @@ class GlueEnv
   #  node = nil
   #end
 
-  #duplicative to above but provides consistent generic model key
+  #I hope this can be replaced by the generate_pk_data, but need to make sure
   def generate_model_key(namespace, node_key)
-    #TODO: Make sure namespace is portable across model migrations
-    "#{namespace}::#{node_key}"
+    #TODO: Make sure namespace is portable across model migrations (must be diff database)
+    "#{namespace}::#{node_key}"   # <== original if the below ends up breaking stuff
     #"#{node_key}"
+  end
+  
+  def generate_pk_data(record_id)
+    #url_friendly_class_name = self.class.name.gsub('::','-')
+    "#{user_id}:#{self.class.name}:#{record_id}"
   end
 
   #some models have additional processing required, but not this one
@@ -404,19 +485,22 @@ class GlueEnv
     query_all
   end
 
+
+
   #TODO: Investigate if Couchrest bulk actions or design views will assist here
   #fixed to delete orphaned attachments, but this negates much of the advantage of using this method in the first place
   #or perhaps using a close to the metal design view based on the class name?? (this may be better)
-  def destroy_bulk(list_of_native_records)
+  def destroy_bulk(user_records_to_delete)
     #TODO: Investigate why mutiple ids may be returned for the same record
     #Answer Database Corruption
-    list_of_native_records.uniq!
-    #puts "List of all records: #{list_of_native_records.map{|r| r['_id']}.inspect}"
-    list_of_native_records.each do |r|
+    user_records_to_delete.uniq!
+    #puts "List of all records: #{user_records_to_delete.map{|r| r['_id']}.inspect}"
+
+    user_records_to_delete.each do |user_rec|
       begin
-        att_doc_id = r['_id'] + CouchrestAttachment::AttachmentID
-        @@log.debug { "Node ID: #{r['_id'].inspect}" } if @@log.debug?
-        #puts "DB: #{@db.all.inspect}"
+        att_doc_id = attachClass.uniq_att_doc_id(user_rec[@model_key])
+        #very inefficient
+        r = @db.get(pk_data = generate_pk_data(user_rec[@model_key]) )
         @db.delete_doc(r)
         begin
           att_doc = @db.get(att_doc_id)

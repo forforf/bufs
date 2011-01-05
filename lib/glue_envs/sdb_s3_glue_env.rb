@@ -42,6 +42,7 @@ attr_accessor :user_id,
             
             
   def initialize(persist_env, data_model_bindings)
+    #TODO: determine if class_name is needed to segment cluster data within user data
     #host = "https://sdb.amazonaws.com/"  (not provided by user)
    
     #user_id = env[:user_id]
@@ -49,6 +50,7 @@ attr_accessor :user_id,
     #TODO: validations on format
     domain_base_name = sdb_s3_env[:path]
     @user_id = sdb_s3_env[:user_id]
+    @cluster_name = persist_env[:name]
     
     #data_model_bindings from NodeElementOperations
     key_fields = data_model_bindings[:key_fields] 
