@@ -271,8 +271,6 @@ describe BufsFilesystemEnv::GlueEnv, "Persistent Layer Collection Operations" do
     result4.should be_empty
   end
 
-end
-=begin
   it "should be able to delete in bulk" do  
     data1 = {:my_id => "test_id1", :data => "delete me"}
     data2 = {:my_id => "test_id2", :data => "keep me"}

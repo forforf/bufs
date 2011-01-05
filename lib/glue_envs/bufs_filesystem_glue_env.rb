@@ -317,13 +317,12 @@ attr_accessor :user_id,
 
   def destroy_bulk(list_of_native_records)
     return nil unless list_of_native_records
-    list_of_native_records.each do |r|
-      #puts "Dir: #{File.dirname(r)}"
-      r = File.join(@user_datastore_location, r) if File.dirname(r) == "."
+    list_of_native_records.each do |recs|
+      rec_id = recs[@model_key]
+      rec_id = File.join(@user_datastore_location, rec_id) if File.dirname(rec_id) == "."
       #puts "Removing: #{r.inspect}"
-      FileUtils.rm_rf(r)
+      FileUtils.rm_rf(rec_id)
     end
-    [] #TODO ok to return nil if all docs destroyed? also, not verifying
   end
 end 
 end
