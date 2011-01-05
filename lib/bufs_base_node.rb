@@ -36,6 +36,7 @@ require Bufs.helpers 'log_helper'
 #TODO: Have Persistent Layer GlueEnv inherit from this GlueEnv
 # Or better see if it can follow the FilesMgr interface
 #move into its own file
+#Also, put common code across glue envs here (can still be overwritten)
 class GlueEnv
   
   attr_accessor :glue_interface,
