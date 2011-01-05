@@ -224,8 +224,6 @@ describe BufsFilesystemEnv::GlueEnv, "Persistent Layer Collection Operations" do
     end#each
   end
   
-end
-=begin
   it "should be able to find matching data" do
     data1 = {:my_id => "test_id1", :data => "test data1", :tags => ['a', 'b', 'c']}
     data2 = {:my_id => "test_id2", :data => "test data2", :tags => ['c', 'd', 'e']}
@@ -250,6 +248,8 @@ end
     result4.first[:my_id].should == "test_id2"    
   end
 
+end
+=begin
   it "should be able to find containting data" do
     data1 = {:my_id => "test_id1", :data => "test data1", :tags => ['a', 'b', 'c']}
     data2 = {:my_id => "test_id2", :data => "test data2", :tags => ['c', 'd', 'e']}
