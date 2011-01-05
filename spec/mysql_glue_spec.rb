@@ -10,7 +10,7 @@ describe MysqlEnv::GlueEnv, "Initialization" do
   before(:each) do
     #host is the database
     persist_env = {:host => nil, :path => 'test_domain', :user_id => 'init_test_user'}
-    @persist_env = {:env => persist_env}
+    @persist_env = {:name => 'mysql_glue_test', :env => persist_env}
     key_fields = {:required_keys => [:my_id],
                          :primary_key => :my_id }
     @data_model_bindings = {:key_fields => key_fields, :views => nil}
