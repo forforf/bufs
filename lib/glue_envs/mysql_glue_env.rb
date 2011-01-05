@@ -190,6 +190,7 @@ class GlueEnv
   
   def find_contains(key, this_value)
     #TODO: Make into map/reduce to be more efficient
+    #SQL has native support for this type of lookup, using it.
     sql = "SELECT * FROM `#{@user_datastore_location}`"
     sth = @dbh.prepare(sql)
     rtn_raw_list  = []

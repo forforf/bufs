@@ -227,19 +227,12 @@ attr_accessor :user_id,
   end
   
   def find_contains(key, this_value) 
-    sdb = @model_save_params[:sdb]
-    domain = @model_save_params[:domain]
-    query = "SELECT * FROM `#{domain}`"
-    #SDB Queries drive me nuts so we're doing it in ruby
-    raw_data = sdb.select(query).first
-    data = {}
-    raw_data.each do |k,v|
-      row_values = from_sdb(v)
-      test_val = row_values[key]
-      data[k] = row_values if find_contains_type_helper(test_val, this_value)
+    results =[]
+    query_all.each do |record|
+      test_val = record[key]
+      results << record  if find_contains_type_helper(test_val, this_value)
     end
-    #puts "FE: #{data.inspect}"
-    data.values   
+    results 
   end  
 
   def find_contains_type_helper(stored_data, this_value)
