@@ -195,12 +195,13 @@ attr_accessor :user_id,
     unless File.exists?(@user_datastore_location)
       @@log.debug {"Warning: Can't query records. The File System Directory to work from does not exist: #{@user_datastore_location}"} if @@log.debug?
     end
-    all_nodes = []
+    all_records = []
     my_dir = @user_datastore_location + '/' #TODO: Can this be removed?
     all_entries = Dir.working_entries(my_dir)
-    results = {}
-    all_entries.each do
-    return all_entries || []
+    all_entries.each do|entry|
+      all_records << get(entry)
+    end
+    return all_records|| []
   end
 
   def get(id)

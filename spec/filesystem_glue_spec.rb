@@ -211,7 +211,6 @@ describe BufsFilesystemEnv::GlueEnv, "Persistent Layer Collection Operations" do
     @filesystem_glue_obj.save(data2)
   
     results = @filesystem_glue_obj.query_all
-    puts "QAll Res: #{results.inspect}"
     #results.should == 'blah'
     results.each do |raw_data|
       case raw_data[:my_id]
