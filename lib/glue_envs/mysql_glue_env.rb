@@ -180,26 +180,12 @@ class GlueEnv
   end
   
   def find_equals(key, this_value)    
-    sql = "SELECT * FROM `#{@user_datastore_location}` WHERE `#{key}` = '#{this_value.to_json}'"
-    #sql = "SELECT * FROM `#{@user_datastore_location}` WHERE ? = ?"
-    sth = @dbh.prepare(sql)
-    rtn = []
-    final_rtn = []
-    sth.execute
-    while row=sth.fetch do
-      rtn << row.to_h
+    results =[]
+    query_all.each do |record|
+      test_val = record[key]
+      results << record  if test_val == this_value
     end
-    sth.finish
-    rtn_raw_list = rtn
-    
-    rtn_raw_list.each{|r| r.delete(PersistLayerKey)}
-    rtn_raw_list.each do |rtn_raw|
-      rtnj = {}
-      rtn_raw.each {|k,v| rtnj[k] = jparse(v) }
-      final_rtn <<= HashKeys.str_to_sym(rtnj)
-    end
-    
-    return final_rtn   
+    results 
   end
   
   def find_contains(key, this_value)
